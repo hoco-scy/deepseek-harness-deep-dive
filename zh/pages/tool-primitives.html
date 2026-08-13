@@ -6,7 +6,7 @@
 <body data-page="tool-primitives" data-baseline="47f943859bef60e4160492346772ded9b24f765a" data-lang="zh">
   <header class="topbar"><button class="icon-button nav-toggle" type="button" data-nav-toggle aria-label="打开章节目录" aria-expanded="false">☰</button>
     <a class="brand" href="../index.html"><span class="brand-mark">DS</span><span>Harness 系统拆解</span></a>
-    <span class="topbar-meta">固定基线 47f943859b · 12 已复核 / 1 撰写中 / 36 章</span>
+    <span class="topbar-meta">固定基线 47f943859b · 13 已复核 / 1 撰写中 / 36 章</span>
     <div class="topbar-actions"><a class="language-switch" href="../../pages/tool-primitives.html" lang="en" aria-label="阅读本章英文版">English</a><button class="icon-button" type="button" data-theme-toggle aria-label="切换明暗主题">◐</button></div></header>
   <div class="layout"><aside class="sidebar" data-sidebar aria-label="章节目录"><input class="filter" data-chapter-filter type="search" placeholder="筛选章节……" aria-label="筛选章节"><section class="nav-part" data-part><h2 class="part-title">导论</h2>
     <a class="chapter-link" data-chapter-item href="../pages/reading-guide.html">
@@ -31,7 +31,7 @@
     <a class="chapter-link" data-chapter-item href="../pages/plan-goal-todo.html">
       <span class="chapter-number">15</span><span>Plan、Goal 与 Todo</span><span class="status-dot queued" title="待研究"></span></a></section><section class="nav-part" data-part><h2 class="part-title">工具系统</h2>
     <a class="chapter-link current" data-chapter-item href="../pages/tool-primitives.html">
-      <span class="chapter-number">16</span><span>工具定义原语与执行管线</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/tool-catalog.html">
+      <span class="chapter-number">16</span><span>工具定义原语与执行管线</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link" data-chapter-item href="../pages/tool-catalog.html">
       <span class="chapter-number">17</span><span>工具全集与能力分类</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/tool-parallelism.html">
       <span class="chapter-number">18</span><span>工具并行器与结果顺序</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/permission-approval.html">
       <span class="chapter-number">19</span><span>权限分析、审批与单调 Guard</span><span class="status-dot queued" title="待研究"></span></a></section><section class="nav-part" data-part><h2 class="part-title">执行环境</h2>
@@ -56,10 +56,263 @@
       <span class="chapter-number">34</span><span>缺口、限制与待验证问题</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/glossary-evidence.html">
       <span class="chapter-number">35</span><span>术语、证据目录与源码索引</span><span class="status-dot queued" title="待研究"></span></a></section></aside>
     <main class="main"><div class="page-shell"><article class="article" data-article><header><div class="page-kicker"><span>工具系统</span><span>·</span><span>第 16 章</span></div>
-      <h1>工具定义原语与执行管线</h1><p class="subtitle">schema、scope、execution mode、presentation 与 waterfall</p><div class="page-meta"><span class="status queued">待研究</span><span>上游 47f943859b</span><span>范围: 拆解 ToolDefinition、registry、快照、pre/guard/around/post/finalize/result 和 Code Mode 子调用。</span></div></header>
-      <section class="placeholder"><p class="eyebrow">研究队列</p><h2>本章尚未进入结论状态</h2>
-    <p><strong>当前范围:</strong> 拆解 ToolDefinition、registry、快照、pre/guard/around/post/finalize/result 和 Code Mode 子调用。</p><p>页面已经纳入全量研究地图，但尚未完成源码控制流复核。以下是升级为“已复核”之前必须覆盖的检查面：</p>
-    <ul class="placeholder-checks"><li>实际 bundle / profile 装配入口</li><li>公开类型、事件与配置 schema</li><li>正常控制流与状态突变时机</li><li>并发、scope、所有权与 cleanup</li><li>错误、取消、重试和降级分支</li><li>持久化、projection 与 replay 语义</li><li>生产路径测试与运行时不变量</li><li>优势、代价、限制与待验证问题</li></ul></section><section class="learning-notes" aria-labelledby="learning-notes-title"><h2 id="learning-notes-title">我的学习体会</h2>
+      <h1>工具定义原语与执行管线</h1><p class="subtitle">schema、scope、execution mode、presentation 与 waterfall</p><div class="page-meta"><span class="status verified">已复核</span><span>上游 47f943859b</span><span>范围: 拆解 ToolDefinition、registry、快照、pre/guard/around/post/finalize/result 和 Code Mode 子调用。</span></div></header>
+      <section>
+  <h2>结论：ToolRuntime 不是函数表，而是一条把不可信模型调用提交为可重放结果的事务边界</h2>
+  <div class="thesis"><p>DeepSeek Harness 的工具核心同时承担五件事：解析每个 Agent scope 能看见什么；把定义投影成模型 schema；给一次调用分配不可伪造的执行 identity；把 pre-policy、审批、单调 guard、around wrapper、body、post-policy 和 tool-owned finalizer 排成固定管线；最后只发布一份 lossless、冻结的权威结果。Agent loop 才把顶层 call/result 写进 Session，UI presenter 则从同一耐久结果重建卡片。</p></div>
+  <p>最值得学习的不是“有 hooks”，而是每一层能改什么都不同：pre 不能改已记录参数；guard 只能拒绝；around 只能临时替换 signal 并包裹 body；post 可以替换 canonical value 或 model content；finalizer 只能改 content；result observer 什么都不能改。</p>
+  <div class="claim fact"><div class="claim-label">生成控制流</div><p>仓库生成的执行图与生产源码一致地给出 pre → guards → around/body → post → normalize → finalize → frozen result 的顺序，并把 Session logging 与 UI projection 放在管线外的拥有者边界。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/docs/tool-execution-pipeline.md#L4-L60" title="工具执行管线: pre、单调 guard、around execute、post、normalization、finalize 和 immutable result 的完整顺序。" aria-label="证据 TOOL-PIPELINE">TOOL-PIPELINE</a></p></div>
+</section>
+
+<section>
+  <h2>1. 一个工具定义同时包含四份合同</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>合同</th><th>字段</th><th>消费者</th><th>是否发给模型</th></tr></thead>
+    <tbody>
+      <tr><td>调用合同</td><td><code>name</code>、<code>description</code>、<code>parameters</code></td><td>Prompt/Provider adapter</td><td>是</td></tr>
+      <tr><td>Canonical output</td><td><code>output.schema</code>、<code>output.render</code>、可选 <code>presentationMeta</code></td><td>ToolRuntime、Code Mode、UI replay</td><td>Output schema 不走 native schema；render 后 content 会进入历史</td></tr>
+      <tr><td>执行合同</td><td><code>execute</code>、<code>timeoutMs</code>、<code>isConcurrencySafe</code></td><td>Registry 与外部 policy/scheduler</td><td>否</td></tr>
+      <tr><td>展示合同</td><td><code>presentCall</code>、<code>presentResult</code>、<code>finalizeContent</code></td><td>Host/UI 与提交末端</td><td>Presenter 不发；final content 会进入模型历史</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Definition shape</div><p>成功 body 必须返回 canonical lossless JSON value。Registry 用 output schema 验证它，再用纯 <code>render(args,value)</code> 生成 provider-neutral ContentBlocks；顶层调用还可生成耐久 JSON metadata。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L212-L301" title="ToolDefinition 的 canonical output、执行与展示合同: 定义同时声明模型 schema、canonical output schema/render/meta、body、timeout/concurrency metadata、finalizer 与纯 UI presenters；成功值和持久 content 明确分层。" aria-label="证据 TOOL-DEFINITION">TOOL-DEFINITION</a></p></div>
+  <aside class="caveat"><strong>重要边界：</strong><code>timeoutMs</code> 只是声明给 timeout-policy wrapper 的 metadata，ToolRuntime 本身不启动 timer；<code>isConcurrencySafe</code> 也只是 scheduler classifier。注册字段不等于核心自动执行该策略。</aside>
+</section>
+
+<section>
+  <h2>2. 模型 schema、执行 value、耐久 content 与 UI meta 是四种不同数据</h2>
+  <pre><code>model args string
+→ parsed + lossless snapshot + frozen arguments
+→ execute() returns canonical JSON value
+→ output.schema validates value
+→ output.render(args, value) produces model-facing ContentBlocks
+→ presentationMeta(args, value) optionally produces replayable UI JSON
+
+execution-local result: { value, content, meta? }
+durable tool/result:     { content, isError, errorInfo?, meta? }
+future model Surface:    content only</code></pre>
+  <div class="claim fact"><div class="claim-label">数据所有权</div><p>成功 <code>ToolExecutionResult</code> 在进程内携带 frozen <code>value</code>，但顶层 Session event 刻意只保存 content、failure state 与可选 meta。Canonical value 不可从日志保证恢复；UI 所需但文本无法无损表达的结构必须由 <code>presentationMeta</code> 明确投影。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L555-L600" title="ToolExecutionResult 与 pre/post decision unions: 成功结果携带 execution-local value、content/meta/context 与可选 concludesTurn；失败没有 value；pre 为 allow/deny/ask，post 为 accept/value-or-content replacement/block。" aria-label="证据 TOOL-RESULT-TYPES">TOOL-RESULT-TYPES</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L1783-L1862" title="Canonical value 验证、纯 projection 与最终 materialization: Registry snapshot/验证 body 或 policy value，运行 render/meta，并用 execution token 标记 canonical result；未标记 wrapper success 会重新规范化，最终 snapshot 冻结且 durable projection 不含 value。" aria-label="证据 TOOL-CANONICAL-OUTPUT">TOOL-CANONICAL-OUTPUT</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/tool-calls.ts#L59-L289" title="Agent loop 的 tool/call、ordered result 与 context commit: Loop 在 prepare 前写 raw tool/call，分阶段运行 Registry，按模型顺序写 final tool/result 并引用 call seq，再接受 additional context 和 concludesTurn；取消的未启动 call 获得 synthetic pair。" aria-label="证据 TOOL-LOOP-COMMIT">TOOL-LOOP-COMMIT</a></p></div>
+  <p>这让 Code Mode 可以把结构化 value 交给程序继续计算，同时主模型只看到渲染后的受控文本；也避免 UI 为了显示 diff、line numbers 或 web sources 去反向解析自然语言结果。</p>
+</section>
+
+<section>
+  <h2>3. Schema DSL 是受约束的 JSON Schema 子集，不是完整规范</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>支持</th><th>规则</th><th>明确不做</th></tr></thead>
+    <tbody>
+      <tr><td>Scalar</td><td>string/number/integer/boolean/null，类型匹配的 enum/const</td><td>pattern、minimum、format 等关键字会被拒绝</td></tr>
+      <tr><td>Container</td><td>array/items；object/properties/required/boolean additionalProperties</td><td>显式 object 必须声明 openness，避免隐式默认</td></tr>
+      <tr><td>Union</td><td>exact-one <code>oneOf</code>，至少两个分支</td><td>不接受与 oneOf 冲突的 sibling constraints</td></tr>
+      <tr><td>Any JSON</td><td>author DSL 的 <code>type: "json"</code> 编译为无约束 node</td><td>仍必须是 lossless JSON value</td></tr>
+      <tr><td>Annotations</td><td>description/title/default/examples</td><td>default 只做 annotation，不会自动填值</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Fail loud</div><p>Raw schema walker 会拒绝未知或错位关键字、循环、稀疏/装饰数组、非法 required 与非 lossless annotations；编译和验证用显式任务栈而非递归调用栈。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/json-schema.ts#L1-L430" title="受执行的 JSON Schema 子集与 stack-safe validator: Schema vocabulary 限定 type/oneOf/container/literal constraints 与 lossless annotations，拒绝未知关键字、循环、exotic records 与稀疏数组，并用显式 task stack 收集路径化 violations。" aria-label="证据 TOOL-SCHEMA-SUBSET">TOOL-SCHEMA-SUBSET</a></p></div>
+  <p>参数根由 DSL 编译成隐式 open object；嵌套显式 object 必须写 <code>additionalProperties: true|false</code>。因此“工具参数默认拒绝额外键”并不成立，除非作者在相应显式对象层选择 closed shape。</p>
+</section>
+
+<section>
+  <h2>4. 只有 <code>defineTool()</code> 自动执行参数校验</h2>
+  <div class="claim fact"><div class="claim-label">Helper contract</div><p><code>defineTool()</code> 编译参数与输出 schema，包装 <code>execute</code>，在 body 前调用 validator，并把路径化 violations 转为 <code>ToolArgsError(code: INVALID_ARGS)</code>。它还给 presenter 与 concurrency classifier 做 soft validation：旧日志参数不匹配时返回 undefined/false，而不是让 replay 或调度崩溃。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/schema.ts#L538-L616" title="defineTool 的硬执行校验与软 replay 校验: Helper 编译 schema、在 body 前硬校验 arguments 并抛 INVALID_ARGS，同时让 presenter 与 concurrency classifier 对旧/非法参数 fail-soft；它还绑定 typed output projectors。" aria-label="证据 TOOL-DEFINE-HELPER">TOOL-DEFINE-HELPER</a></p></div>
+  <div class="claim assessment"><div class="claim-label">直接注册边界</div><p><code>ToolRuntime.register()</code> 会验证 output schema 和 timeout metadata，却不会把 <code>parameters</code> schema 应用于每次输入；执行创建阶段只做 lossless snapshot/freeze。直接构造原始 <code>ToolDefinition</code> 的第三方工具必须自己校验 arguments。模型可见 schema 是提示约束，不自动等于运行时输入 guard。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L1030-L1061" title="Raw ToolDefinition 的注册校验边界: 注册检查 output contract、支持的 output schema、timeout 与 reserved name，并按 calling scope 插入 live definition；它没有为 raw definition 包装 per-call parameter validation。" aria-label="证据 TOOL-REGISTRATION">TOOL-REGISTRATION</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L1328-L1506" title="Execution 创建、参数 materialization 与 ordered pre/guard gate: Registry mint token、snapshot/freeze arguments、处理 code-mode collapse 与 pre-dispatch abort，再按 scope 运行 pre waterfall、approval 和 monotonic guards；普通 policy failures 规范化为 staged results。" aria-label="证据 TOOL-PIPELINE-PREPARE">TOOL-PIPELINE-PREPARE</a></p></div>
+  <p>这不是第一方工具的缺口——它们使用 helper——但它是 extension author 的重要 trust boundary。把 raw registration 当作“registry 会替我 validate”会把任意 JSON 送进 body。</p>
+</section>
+
+<section>
+  <h2>5. Scope view 先解析继承能力，再应用限制和本地 shadow</h2>
+  <pre><code>global tools
+→ ancestor scope registrations (nearer shadows farther)
+→ intersect every restriction along the scope chain
+→ exact scope's own registrations (exempt from inherited filter)
+→ reserved run_code transport when mode requires it</code></pre>
+  <div class="claim fact"><div class="claim-label">Visibility resolver</div><p>同一 layer 内重复 name 会失败；scoped registration 可 shadow inherited/global definition。Restriction 只能在 scoped context 注册，且只过滤继承能力；当前 scope 自己注册的 reporting/structured-output machinery 保留。多个 allow/deny filter 取交集，未知名字与 reserved transport fail loud。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L1064-L1226" title="Scoped restriction、shadowing、guard 与统一 visibility resolver: Restrictions 只过滤继承能力且沿链相交，own registrations 例外并可 shadow；global/chain guards 只能拒绝；get/schema/dispatch 从同一 live view 解析。" aria-label="证据 TOOL-SCOPE-VIEW">TOOL-SCOPE-VIEW</a></p></div>
+  <p><code>get()</code>、model schema、SDK 和 dispatch 共用这个 view，降低“提示看见 A、执行却调用 B”的漂移。但定义与限制是 live effects：排队中的调用到真正 start 前仍可看到 registry change，这也是第 18 章重分类语义的基础。</p>
+</section>
+
+<section>
+  <h2>6. Native、Code 与 Both 改的是模型入口，不是三套工具实现</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Mode</th><th>Provider tools</th><th>Prompt 增量</th><th>直接执行边界</th></tr></thead>
+    <tbody>
+      <tr><td><code>native</code></td><td>全部 visible schemas</td><td>普通 per-tool guidance</td><td>模型直接调用 visible tool</td></tr>
+      <tr><td><code>code</code></td><td>只有 reserved <code>run_code</code></td><td>code-only rule + typed SDK</td><td>模型直呼 native name 在 policy 前变成 UNKNOWN_TOOL；SDK subcall 可调用</td></tr>
+      <tr><td><code>both</code></td><td>visible native schemas + <code>run_code</code></td><td>typed SDK，无 code-only rule</td><td>两种入口都可用</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">同源视图</div><p>每次 prompt assembly 从 calling scope 重新投影 name/description/parameters；只白名单这三个字段。Code SDK 额外拿 output schema 生成 typed return，而 <code>run_code</code> 被保留在 capability filter 之外。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L650-L1001" title="Native、Code、Both 与 per-scope presentation: 配置或 scoped presentAs 选择 native/code/both；code mode 添加 collapse instruction、typed SDK 与 reserved run_code，只在 code 下过滤 Provider schemas 为 transport，同时保持 SDK end-capability view。" aria-label="证据 TOOL-PRESENTATION-MODES">TOOL-PRESENTATION-MODES</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L1228-L1285" title="模型 schema allowlist、Code SDK output schema 与 fail-closed classifier: Native schema 只投影 name/description/parameters 的 detached copy；Code SDK 另带 output schema；executionMode 只有 classifier 精确返回 true 才 parallel，缺失、invalid 或 throw 都 exclusive。" aria-label="证据 TOOL-SCHEMA-PROJECTION">TOOL-SCHEMA-PROJECTION</a></p></div>
+  <p>在 code-only mode，native name 虽然用于 SDK catalog 仍“可见”，但 model-direct execution 会在 pre hooks、审批和 guards 之前确定性拒绝，避免 policy 误批准一个注定不能执行的入口；错误文本告诉模型应从 <code>run_code</code> 内调用。</p>
+</section>
+
+<section>
+  <h2>7. 每次调用先获得不可伪造 identity，再进入 policy</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>字段</th><th>来源</th><th>用途</th></tr></thead>
+    <tbody>
+      <tr><td><code>callId</code></td><td>Provider tool-call block / composite dispatcher</td><td>Session call-result 关联</td></tr>
+      <tr><td><code>rootCallId</code></td><td>根调用默认等于 callId，嵌套沿树传播</td><td>整棵 composite execution 关联</td></tr>
+      <tr><td><code>token</code></td><td>Registry 新建的 same-process Symbol</td><td>证明 nested parent 与 canonical result 属于本次 execution</td></tr>
+      <tr><td><code>agent</code></td><td>Agent loop 显式提供，可选</td><td>Scope routing、审批和 Session ownership</td></tr>
+      <tr><td><code>signal</code></td><td>Caller 持有</td><td>取消；around wrapper 的替换不能脱离它</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Materialization</div><p>Registry 在 policy 前对 parsed arguments 做 lossless snapshot、detach、deep freeze；公开 execution 字段 readonly，最终 observer 收到前整个 execution object 再 freeze。Code Mode 只把 opaque parent token 交给 nested dispatcher，而不是泄漏可变 outer execution。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L304-L472" title="Root/call/token identity、nested parent 与结果控制信号: ToolExecutionInput 区分 root call、opaque parent token、Agent 与 caller signal；Registry execution 添加不可伪造 token，ToolRunContext 只通过 deferContext/concludeTurn 把控制信号带回自身结果。" aria-label="证据 TOOL-EXECUTION-IDENTITY">TOOL-EXECUTION-IDENTITY</a></p></div>
+</section>
+
+<section>
+  <h2>8. 完整管线：不同扩展点拥有不同权限</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>阶段</th><th>允许做什么</th><th>失败/拒绝后</th></tr></thead>
+    <tbody>
+      <tr><td><code>tools/pre-execute</code></td><td>allow / deny / ask；异步 waterfall</td><td>deny 形成 error result，仍可进 post</td></tr>
+      <tr><td>Approval seam</td><td>把 ask 解析为 allowed-once 或具体 deny</td><td>无 service、无 Agent、unavailable 都 fail closed</td></tr>
+      <tr><td>Monotonic guards</td><td>同步返回首个 denial reason</td><td>没有 allow 返回值，不能覆盖前一个 denial</td></tr>
+      <tr><td><code>tools/execute</code></td><td>包裹下一层，替换本 wrapper lifetime 的 signal</td><td>wrapper throw 直接变 final error</td></tr>
+      <tr><td>Tool body</td><td>返回 canonical value；defer context；conclude turn</td><td>body throw 被规范化，仍进入 post</td></tr>
+      <tr><td><code>tools/post-execute</code></td><td>accept、替换 value 或 content、block、追加 context</td><td>throw 变 final error</td></tr>
+      <tr><td><code>finalizeContent</code></td><td>同步且只替换 content，覆盖成功与失败</td><td>throw 变 final error，不再递归调用 finalizer</td></tr>
+      <tr><td><code>tools/result</code></td><td>观察 frozen authoritative snapshot</td><td>observer failures 被记录并隔离</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">生产实现</div><p>Scheduler-facing prepare/dispatch/finalize/finish 只是把同一管线拆成“ordered policy”“可重叠 body”“ordered post/commit”三段；普通 <code>ToolRuntime.execute()</code> 仍把它们串成同一结果。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L1328-L1506" title="Execution 创建、参数 materialization 与 ordered pre/guard gate: Registry mint token、snapshot/freeze arguments、处理 code-mode collapse 与 pre-dispatch abort，再按 scope 运行 pre waterfall、approval 和 monotonic guards；普通 policy failures 规范化为 staged results。" aria-label="证据 TOOL-PIPELINE-PREPARE">TOOL-PIPELINE-PREPARE</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L1527-L1599" title="Around-dispatch、caller signal fusion、body 与 deferred context: Registry 将 wrapper signal 与原 caller signal 融合，resolve 当前 definition、等待 body 静止、验证成功 value，并在恢复 wrapper signal 后规范化 around result 与 body-deferred contexts；pipeline throw 成为 final error。" aria-label="证据 TOOL-PIPELINE-DISPATCH">TOOL-PIPELINE-DISPATCH</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L1601-L1675" title="Post 后的 captured finalizer、双 materialization 与 observer containment: Finalization 运行 post 后重查取消，materialize candidate，调用调用开始时捕获的 content-only finalizer，再 materialize/freeze；result observers 的同步/异步失败全部隔离。" aria-label="证据 TOOL-PIPELINE-FINALIZE">TOOL-PIPELINE-FINALIZE</a></p></div>
+</section>
+
+<section>
+  <h2>9. Pre-policy 与 Guard 刻意不能改 arguments</h2>
+  <p>模型原始 argument string 已经作为 <code>tool/call</code> 写入日志，UI 也会用它展示 pending state。若 pre hook 可以替换 args，日志会声称执行了 A，body 实际收到 B，request replay 与审计都失真。因此 <code>PreToolDecision</code> 没有 rewrite arm。</p>
+  <div class="claim fact"><div class="claim-label">单调授权</div><p>Waterfall 可选择 ask，但最终 allow 之后还要通过 global 再到 scope-chain 的每个 synchronous guard。Guard 只有“返回 reason 拒绝”或 abstain 两种结果；listener 顺序无法把已有 denial 重新提升为 permission。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L580-L711" title="Pre/post decision vocabulary 与单调 guard: Pre 只能 allow/deny/ask，刻意没有 argument rewrite；post 可 accept、替换单一 projection、追加 context 或 block；guard 只有 reason/abstain，不能 force-allow。" aria-label="证据 TOOL-DECISIONS">TOOL-DECISIONS</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L1064-L1226" title="Scoped restriction、shadowing、guard 与统一 visibility resolver: Restrictions 只过滤继承能力且沿链相交，own registrations 例外并可 shadow；global/chain guards 只能拒绝；get/schema/dispatch 从同一 live view 解析。" aria-label="证据 TOOL-SCOPE-VIEW">TOOL-SCOPE-VIEW</a></p></div>
+  <p>审批的细节留给第 19 章；这里的核心性质是：可扩展 policy 可以提出允许意图，owner guard 仍有不可逆的最后拒绝权。</p>
+</section>
+
+<section>
+  <h2>10. Around wrapper 可以换 signal，但不能切断 caller cancellation</h2>
+  <p><code>tools/execute</code> 适合 timeout、retry、metrics 等 around concerns。Wrapper 可以在委托期间替换 mutable <code>exec.signal</code>；ToolRuntime 在 body 前把这个 signal 与原 caller signal 融合，body settle 后移除 listeners 并恢复 wrapper view。</p>
+  <div class="claim fact"><div class="claim-label">Quiescence</div><p>取消不会放弃已启动的 Promise。Registry 等 body 到达静止点，再把原本成功的结果替换为 <code>ABORTED</code>；body 尚未开始时使用 <code>ABORTED_BEFORE_DISPATCH</code>。同进程代码无法硬杀，工具作者必须传播 signal。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L1527-L1599" title="Around-dispatch、caller signal fusion、body 与 deferred context: Registry 将 wrapper signal 与原 caller signal 融合，resolve 当前 definition、等待 body 静止、验证成功 value，并在恢复 wrapper signal 后规范化 around result 与 body-deferred contexts；pipeline throw 成为 final error。" aria-label="证据 TOOL-PIPELINE-DISPATCH">TOOL-PIPELINE-DISPATCH</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L1880-L1944" title="Caller/wrapper signal fusion 与两种取消结果: Dispatch-scoped relay 同时监听 caller 与 wrapper 并在 settle 清理；取消按 body 是否启动映射为 ABORTED 或 ABORTED_BEFORE_DISPATCH，并保留已有 additional contexts。" aria-label="证据 TOOL-CANCELLATION">TOOL-CANCELLATION</a></p></div>
+  <aside class="caveat"><strong>声明不是执行：</strong>定义上的 <code>timeoutMs</code> 只有加载独立 timeout-policy wrapper 才生效。没有 wrapper 时它不会自动取消长期 body。</aside>
+</section>
+
+<section>
+  <h2>11. 成功 value 必须先过三道边界，才能成为 canonical result</h2>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>Lossless snapshot</h3><p>拒绝 undefined、BigInt、cycle、sparse array、非有限数、负零和 exotic graph。</p></div>
+    <div><span>2</span><h3>Output schema</h3><p>产生全部路径化 violations；不符合时转成 INVALID_TOOL_OUTPUT。</p></div>
+    <div><span>3</span><h3>Pure projections</h3><p><code>render</code> 与可选 <code>presentationMeta</code> 的结果再次 snapshot；projection throw 也成为输出错误。</p></div>
+    <div><span>4</span><h3>Per-execution mark</h3><p>WeakMap 把 result 与 registry token 关联，防止 around wrapper 伪装成已验证 canonical result。</p></div>
+  </div>
+  <div class="claim fact"><div class="claim-label">重新规范化</div><p>若 around wrapper 返回未经本 execution 标记的 success，Registry 只信它的 value，并重新走当前 tool 的 output validation/render；wrapper 自带 content 不会绕过 canonical projection。Error result 可被规范化保留。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L1783-L1862" title="Canonical value 验证、纯 projection 与最终 materialization: Registry snapshot/验证 body 或 policy value，运行 render/meta，并用 execution token 标记 canonical result；未标记 wrapper success 会重新规范化，最终 snapshot 冻结且 durable projection 不含 value。" aria-label="证据 TOOL-CANONICAL-OUTPUT">TOOL-CANONICAL-OUTPUT</a></p></div>
+</section>
+
+<section>
+  <h2>12. Post-policy 可替换 value 或 content，但两者不能同时替换</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Decision</th><th>结果</th><th>重新验证</th></tr></thead>
+    <tbody>
+      <tr><td><code>accept</code> 无替换</td><td>保留 body/denial result，追加 contexts</td><td>已有 canonical result 保持</td></tr>
+      <tr><td><code>accept {value}</code></td><td>替换成功 canonical value</td><td>重新跑 output schema、render、meta；失败结果不可变成 value</td></tr>
+      <tr><td><code>accept {content}</code></td><td>只替换 model-facing blocks</td><td>不重新解释 canonical value</td></tr>
+      <tr><td><code>block {feedback}</code></td><td>转为 isError，feedback 既是 content 也是 message 来源</td><td>只保留 blocker 明确附加的 contexts</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">控制权</div><p>Body deferred contexts 在 accept 时排在 post contexts 之前；block 会丢弃 body contexts，防止一个被政策否决的结果仍把隐藏 instruction 注入下一请求。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L1731-L1781" title="Post-execute 的 value/content replacement、block 与 context 规则: Post accept 可替换 value 或 content 但不能同时；value 重新走 canonical projection，failed value 不可替换；block 丢弃 body contexts，仅保留 blocker 明示 contexts。" aria-label="证据 TOOL-POST-POLICY">TOOL-POST-POLICY</a></p></div>
+  <p>Content replacement 是刻意的 presentation/policy seam：它可以做脱敏、spill preview 或纠正反馈，而无需伪造新的 canonical value。代价是日志里的文本不再能证明 body 原始 render；需要 telemetry 或 tool-owned事件保留更早证据。</p>
+</section>
+
+<section>
+  <h2>13. <code>finalizeContent</code> 是工具拥有的最后不变量</h2>
+  <p>Finalizer 在调用开始时就从当时 visible definition 捕获，防止 arguments getter 或热重载在 snapshot 期间替换回调。它在所有 normalized outcome 上恰好尝试一次，包括 pre/around/post failure；它只能返回替换 content，不能改 isError、value、meta、contexts 或 concludesTurn。</p>
+  <div class="claim fact"><div class="claim-label">提交末端</div><p>Registry 先把候选结果 materialize，运行 captured finalizer，再 materialize 一次并 deep-freeze；finalizer throw 会被转成普通 error result。随后 <code>tools/result</code> observer 只能看 frozen execution/result，任一 observer 同步或异步失败都不会改变调用返回。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L1601-L1675" title="Post 后的 captured finalizer、双 materialization 与 observer containment: Finalization 运行 post 后重查取消，materialize candidate，调用调用开始时捕获的 content-only finalizer，再 materialize/freeze；result observers 的同步/异步失败全部隔离。" aria-label="证据 TOOL-PIPELINE-FINALIZE">TOOL-PIPELINE-FINALIZE</a></p></div>
+  <div class="claim assessment"><div class="claim-label">为什么放最后</div><p>工具可用它保证“任何离开 registry 的 content 都满足本工具的最终格式/脱敏规则”，而通用 post-policy 仍不能越过它。相对地，错误 finalizer 会覆盖原错误文本为 finalizer 自身错误，审计时应结合更早日志/telemetry。</p></div>
+</section>
+
+<section>
+  <h2>14. Additional context 和 conclude-turn 是结果携带的控制信号</h2>
+  <p>Tool body 可调用 <code>exec.deferContext(userMessage)</code>；post policy 也可附加 contexts。它们不在 body 中直接 append，而随最终 result 回到 Agent loop。Loop 先按模型顺序写完对应 <code>tool/result</code>，再把 contexts 放进 active-batch FIFO，下一 Step 才以拥有各自 source/meta 的 user messages 提交。</p>
+  <div class="claim fact"><div class="claim-label">Turn control</div><p><code>exec.concludeTurn()</code> 只会在最终成功结果上生成 <code>concludesTurn:true</code>；body 随后失败或 post block 时不会结束 Turn。Scheduler 只有在按模型顺序提交该结果后才汇总标记。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L304-L472" title="Root/call/token identity、nested parent 与结果控制信号: ToolExecutionInput 区分 root call、opaque parent token、Agent 与 caller signal；Registry execution 添加不可伪造 token，ToolRunContext 只通过 deferContext/concludeTurn 把控制信号带回自身结果。" aria-label="证据 TOOL-EXECUTION-IDENTITY">TOOL-EXECUTION-IDENTITY</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/tool-calls.ts#L59-L289" title="Agent loop 的 tool/call、ordered result 与 context commit: Loop 在 prepare 前写 raw tool/call，分阶段运行 Registry，按模型顺序写 final tool/result 并引用 call seq，再接受 additional context 和 concludesTurn；取消的未启动 call 获得 synthetic pair。" aria-label="证据 TOOL-LOOP-COMMIT">TOOL-LOOP-COMMIT</a></p></div>
+  <p>这避免 side-channel context 插进 call/result 邻接中间，也让 composite transport 把 nested context/terminal signal 通过父结果显式转发，而不是直接突变父 Agent 的 inbox。</p>
+</section>
+
+<section>
+  <h2>15. 顶层工具耐久性由 Agent loop 拥有，Registry 本身不写 Session</h2>
+  <pre><code>assistant/tool_call block
+→ append tool/call (raw argument string)
+→ ToolRuntime staged pipeline
+→ append tool/result (final content + isError + error info + meta)
+→ accept result.additionalContexts
+→ next Step boundary</code></pre>
+  <div class="claim fact"><div class="claim-label">Commit ownership</div><p>Loop 在任何 pre-policy 之前先写 <code>tool/call</code>，保存 raw Provider arguments；即使 JSON 无效、被拒绝或 body 未启动，最终都能写一条成对 error result。Result 的 <code>sourceEventSeqs</code> 精确引用 call event。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/tool-calls.ts#L59-L289" title="Agent loop 的 tool/call、ordered result 与 context commit: Loop 在 prepare 前写 raw tool/call，分阶段运行 Registry，按模型顺序写 final tool/result 并引用 call seq，再接受 additional context 和 concludesTurn；取消的未启动 call 获得 synthetic pair。" aria-label="证据 TOOL-LOOP-COMMIT">TOOL-LOOP-COMMIT</a></p></div>
+  <p>直接从其它进程内组件调用 <code>ctx.tools.execute()</code> 只得到 frozen result，不会自动产生顶层 Session events；若没有 Agent，审批 ask 也无法路由并 fail closed。Code Mode 是特例：outer <code>run_code</code> 仍由 loop 记账，bridge 另写 log-only nested dispatch events。</p>
+</section>
+
+<section>
+  <h2>16. UI Presenter 是 provider-neutral render intent，并且必须可 replay</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>阶段</th><th>可选 intent</th><th>回退</th></tr></thead>
+    <tbody>
+      <tr><td>Pending call</td><td>generic / terminal / diff</td><td>Tool name + raw args 的 generic card</td></tr>
+      <tr><td>Completed result</td><td>generic / terminal / diff / search / read / web</td><td>保留 pending title，渲染 raw result content</td></tr>
+      <tr><td>旧参数不匹配</td><td><code>defineTool</code> soft validation 返回 undefined</td><td>Generic replay</td></tr>
+      <tr><td>Presenter throw / call 跨页缺失</td><td>Host contain 或找不到 pairing</td><td>Event 仍发送，不带 view</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Replay contract</div><p>Presenter 只能依赖 arguments 与耐久 result，因为 live UI 和历史 replay 都会调用它。Read line numbers、web sources 等不能从 model text 无损恢复的形状，必须先进入 durable meta，再由 <code>presentResult</code> 解释。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/presentation.ts#L1-L388" title="Provider-neutral call/result render-intent vocabulary: Core 定义 generic/terminal/diff pending cards 与 generic/terminal/diff/search/read/web completed cards；结构化 fields 支持 follow-along、truncation、line views 和 citations，而不依赖具体 UI。" aria-label="证据 TOOL-PRESENTATION-INTENTS">TOOL-PRESENTATION-INTENTS</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/src/api-proxy.ts#L735-L779" title="Host 对 live/replay presenter 的配对与 fail-soft 回退: Host 用当前 scoped definition 计算 call/result view，result 需回查 args；跨页缺 call、JSON parse 或 presenter throw 都只省略 view，原 event 仍交付 generic client fallback。" aria-label="证据 TOOL-HOST-PRESENTER">TOOL-HOST-PRESENTER</a></p></div>
+</section>
+
+<section>
+  <h2>17. 失败归一化按“body 是否启动”和“失败在哪一层”分类</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>失败点</th><th>是否过 post</th><th>最终典型 code / content</th></tr></thead>
+    <tbody>
+      <tr><td>Code-only direct collapse</td><td>否</td><td>UNKNOWN_TOOL，并给出 run_code 路由</td></tr>
+      <tr><td>Arguments 非 lossless JSON</td><td>否</td><td>普通 error result；body 未启动</td></tr>
+      <tr><td>Pre deny / approval deny / guard reason</td><td>是</td><td>Error: reason；post 可 block/替换 content</td></tr>
+      <tr><td>Pre/guard throw</td><td>否</td><td>异常归一化为 final error</td></tr>
+      <tr><td>Unknown tool / body throw / invalid output</td><td>是</td><td>结构化 HarnessError info（若有）+ Error text</td></tr>
+      <tr><td>Around wrapper throw</td><td>否</td><td>final error</td></tr>
+      <tr><td>Post throw</td><td>已在 post 失败</td><td>finalizer 仍运行，然后发布 error</td></tr>
+      <tr><td>Finalizer throw</td><td>不再进入 post</td><td>finalizer error 成为权威结果</td></tr>
+      <tr><td>Caller abort</td><td>取决于到达阶段</td><td>ABORTED_BEFORE_DISPATCH 或 ABORTED</td></tr>
+    </tbody>
+  </table></div>
+  <p><code>errorMessage()</code> 还对 hostile thrown value 做 total fallback，防止错误规范化自身再 throw。成功与失败最终都必须成为 lossless frozen snapshot，调用方无需用 exception control flow 区分普通工具失败。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L580-L711" title="Pre/post decision vocabulary 与单调 guard: Pre 只能 allow/deny/ask，刻意没有 argument rewrite；post 可 accept、替换单一 projection、追加 context 或 block；guard 只有 reason/abstain，不能 force-allow。" aria-label="证据 TOOL-DECISIONS">TOOL-DECISIONS</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L1880-L1944" title="Caller/wrapper signal fusion 与两种取消结果: Dispatch-scoped relay 同时监听 caller 与 wrapper 并在 settle 清理；取消按 body 是否启动映射为 ABORTED 或 ABORTED_BEFORE_DISPATCH，并保留已有 additional contexts。" aria-label="证据 TOOL-CANCELLATION">TOOL-CANCELLATION</a></p>
+</section>
+
+<section>
+  <h2>18. Runtime invariant 证明顺序与冻结，但不证明业务策略正确</h2>
+  <div class="claim fact"><div class="claim-label">Companion checks</div><p>Invariant 监听内部 dispatch，要求同一 execution 的 pre → execute → post 顺序合法，<code>tools/result</code> 时 execution/result/content 已冻结且 identity 非空；对 Code Mode nested events 还检查 root/parent lineage 与 open Turn enclosure。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/invariant.ts#L17-L120" title="Tool pipeline 顺序、冻结与 Code dispatch lineage invariant: Companion 检查每个 execution 的 pre/execute/post 阶段顺序、最终 execution/result/content 冻结与非空 identity，并验证 nested code dispatch root/parent 与 open Turn enclosure。" aria-label="证据 TOOL-RUNTIME-INVARIANT">TOOL-RUNTIME-INVARIANT</a></p></div>
+  <p>它不会验证某个 raw tool 是否真的按 parameters schema 校验输入、timeout wrapper 是否加载、<code>isConcurrencySafe</code> 声明是否业务上安全、presenter 是否纯，也不会判断 policy 给出的 allow/deny 是否符合组织规则。Invariant 保护协议形状，不替代 capability owner 的策略测试。</p>
+</section>
+
+<section>
+  <h2>19. 已确认的边界、动态窗口与设计取舍</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>发现</th><th>分类</th><th>影响</th></tr></thead>
+    <tbody>
+      <tr><td>Raw ToolDefinition 输入不由 registry schema 自动校验</td><td>Extension trust boundary</td><td>第三方作者必须自己 validate，或使用 defineTool</td></tr>
+      <tr><td><code>timeoutMs</code> 需要独立 policy</td><td>Composition boundary</td><td>漏挂 wrapper 时没有 deadline</td></tr>
+      <tr><td>Pre-policy 不能改 arguments</td><td>有意审计取舍</td><td>要“修复”输入只能拒绝并让模型重试</td></tr>
+      <tr><td>Canonical value 不进入 durable log</td><td>数据最小化/Code Mode 取舍</td><td>Replay 只能恢复 content/meta，不能恢复结构化中间值</td></tr>
+      <tr><td>Code runtime 在 prompt assembly 与 execution 分别读取</td><td>已记录动态窗口</td><td>若热切换到另一语言，程序可能按旧 SDK 写、在新 runtime 跑</td></tr>
+      <tr><td>Definition/registry 是 live effects</td><td>动态组合取舍</td><td>排队后、启动前 capability 可消失或重分类</td></tr>
+      <tr><td>同进程 body 只能 cooperative cancel</td><td>执行模型限制</td><td>忽略 signal 的 body 会延迟 quiescence</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Code runtime window</div><p>源码明确注释：assembly 和 <code>run_code</code> execution 分别读取当前 runtime；单一稳定 backend 时无害，热重载跨语言时可能发生 schema/runtime mismatch，绑定到 request 被推迟到出现第二 backend 后。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L1003-L1028" title="Code runtime 在 assembly 与 execution 之间未绑定的动态窗口: Runtime 在 prompt assembly 与 run_code 执行时分别 live-read；源码明确记录热重载跨语言可能把一种 SDK 写出的程序交给另一 runtime，并将 request binding 推迟。" aria-label="证据 TOOL-CODE-RUNTIME-WINDOW">TOOL-CODE-RUNTIME-WINDOW</a></p></div>
+</section>
+
+<section>
+  <h2>20. 设计评价与验证状态</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>选择</th><th>收益</th><th>代价</th></tr></thead>
+    <tbody>
+      <tr><td>Canonical value 与 model content 分离</td><td>结构化编排、受控上下文、UI meta 各自清晰</td><td>Replay 不能重获执行期 value</td></tr>
+      <tr><td>能力 view 与 policy pipeline 分离</td><td>同一实现可按 Agent scope 组合和限制</td><td>Live registry 使时间边界更复杂</td></tr>
+      <tr><td>每阶段单独变换权限</td><td>扩展性不会变成任意重写</td><td>作者必须理解哪类 hook 解决哪类问题</td></tr>
+      <tr><td>Lossless snapshot + frozen final result</td><td>日志、observer 与 replay 不受后续突变</td><td>大 JSON graph 有显著复制成本</td></tr>
+      <tr><td>Caller-owned durable logging</td><td>Registry 可用于 agentless/composite 场景</td><td>直接调用者若需要审计必须自己建立 carrier</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">本章验证范围</div><p>本章交叉核对了 ToolDefinition、schema DSL/raw validator、scope layers、presentation modes、execution identity、全部 pipeline stages、Agent-loop top-level commit、Host presenter fallback 与 tools invariant，并阅读了生成执行图和核心 README。Upstream 依赖未安装，因此没有声称测试在本机通过；并行池、审批策略与 Code Mode worker 分别在后续专章继续展开。</p></div>
+</section>
+<section class="learning-notes" aria-labelledby="learning-notes-title"><h2 id="learning-notes-title">我的学习体会</h2>
     <p class="privacy">内容仅自动保存到当前浏览器，不上传、不进入仓库。你可以导出 Markdown 自行归档。</p><textarea data-learning-notes aria-label="我的学习体会" placeholder="记录你的理解、疑问、反例和可迁移原则……"></textarea>
     <div class="note-footer"><span data-note-saved>本地草稿</span><button type="button" data-note-export>导出 Markdown</button>
     <button type="button" class="danger" data-note-clear>清空</button><span data-note-count>0 字符</span></div></section><nav class="pagination" aria-label="章节翻页"><a href="../pages/plan-goal-todo.html"><small>← 上一章 · 15</small><strong>Plan、Goal 与 Todo</strong></a><a class="next" href="../pages/tool-catalog.html"><small>下一章 · 17 →</small><strong>工具全集与能力分类</strong></a></nav></article>

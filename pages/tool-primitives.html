@@ -6,7 +6,7 @@
 <body data-page="tool-primitives" data-baseline="47f943859bef60e4160492346772ded9b24f765a" data-lang="en">
   <header class="topbar"><button class="icon-button nav-toggle" type="button" data-nav-toggle aria-label="Open chapter directory" aria-expanded="false">☰</button>
     <a class="brand" href="../index.html"><span class="brand-mark">DS</span><span>Harness Systems Dissection</span></a>
-    <span class="topbar-meta">Pinned baseline 47f943859b · 12 verified / 1 in progress / 36 chapters</span>
+    <span class="topbar-meta">Pinned baseline 47f943859b · 13 verified / 1 in progress / 36 chapters</span>
     <div class="topbar-actions"><a class="language-switch" href="../zh/pages/tool-primitives.html" lang="zh-CN" aria-label="Read this chapter in Chinese">中文</a><button class="icon-button" type="button" data-theme-toggle aria-label="Toggle light or dark theme">◐</button></div></header>
   <div class="layout"><aside class="sidebar" data-sidebar aria-label="Chapter directory"><input class="filter" data-chapter-filter type="search" placeholder="Filter chapters…" aria-label="Filter chapters"><section class="nav-part" data-part><h2 class="part-title">Introduction</h2>
     <a class="chapter-link" data-chapter-item href="../pages/reading-guide.html">
@@ -31,7 +31,7 @@
     <a class="chapter-link" data-chapter-item href="../pages/plan-goal-todo.html">
       <span class="chapter-number">15</span><span>Plan, Goal, and Todo</span><span class="status-dot queued" title="Queued"></span></a></section><section class="nav-part" data-part><h2 class="part-title">Tool System</h2>
     <a class="chapter-link current" data-chapter-item href="../pages/tool-primitives.html">
-      <span class="chapter-number">16</span><span>Tool Definition Primitives and the Execution Pipeline</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/tool-catalog.html">
+      <span class="chapter-number">16</span><span>Tool Definition Primitives and the Execution Pipeline</span><span class="status-dot verified" title="Verified"></span></a><a class="chapter-link" data-chapter-item href="../pages/tool-catalog.html">
       <span class="chapter-number">17</span><span>Complete Tool Catalog and Capability Taxonomy</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/tool-parallelism.html">
       <span class="chapter-number">18</span><span>Tool Parallelism and Result Ordering</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/permission-approval.html">
       <span class="chapter-number">19</span><span>Permission Analysis, Approval, and Monotonic Guards</span><span class="status-dot queued" title="Queued"></span></a></section><section class="nav-part" data-part><h2 class="part-title">Execution Environment</h2>
@@ -56,10 +56,263 @@
       <span class="chapter-number">34</span><span>Gaps, Limitations, and Open Questions</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/glossary-evidence.html">
       <span class="chapter-number">35</span><span>Glossary, Evidence Catalog, and Source Index</span><span class="status-dot queued" title="Queued"></span></a></section></aside>
     <main class="main"><div class="page-shell"><article class="article" data-article><header><div class="page-kicker"><span>Tool System</span><span>·</span><span>Chapter 16</span></div>
-      <h1>Tool Definition Primitives and the Execution Pipeline</h1><p class="subtitle">Schemas, scope, execution modes, presentation, and waterfalls</p><div class="page-meta"><span class="status queued">Queued</span><span>Upstream 47f943859b</span><span>Scope: Dissect ToolDefinition, registry snapshots, pre/guard/around/post/finalize/result, and Code Mode subcalls.</span></div></header>
-      <section class="placeholder"><p class="eyebrow">Research queue</p><h2>This chapter has not reached a conclusion state</h2>
-    <p><strong>Current scope:</strong> Dissect ToolDefinition, registry snapshots, pre/guard/around/post/finalize/result, and Code Mode subcalls.</p><p>This page is part of the complete research map, but its source-level control-flow audit is not complete. It must cover all of the following before it can be marked Verified:</p>
-    <ul class="placeholder-checks"><li>Actual bundle and profile assembly entry points</li><li>Public types, events, and configuration schemas</li><li>Normal control flow and exact mutation points</li><li>Concurrency, scope, ownership, and cleanup</li><li>Error, cancellation, retry, and degradation branches</li><li>Persistence, projections, and replay semantics</li><li>Production-path tests and runtime invariants</li><li>Benefits, costs, limitations, and open questions</li></ul></section><section class="learning-notes" aria-labelledby="learning-notes-title"><h2 id="learning-notes-title">My Learning Notes</h2>
+      <h1>Tool Definition Primitives and the Execution Pipeline</h1><p class="subtitle">Schemas, scope, execution modes, presentation, and waterfalls</p><div class="page-meta"><span class="status verified">Verified</span><span>Upstream 47f943859b</span><span>Scope: Dissect ToolDefinition, registry snapshots, pre/guard/around/post/finalize/result, and Code Mode subcalls.</span></div></header>
+      <section>
+  <h2>Conclusion: ToolRuntime Is Not a Function Table; It Is the Transaction Boundary That Commits Untrusted Model Calls into Replayable Results</h2>
+  <div class="thesis"><p>DeepSeek Harness's tool core has five simultaneous responsibilities: resolve what each Agent scope can see; project definitions into model schemas; mint an unforgeable execution identity for every call; order pre-policy, approval, monotonic guards, around wrappers, the body, post-policy, and a tool-owned finalizer; and publish exactly one lossless, frozen authoritative result. The Agent loop owns durable top-level call/result events, while UI presenters reconstruct cards from the same durable outcome.</p></div>
+  <p>The important property is not merely “it has hooks.” Each layer has a different mutation budget: pre-policy cannot rewrite already-logged arguments; guards may only deny; around wrappers may temporarily replace the signal and wrap the body; post-policy may replace the canonical value or model content; the finalizer may change only content; result observers may change nothing.</p>
+  <div class="claim fact"><div class="claim-label">Generated control flow</div><p>The generated execution graph and production source agree on pre → guards → around/body → post → normalization → finalization → frozen result, with Session logging and UI projection at owning boundaries outside the registry pipeline. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/docs/tool-execution-pipeline.md#L4-L60" title="Tool execution pipeline: The complete order of pre hooks, monotonic guards, around execution, post hooks, normalization, finalization, and immutable results." aria-label="Evidence TOOL-PIPELINE">TOOL-PIPELINE</a></p></div>
+</section>
+
+<section>
+  <h2>1. One Tool Definition Contains Four Contracts</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Contract</th><th>Fields</th><th>Consumer</th><th>Sent to the model?</th></tr></thead>
+    <tbody>
+      <tr><td>Invocation</td><td><code>name</code>, <code>description</code>, <code>parameters</code></td><td>Prompt and Provider adapter</td><td>Yes</td></tr>
+      <tr><td>Canonical output</td><td><code>output.schema</code>, <code>output.render</code>, optional <code>presentationMeta</code></td><td>ToolRuntime, Code Mode, UI replay</td><td>The output schema is not a native tool schema; rendered content enters history</td></tr>
+      <tr><td>Execution</td><td><code>execute</code>, <code>timeoutMs</code>, <code>isConcurrencySafe</code></td><td>Registry and external policy/scheduler</td><td>No</td></tr>
+      <tr><td>Presentation</td><td><code>presentCall</code>, <code>presentResult</code>, <code>finalizeContent</code></td><td>Host/UI and final commit stage</td><td>Presenters are hidden; finalized content enters model history</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Definition shape</div><p>A successful body must return a canonical lossless JSON value. The registry validates it with the output schema, then calls pure <code>render(args,value)</code> to produce provider-neutral ContentBlocks; a direct top-level call may also project durable JSON metadata. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L212-L301" title="Canonical output, execution, and presentation contracts in ToolDefinition: A definition combines model schema, canonical output schema/render/meta, body, timeout and concurrency metadata, finalization, and pure UI presenters while explicitly separating successful values from durable content." aria-label="Evidence TOOL-DEFINITION">TOOL-DEFINITION</a></p></div>
+  <aside class="caveat"><strong>Important boundary:</strong> <code>timeoutMs</code> is metadata for a timeout-policy wrapper; ToolRuntime does not start a timer. <code>isConcurrencySafe</code> is a scheduler classifier. Declaring policy metadata does not mean the core automatically enforces that policy.</aside>
+</section>
+
+<section>
+  <h2>2. Model Schema, Execution Value, Durable Content, and UI Metadata Are Different Data</h2>
+  <pre><code>model args string
+→ parsed + lossless snapshot + frozen arguments
+→ execute() returns canonical JSON value
+→ output.schema validates value
+→ output.render(args, value) produces model-facing ContentBlocks
+→ presentationMeta(args, value) optionally produces replayable UI JSON
+
+execution-local result: { value, content, meta? }
+durable tool/result:     { content, isError, errorInfo?, meta? }
+future model Surface:    content only</code></pre>
+  <div class="claim fact"><div class="claim-label">Data ownership</div><p>A successful in-process <code>ToolExecutionResult</code> carries a frozen <code>value</code>, but the top-level Session event deliberately persists only content, failure state, and optional metadata. The canonical value is not guaranteed reconstructable from the log. UI structure that cannot be losslessly recovered from prose must be projected explicitly through <code>presentationMeta</code>. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L555-L600" title="ToolExecutionResult and pre/post decision unions: A success carries an execution-local value, content, metadata, context, and optional concludesTurn, while a failure has no value; pre decisions are allow, deny, or ask and post decisions accept, replace value or content, or block." aria-label="Evidence TOOL-RESULT-TYPES">TOOL-RESULT-TYPES</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L1783-L1862" title="Canonical-value validation, pure projections, and final materialization: The registry snapshots and validates body or policy values, runs render and metadata projections, marks canonical results with the execution token, renormalizes unmarked wrapper successes, and freezes a durable projection that omits the value." aria-label="Evidence TOOL-CANONICAL-OUTPUT">TOOL-CANONICAL-OUTPUT</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/tool-calls.ts#L59-L289" title="Agent-loop commits for tool calls, ordered results, and context: The loop appends raw tool/call before prepare, runs the staged registry, commits final tool/result in model order citing the call seq, then accepts additional context and concludesTurn; cancelled unstarted calls receive synthetic pairs." aria-label="Evidence TOOL-LOOP-COMMIT">TOOL-LOOP-COMMIT</a></p></div>
+  <p>This lets Code Mode pass a structured value back to a program for further computation while the main model sees only controlled rendered text. It also prevents a UI from reverse-parsing natural-language results to recover diffs, line numbers, or web sources.</p>
+</section>
+
+<section>
+  <h2>3. The Schema DSL Is an Enforced JSON Schema Subset, Not the Complete Standard</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Supported</th><th>Rule</th><th>Explicitly not done</th></tr></thead>
+    <tbody>
+      <tr><td>Scalars</td><td>string/number/integer/boolean/null and type-correct enum/const</td><td>Keywords such as pattern, minimum, and format are rejected</td></tr>
+      <tr><td>Containers</td><td>array/items; object/properties/required/boolean additionalProperties</td><td>An explicit object must declare openness to avoid an implicit default</td></tr>
+      <tr><td>Union</td><td>Exact-one <code>oneOf</code> with at least two branches</td><td>Conflicting sibling constraints beside oneOf are rejected</td></tr>
+      <tr><td>Any JSON</td><td>The author DSL's <code>type: "json"</code> compiles to an unconstrained node</td><td>The value must still be lossless JSON</td></tr>
+      <tr><td>Annotations</td><td>description/title/default/examples</td><td>Defaults are annotations and are never applied</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Fail loud</div><p>The raw-schema walker rejects unknown or misplaced keywords, cycles, sparse or decorated arrays, invalid required lists, and non-lossless annotations. Compilation and validation use explicit task stacks instead of recursive JavaScript calls. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/json-schema.ts#L1-L430" title="The enforced JSON Schema subset and stack-safe validator: The schema vocabulary is limited to types, oneOf, container and literal constraints, and lossless annotations; it rejects unknown keywords, cycles, exotic records, and sparse arrays and uses an explicit task stack for path-qualified violations." aria-label="Evidence TOOL-SCHEMA-SUBSET">TOOL-SCHEMA-SUBSET</a></p></div>
+  <p>The parameter root compiles as an implicit open object; every nested explicit object must state <code>additionalProperties: true|false</code>. “Tool parameters reject extra keys by default” is therefore false unless the author closes the relevant explicit object.</p>
+</section>
+
+<section>
+  <h2>4. Only <code>defineTool()</code> Automatically Validates Arguments</h2>
+  <div class="claim fact"><div class="claim-label">Helper contract</div><p><code>defineTool()</code> compiles parameter and output schemas, wraps <code>execute</code>, runs validation before the body, and turns path-qualified violations into <code>ToolArgsError(code: INVALID_ARGS)</code>. It also softly validates presenters and the concurrency classifier: mismatched historical arguments return undefined or false instead of crashing replay or scheduling. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/schema.ts#L538-L616" title="Hard execution validation and soft replay validation in defineTool: The helper compiles schemas, hard-validates arguments before the body with INVALID_ARGS, makes presenters and the concurrency classifier fail softly for old or invalid arguments, and binds typed output projectors." aria-label="Evidence TOOL-DEFINE-HELPER">TOOL-DEFINE-HELPER</a></p></div>
+  <div class="claim assessment"><div class="claim-label">Direct-registration boundary</div><p><code>ToolRuntime.register()</code> validates the output schema and timeout metadata but does not apply the <code>parameters</code> schema to each invocation. Execution creation only takes a lossless snapshot and freezes arguments. A third-party raw <code>ToolDefinition</code> must validate its own input. A model-visible schema is a prompting contract, not automatically a runtime input guard. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L1030-L1061" title="Registration-validation boundary for raw ToolDefinition values: Registration checks the output contract, supported output schema, timeout, and reserved name and inserts the live definition in the calling scope; it does not wrap raw definitions with per-call parameter validation." aria-label="Evidence TOOL-REGISTRATION">TOOL-REGISTRATION</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L1328-L1506" title="Execution creation, argument materialization, and the ordered pre/guard gate: The registry mints a token, snapshots and freezes arguments, handles Code Mode collapse and pre-dispatch aborts, then runs scoped pre-policy, approval, and monotonic guards, normalizing ordinary policy failures into staged results." aria-label="Evidence TOOL-PIPELINE-PREPARE">TOOL-PIPELINE-PREPARE</a></p></div>
+  <p>This is not a gap in first-party tools, which use the helper, but it is an important extension-author trust boundary. Treating raw registration as “the registry validates for me” sends arbitrary JSON into the body.</p>
+</section>
+
+<section>
+  <h2>5. Scope Resolution Builds Inherited Capability, Then Applies Restrictions and Local Shadowing</h2>
+  <pre><code>global tools
+→ ancestor scope registrations (nearer shadows farther)
+→ intersect every restriction along the scope chain
+→ exact scope's own registrations (exempt from inherited filter)
+→ reserved run_code transport when mode requires it</code></pre>
+  <div class="claim fact"><div class="claim-label">Visibility resolver</div><p>A duplicate name in one layer fails; a scoped registration may shadow an inherited or global definition. Restrictions require a scoped context and filter inherited capability only, preserving the exact scope's reporting and structured-output machinery. Multiple allow/deny filters intersect, and unknown names or the reserved transport fail loudly. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L1064-L1226" title="Scoped restrictions, shadowing, guards, and one visibility resolver: Restrictions intersect along the chain and filter inherited capability while exempting and allowing shadows from own registrations; global and chain guards can only deny, and get, schema, and dispatch resolve from the same live view." aria-label="Evidence TOOL-SCOPE-VIEW">TOOL-SCOPE-VIEW</a></p></div>
+  <p><code>get()</code>, model schemas, the generated SDK, and dispatch share this view, reducing “the prompt showed A but execution selected B” drift. Definitions and restrictions are live effects, however: a queued call can observe a registry change before it actually starts. Chapter 18 follows that reclassification behavior.</p>
+</section>
+
+<section>
+  <h2>6. Native, Code, and Both Change the Model Entry Point, Not the Tool Implementations</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Mode</th><th>Provider tools</th><th>Prompt addition</th><th>Direct-execution boundary</th></tr></thead>
+    <tbody>
+      <tr><td><code>native</code></td><td>All visible schemas</td><td>Ordinary per-tool guidance</td><td>The model directly calls a visible tool</td></tr>
+      <tr><td><code>code</code></td><td>Only reserved <code>run_code</code></td><td>Code-only rule plus typed SDK</td><td>A direct native name becomes UNKNOWN_TOOL before policy; an SDK subcall may invoke it</td></tr>
+      <tr><td><code>both</code></td><td>Visible native schemas plus <code>run_code</code></td><td>Typed SDK without the code-only rule</td><td>Both entry forms are callable</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">One source view</div><p>Every prompt assembly reprojects name, description, and parameters for the calling scope and allowlists only those three fields. The Code SDK additionally consumes output schemas for typed returns, while <code>run_code</code> stays outside capability filtering. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L650-L1001" title="Native, Code, Both, and per-scope presentation: Configuration or scoped presentAs selects native, code, or both; Code Mode adds the collapse instruction, typed SDK, and reserved run_code and filters Provider schemas to the transport only under code while retaining the SDK end-capability view." aria-label="Evidence TOOL-PRESENTATION-MODES">TOOL-PRESENTATION-MODES</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L1228-L1285" title="Model-schema allowlist, Code SDK output schema, and fail-closed classification: Native schemas project only detached name, description, and parameters, the Code SDK additionally carries output schemas, and executionMode is parallel only for an exact true while absence, invalid input, or exceptions are exclusive." aria-label="Evidence TOOL-SCHEMA-PROJECTION">TOOL-SCHEMA-PROJECTION</a></p></div>
+  <p>In code-only mode, native names remain visible to the SDK catalog, but a model-direct execution is deterministically rejected before pre hooks, approval, and guards. Policy cannot accidentally approve an entry point that can never run, and the error tells the model to call it inside <code>run_code</code>.</p>
+</section>
+
+<section>
+  <h2>7. Every Call Receives an Unforgeable Identity Before Policy</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Field</th><th>Source</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><code>callId</code></td><td>Provider tool-call block or composite dispatcher</td><td>Session call/result correlation</td></tr>
+      <tr><td><code>rootCallId</code></td><td>Defaults to callId for a root and propagates down a nested tree</td><td>Correlate one composite execution tree</td></tr>
+      <tr><td><code>token</code></td><td>A same-process Symbol minted by the registry</td><td>Prove nested parentage and that a canonical result belongs to this execution</td></tr>
+      <tr><td><code>agent</code></td><td>Explicitly supplied by the Agent loop; optional</td><td>Scope routing, approval, and Session ownership</td></tr>
+      <tr><td><code>signal</code></td><td>Owned by the caller</td><td>Cancellation that an around wrapper cannot detach</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Materialization</div><p>Before policy, the registry losslessly snapshots, detaches, and deep-freezes parsed arguments. Public execution fields are readonly, and the complete execution object is frozen before final observers receive it. Code Mode gives a nested dispatcher only the opaque parent token rather than exposing the mutable outer execution. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L304-L472" title="Root, call, and token identity, nested parentage, and result control signals: ToolExecutionInput distinguishes root calls, opaque parent tokens, Agent, and caller signal; registry executions add an unforgeable token, while ToolRunContext carries control only through deferContext and concludeTurn on its own result." aria-label="Evidence TOOL-EXECUTION-IDENTITY">TOOL-EXECUTION-IDENTITY</a></p></div>
+</section>
+
+<section>
+  <h2>8. The Complete Pipeline Gives Each Extension Point a Different Authority</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Stage</th><th>Permitted action</th><th>After failure or denial</th></tr></thead>
+    <tbody>
+      <tr><td><code>tools/pre-execute</code></td><td>allow / deny / ask through an async waterfall</td><td>A denial becomes an error result that can still reach post</td></tr>
+      <tr><td>Approval seam</td><td>Resolve ask into allowed-once or a specific denial</td><td>No service, no Agent, or unavailable channel fails closed</td></tr>
+      <tr><td>Monotonic guards</td><td>Synchronously return the first denial reason</td><td>No allow return exists, so another guard cannot reverse denial</td></tr>
+      <tr><td><code>tools/execute</code></td><td>Wrap the next stage and replace the signal for this wrapper's lifetime</td><td>A wrapper throw becomes a final error</td></tr>
+      <tr><td>Tool body</td><td>Return a canonical value, defer context, conclude a Turn</td><td>A body throw is normalized and still reaches post</td></tr>
+      <tr><td><code>tools/post-execute</code></td><td>Accept, replace value or content, block, add context</td><td>A throw becomes a final error</td></tr>
+      <tr><td><code>finalizeContent</code></td><td>Synchronously replace content only, for successes and failures</td><td>A throw becomes a final error; the finalizer is not called recursively</td></tr>
+      <tr><td><code>tools/result</code></td><td>Observe the frozen authoritative snapshot</td><td>Observer failures are logged and contained</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Production implementation</div><p>The scheduler-facing prepare/dispatch/finalize/finish view merely splits this pipeline into ordered policy, overlap-eligible body work, and ordered post/commit. Ordinary <code>ToolRuntime.execute()</code> still composes them into one result. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L1328-L1506" title="Execution creation, argument materialization, and the ordered pre/guard gate: The registry mints a token, snapshots and freezes arguments, handles Code Mode collapse and pre-dispatch aborts, then runs scoped pre-policy, approval, and monotonic guards, normalizing ordinary policy failures into staged results." aria-label="Evidence TOOL-PIPELINE-PREPARE">TOOL-PIPELINE-PREPARE</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L1527-L1599" title="Around dispatch, caller-signal fusion, body execution, and deferred context: The registry fuses wrapper and original caller signals, resolves the current definition, awaits body quiescence, validates a successful value, restores the wrapper signal, and normalizes around results and body-deferred contexts; pipeline throws become final errors." aria-label="Evidence TOOL-PIPELINE-DISPATCH">TOOL-PIPELINE-DISPATCH</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L1601-L1675" title="Captured finalizer, double materialization, and observer containment after post: Finalization runs post and rechecks cancellation, materializes the candidate, invokes the content-only finalizer captured at call start, materializes and freezes again, and contains all synchronous and asynchronous result-observer failures." aria-label="Evidence TOOL-PIPELINE-FINALIZE">TOOL-PIPELINE-FINALIZE</a></p></div>
+</section>
+
+<section>
+  <h2>9. Pre-Policy and Guards Deliberately Cannot Rewrite Arguments</h2>
+  <p>The model's raw argument string has already been appended as <code>tool/call</code>, and the UI uses it for the pending card. If a pre hook could replace arguments, the log would claim A ran while the body received B, breaking replay and audit. <code>PreToolDecision</code> therefore has no rewrite arm.</p>
+  <div class="claim fact"><div class="claim-label">Monotonic authorization</div><p>The waterfall may request approval, but a final allow must still pass every synchronous guard from global through the scope chain. A guard can return a denial reason or abstain; listener order cannot elevate an existing denial back into permission. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L580-L711" title="Pre and post decision vocabulary and monotonic guards: Pre decisions can only allow, deny, or ask and deliberately cannot rewrite arguments; post may accept, replace one projection, add context, or block; a guard can return a reason or abstain but cannot force allow." aria-label="Evidence TOOL-DECISIONS">TOOL-DECISIONS</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L1064-L1226" title="Scoped restrictions, shadowing, guards, and one visibility resolver: Restrictions intersect along the chain and filter inherited capability while exempting and allowing shadows from own registrations; global and chain guards can only deny, and get, schema, and dispatch resolve from the same live view." aria-label="Evidence TOOL-SCOPE-VIEW">TOOL-SCOPE-VIEW</a></p></div>
+  <p>Chapter 19 covers approval in detail. The core property here is that extensible policy may propose an allow, while an owner guard retains an irreversible final veto.</p>
+</section>
+
+<section>
+  <h2>10. An Around Wrapper May Replace the Signal but Cannot Sever Caller Cancellation</h2>
+  <p><code>tools/execute</code> hosts around concerns such as timeouts, retries, and metrics. A wrapper may replace mutable <code>exec.signal</code> while delegating. Before entering the body, ToolRuntime fuses that signal with the original caller signal; after settlement it removes listeners and restores the wrapper view.</p>
+  <div class="claim fact"><div class="claim-label">Quiescence</div><p>Cancellation never abandons a started Promise. The registry waits for the body to settle, then replaces an otherwise successful result with <code>ABORTED</code>; if the body never began, it uses <code>ABORTED_BEFORE_DISPATCH</code>. Same-process code cannot be hard-killed, so tool authors must forward the signal. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L1527-L1599" title="Around dispatch, caller-signal fusion, body execution, and deferred context: The registry fuses wrapper and original caller signals, resolves the current definition, awaits body quiescence, validates a successful value, restores the wrapper signal, and normalizes around results and body-deferred contexts; pipeline throws become final errors." aria-label="Evidence TOOL-PIPELINE-DISPATCH">TOOL-PIPELINE-DISPATCH</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L1880-L1944" title="Caller and wrapper signal fusion and the two cancellation outcomes: A dispatch-scoped relay watches caller and wrapper signals and cleans up at settlement; cancellation maps to ABORTED or ABORTED_BEFORE_DISPATCH according to whether the body started and preserves existing additional contexts." aria-label="Evidence TOOL-CANCELLATION">TOOL-CANCELLATION</a></p></div>
+  <aside class="caveat"><strong>Declaration is not enforcement:</strong> a definition's <code>timeoutMs</code> takes effect only when the separate timeout-policy wrapper is mounted. Without that wrapper it does not cancel a long-running body.</aside>
+</section>
+
+<section>
+  <h2>11. A Successful Value Crosses Three Boundaries Before Becoming Canonical</h2>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>Lossless snapshot</h3><p>Reject undefined, BigInt, cycles, sparse arrays, non-finite numbers, negative zero, and exotic graphs.</p></div>
+    <div><span>2</span><h3>Output schema</h3><p>Produce all path-qualified violations; failure becomes INVALID_TOOL_OUTPUT.</p></div>
+    <div><span>3</span><h3>Pure projections</h3><p>Snapshot <code>render</code> and optional <code>presentationMeta</code> again; a projection throw is also an output error.</p></div>
+    <div><span>4</span><h3>Per-execution mark</h3><p>A WeakMap ties the result to the registry token, preventing an around wrapper from impersonating a validated result.</p></div>
+  </div>
+  <div class="claim fact"><div class="claim-label">Renormalization</div><p>If an around wrapper returns a success not marked for this execution, the registry trusts only its value and reruns the current tool's output validation and rendering. Wrapper-authored content cannot bypass the canonical projection. Error results are normalized separately. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L1783-L1862" title="Canonical-value validation, pure projections, and final materialization: The registry snapshots and validates body or policy values, runs render and metadata projections, marks canonical results with the execution token, renormalizes unmarked wrapper successes, and freezes a durable projection that omits the value." aria-label="Evidence TOOL-CANONICAL-OUTPUT">TOOL-CANONICAL-OUTPUT</a></p></div>
+</section>
+
+<section>
+  <h2>12. Post-Policy May Replace Value or Content, but Never Both at Once</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Decision</th><th>Outcome</th><th>Revalidation</th></tr></thead>
+    <tbody>
+      <tr><td><code>accept</code> without replacement</td><td>Keep body or denial result and append contexts</td><td>The existing canonical result remains</td></tr>
+      <tr><td><code>accept {value}</code></td><td>Replace a successful canonical value</td><td>Rerun output schema, render, and metadata; a failure cannot become a value</td></tr>
+      <tr><td><code>accept {content}</code></td><td>Replace model-facing blocks only</td><td>Do not reinterpret the canonical value</td></tr>
+      <tr><td><code>block {feedback}</code></td><td>Produce isError; feedback supplies content and the message</td><td>Keep only contexts explicitly supplied by the blocker</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Authority boundary</div><p>Body-deferred contexts precede post-policy contexts on accept. Block discards body contexts so a policy-rejected result cannot still inject a hidden instruction into the next request. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L1731-L1781" title="Value or content replacement, blocking, and context rules in post-execute: Post accept may replace value or content but not both; value reruns canonical projection and cannot replace a failure, while block discards body contexts and keeps only contexts explicitly supplied by the blocker." aria-label="Evidence TOOL-POST-POLICY">TOOL-POST-POLICY</a></p></div>
+  <p>Content replacement is a deliberate presentation and policy seam. It supports redaction, spill previews, or corrective feedback without fabricating a new canonical value. The cost is that durable text no longer proves the body's original rendering; earlier evidence needs telemetry or tool-owned events.</p>
+</section>
+
+<section>
+  <h2>13. <code>finalizeContent</code> Is the Tool-Owned Last Invariant</h2>
+  <p>The finalizer is captured from the then-visible definition when the call starts, preventing an argument getter or hot reload from replacing it during snapshotting. It is attempted exactly once for every normalized outcome, including pre, around, and post failures. It may return replacement content only; it cannot alter isError, value, metadata, contexts, or concludesTurn.</p>
+  <div class="claim fact"><div class="claim-label">Final commit stage</div><p>The registry materializes the candidate, runs the captured finalizer, materializes again, and deep-freezes the outcome. A finalizer throw becomes an ordinary error result. <code>tools/result</code> observers then receive frozen execution and result objects; synchronous or asynchronous observer failure cannot alter the returned outcome. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L1601-L1675" title="Captured finalizer, double materialization, and observer containment after post: Finalization runs post and rechecks cancellation, materializes the candidate, invokes the content-only finalizer captured at call start, materializes and freezes again, and contains all synchronous and asynchronous result-observer failures." aria-label="Evidence TOOL-PIPELINE-FINALIZE">TOOL-PIPELINE-FINALIZE</a></p></div>
+  <div class="claim assessment"><div class="claim-label">Why it is last</div><p>A tool can guarantee that every content value leaving the registry satisfies its own final format or redaction rule, beyond generic post-policy. Conversely, a faulty finalizer replaces the original error text with its own error, so audit may require earlier telemetry or events.</p></div>
+</section>
+
+<section>
+  <h2>14. Additional Context and Conclude-Turn Are Control Signals Carried by the Result</h2>
+  <p>A body may call <code>exec.deferContext(userMessage)</code>, and post-policy may attach contexts. Neither appends directly from inside the body. They return with the final result to the Agent loop. The loop writes the corresponding <code>tool/result</code> first, then places contexts into the active-batch FIFO; the next Step commits them as user messages retaining their own source and metadata.</p>
+  <div class="claim fact"><div class="claim-label">Turn control</div><p><code>exec.concludeTurn()</code> creates <code>concludesTurn:true</code> only on a final successful result. If the body later fails or post-policy blocks it, the Turn is not concluded. The scheduler aggregates the marker only after committing that result in model order. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L304-L472" title="Root, call, and token identity, nested parentage, and result control signals: ToolExecutionInput distinguishes root calls, opaque parent tokens, Agent, and caller signal; registry executions add an unforgeable token, while ToolRunContext carries control only through deferContext and concludeTurn on its own result." aria-label="Evidence TOOL-EXECUTION-IDENTITY">TOOL-EXECUTION-IDENTITY</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/tool-calls.ts#L59-L289" title="Agent-loop commits for tool calls, ordered results, and context: The loop appends raw tool/call before prepare, runs the staged registry, commits final tool/result in model order citing the call seq, then accepts additional context and concludesTurn; cancelled unstarted calls receive synthetic pairs." aria-label="Evidence TOOL-LOOP-COMMIT">TOOL-LOOP-COMMIT</a></p></div>
+  <p>This keeps side-channel context out of call/result adjacency and forces a composite transport to ferry nested context or terminal intent through its parent result rather than mutating the parent Agent's inbox directly.</p>
+</section>
+
+<section>
+  <h2>15. The Agent Loop Owns Top-Level Durability; the Registry Itself Does Not Write the Session</h2>
+  <pre><code>assistant/tool_call block
+→ append tool/call (raw argument string)
+→ ToolRuntime staged pipeline
+→ append tool/result (final content + isError + error info + meta)
+→ accept result.additionalContexts
+→ next Step boundary</code></pre>
+  <div class="claim fact"><div class="claim-label">Commit ownership</div><p>The loop appends <code>tool/call</code> before any pre-policy, preserving raw Provider arguments. Invalid JSON, denial, or a body that never starts can still receive one paired error result. The result's <code>sourceEventSeqs</code> cites the exact call event. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/tool-calls.ts#L59-L289" title="Agent-loop commits for tool calls, ordered results, and context: The loop appends raw tool/call before prepare, runs the staged registry, commits final tool/result in model order citing the call seq, then accepts additional context and concludesTurn; cancelled unstarted calls receive synthetic pairs." aria-label="Evidence TOOL-LOOP-COMMIT">TOOL-LOOP-COMMIT</a></p></div>
+  <p>An in-process component that calls <code>ctx.tools.execute()</code> directly receives a frozen result but does not automatically create top-level Session events. An Agent-less call also cannot route approval and fails closed on ask. Code Mode is the exception: the loop logs the outer <code>run_code</code>, while its bridge appends separate log-only nested dispatch events.</p>
+</section>
+
+<section>
+  <h2>16. UI Presenters Emit Provider-Neutral Render Intent and Must Survive Replay</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Phase</th><th>Optional intent</th><th>Fallback</th></tr></thead>
+    <tbody>
+      <tr><td>Pending call</td><td>generic / terminal / diff</td><td>A generic card with tool name and raw arguments</td></tr>
+      <tr><td>Completed result</td><td>generic / terminal / diff / search / read / web</td><td>Keep the pending title and render raw result content</td></tr>
+      <tr><td>Historical arguments no longer validate</td><td><code>defineTool</code> soft validation returns undefined</td><td>Generic replay</td></tr>
+      <tr><td>Presenter throws or call is missing across a page</td><td>The Host contains it or cannot pair it</td><td>The event still ships without a view</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Replay contract</div><p>A presenter may depend only on arguments and the durable result because both live UI and historical replay invoke it. Shapes such as read line numbers or web sources that cannot be reconstructed from model text must first enter durable metadata and then be interpreted by <code>presentResult</code>. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/presentation.ts#L1-L388" title="Provider-neutral call and result render-intent vocabulary: Core defines generic, terminal, and diff pending cards plus generic, terminal, diff, search, read, and web completed cards, with structured fields for follow-along, truncation, line views, and citations independent of a particular UI." aria-label="Evidence TOOL-PRESENTATION-INTENTS">TOOL-PRESENTATION-INTENTS</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/src/api-proxy.ts#L735-L779" title="Host pairing and fail-soft fallback for live and replay presenters: The Host computes call and result views from the current scoped definition and looks up result arguments; a cross-page missing call, JSON parse error, or presenter throw only omits the view while the original event still ships for generic client fallback." aria-label="Evidence TOOL-HOST-PRESENTER">TOOL-HOST-PRESENTER</a></p></div>
+</section>
+
+<section>
+  <h2>17. Failure Normalization Depends on Whether the Body Started and Which Layer Failed</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Failure point</th><th>Runs post?</th><th>Typical final code / content</th></tr></thead>
+    <tbody>
+      <tr><td>Code-only direct collapse</td><td>No</td><td>UNKNOWN_TOOL with a route through run_code</td></tr>
+      <tr><td>Arguments are not lossless JSON</td><td>No</td><td>Ordinary error result; body never starts</td></tr>
+      <tr><td>Pre denial / approval denial / guard reason</td><td>Yes</td><td>Error: reason; post may block or replace content</td></tr>
+      <tr><td>Pre or guard throws</td><td>No</td><td>The exception is normalized as a final error</td></tr>
+      <tr><td>Unknown tool / body throw / invalid output</td><td>Yes</td><td>Structured HarnessError info when present plus Error text</td></tr>
+      <tr><td>Around wrapper throws</td><td>No</td><td>Final error</td></tr>
+      <tr><td>Post throws</td><td>It failed inside post</td><td>The finalizer still runs, then publishes an error</td></tr>
+      <tr><td>Finalizer throws</td><td>Does not re-enter post</td><td>The finalizer error becomes authoritative</td></tr>
+      <tr><td>Caller aborts</td><td>Depends on reached stage</td><td>ABORTED_BEFORE_DISPATCH or ABORTED</td></tr>
+    </tbody>
+  </table></div>
+  <p><code>errorMessage()</code> also has a total fallback for hostile thrown values, preventing error normalization from throwing again. Success and failure both end as lossless frozen snapshots, so ordinary tool failures do not require exception control flow at the caller. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L580-L711" title="Pre and post decision vocabulary and monotonic guards: Pre decisions can only allow, deny, or ask and deliberately cannot rewrite arguments; post may accept, replace one projection, add context, or block; a guard can return a reason or abstain but cannot force allow." aria-label="Evidence TOOL-DECISIONS">TOOL-DECISIONS</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L1880-L1944" title="Caller and wrapper signal fusion and the two cancellation outcomes: A dispatch-scoped relay watches caller and wrapper signals and cleans up at settlement; cancellation maps to ABORTED or ABORTED_BEFORE_DISPATCH according to whether the body started and preserves existing additional contexts." aria-label="Evidence TOOL-CANCELLATION">TOOL-CANCELLATION</a></p>
+</section>
+
+<section>
+  <h2>18. The Runtime Invariant Proves Ordering and Freezing, Not Business-Policy Correctness</h2>
+  <div class="claim fact"><div class="claim-label">Companion checks</div><p>The invariant observes internal dispatch, requires legal pre → execute → post ordering for one execution, and checks that execution, result, and content are frozen with nonempty identity at <code>tools/result</code>. For nested Code Mode events it also checks root/parent lineage and open-Turn enclosure. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/invariant.ts#L17-L120" title="Invariant for tool-pipeline order, freezing, and Code dispatch lineage: The companion checks pre, execute, and post stage order per execution, frozen final execution, result, and content with nonempty identity, and nested Code dispatch root/parent lineage within an open Turn." aria-label="Evidence TOOL-RUNTIME-INVARIANT">TOOL-RUNTIME-INVARIANT</a></p></div>
+  <p>It does not prove that a raw tool validates against its parameter schema, that the timeout wrapper is mounted, that an <code>isConcurrencySafe</code> claim is operationally true, that a presenter is pure, or that policy's allow/deny decision matches an organization's rules. The invariant protects protocol shape; it does not replace capability-owner policy tests.</p>
+</section>
+
+<section>
+  <h2>19. Confirmed Boundaries, Dynamic Windows, and Design Tradeoffs</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Finding</th><th>Classification</th><th>Consequence</th></tr></thead>
+    <tbody>
+      <tr><td>Raw ToolDefinition inputs are not automatically schema-validated by the registry</td><td>Extension trust boundary</td><td>Third-party authors must validate or use defineTool</td></tr>
+      <tr><td><code>timeoutMs</code> requires a separate policy</td><td>Composition boundary</td><td>A missing wrapper means no deadline</td></tr>
+      <tr><td>Pre-policy cannot rewrite arguments</td><td>Deliberate audit tradeoff</td><td>“Repairing” input requires denial and model retry</td></tr>
+      <tr><td>Canonical values do not enter the durable log</td><td>Data-minimization and Code Mode tradeoff</td><td>Replay recovers content and metadata, not structured intermediates</td></tr>
+      <tr><td>The Code runtime is read separately during prompt assembly and execution</td><td>Documented dynamic window</td><td>A cross-language hot swap could run code written for the old SDK in the new runtime</td></tr>
+      <tr><td>Definitions and registry entries are live effects</td><td>Dynamic-composition tradeoff</td><td>A capability can disappear or be reclassified after queueing and before start</td></tr>
+      <tr><td>Same-process bodies support cooperative cancellation only</td><td>Execution-model limitation</td><td>A body that ignores the signal delays quiescence</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Code-runtime window</div><p>Source comments explicitly state that assembly and <code>run_code</code> execution read the current runtime separately. This is harmless with one stable backend, but a cross-language hot reload can create a schema/runtime mismatch; binding the runtime to the request is deferred until a second backend makes the case testable. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L1003-L1028" title="The unbound Code-runtime window between assembly and execution: The runtime is read live during prompt assembly and again during run_code execution; source explicitly records that a cross-language hot reload could hand a program written for one SDK to another runtime and defers request binding." aria-label="Evidence TOOL-CODE-RUNTIME-WINDOW">TOOL-CODE-RUNTIME-WINDOW</a></p></div>
+</section>
+
+<section>
+  <h2>20. Design Assessment and Verification Status</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Choice</th><th>Benefit</th><th>Cost</th></tr></thead>
+    <tbody>
+      <tr><td>Separate canonical value from model content</td><td>Clear structured orchestration, controlled context, and UI metadata</td><td>Replay cannot recover the execution-time value</td></tr>
+      <tr><td>Separate capability view from the policy pipeline</td><td>One implementation composes and restricts per Agent scope</td><td>A live registry makes temporal boundaries more complex</td></tr>
+      <tr><td>Give every stage a distinct mutation budget</td><td>Extensibility does not become arbitrary rewriting</td><td>Authors must know which hook solves which concern</td></tr>
+      <tr><td>Lossless snapshots and a frozen final result</td><td>Logs, observers, and replay resist later mutation</td><td>Large JSON graphs incur material copying cost</td></tr>
+      <tr><td>Caller-owned durable logging</td><td>The registry works for Agent-less and composite scenarios</td><td>Direct callers that need audit must provide their own carrier</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Verification scope</div><p>This chapter cross-checked ToolDefinition, the schema DSL and raw validator, scope layers, presentation modes, execution identity, every pipeline stage, Agent-loop top-level commit, Host presenter fallback, and the tools invariant, plus the generated execution graph and core README. Upstream dependencies are not installed, so no upstream test execution is claimed. Later chapters cover the parallel pool, approval policy, and the Code Mode worker in depth.</p></div>
+</section>
+<section class="learning-notes" aria-labelledby="learning-notes-title"><h2 id="learning-notes-title">My Learning Notes</h2>
     <p class="privacy">Autosaved only in this browser. Nothing is uploaded or committed. Export Markdown whenever you want to keep a copy.</p><textarea data-learning-notes aria-label="My Learning Notes" placeholder="Record your understanding, questions, counterexamples, and transferable principles…"></textarea>
     <div class="note-footer"><span data-note-saved>Local draft</span><button type="button" data-note-export>Export Markdown</button>
     <button type="button" class="danger" data-note-clear>Clear</button><span data-note-count>0 characters</span></div></section><nav class="pagination" aria-label="Chapter pagination"><a href="../pages/plan-goal-todo.html"><small>← Previous chapter · 15</small><strong>Plan, Goal, and Todo</strong></a><a class="next" href="../pages/tool-catalog.html"><small>Next chapter · 17 →</small><strong>Complete Tool Catalog and Capability Taxonomy</strong></a></nav></article>
