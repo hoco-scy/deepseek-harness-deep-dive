@@ -1,0 +1,222 @@
+<section>
+  <h2>结论：这里没有一种“Replay”，而是六套彼此不能替代的重建契约</h2>
+  <div class="thesis"><p>DeepSeek Harness 把原始流、语义消息、模型 Surface、持久化物理前缀、浏览器窗口和 Fork lineage 全部建立在同一条 seq 编号日志上，但它没有把它们混成一个万能 replay API。一次模型请求可以从日志重建；一次失败尝试可以被审计；一次崩溃可以被确定性闭合；一次断线可以由 history 与 live stream 收敛；一个 Fork 则是稳定前缀的复制，而不是指向父会话的动态分支。</p></div>
+  <p>这个设计最重要的品质不是“保存了聊天记录”，而是让不同消费者声明自己需要哪一种真相。代价也正来自这里：逻辑历史可能比物理落盘日志更完整，UI 可能刻意隐藏失败 attempt，而 Fork 已发布也不等于 parent/child 已原子落盘。</p>
+</section>
+
+<section>
+  <h2>1. 六种经常被混称为 Replay 的操作</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>契约</th><th>输入</th><th>输出</th><th>不保证什么</th></tr></thead>
+    <tbody>
+      <tr><td>Model Surface replay</td><td>完整事件日志</td><td>当前 <code>deriveMessages()</code></td><td>不保留已被 replacement 遮蔽的旧上下文</td></tr>
+      <tr><td>Request reconstruction</td><td>请求 dispatch 前的日志前缀</td><td>messages + 最新完整 request header</td><td>不重演网络延迟、异常 throw 或挂起</td></tr>
+      <tr><td>Stream replay</td><td><code>assistant/chunk</code></td><td>流式 block、usage、finish、局部 UI</td><td>失败 retry 的局部内容不一定继续展示</td></tr>
+      <tr><td>Crash recovery</td><td>有效但未闭合的持久前缀</td><td>确定性的 synthetic result / step end / turn end</td><td>不能猜出已启动副作用的真实外部结果</td></tr>
+      <tr><td>Client convergence</td><td>History raw window + subscribed baseline + live frames</td><td>连续的浏览器事件窗口和 UI projection</td><td>不是精确 stream offset resume</td></tr>
+      <tr><td>Fork</td><td>completed-turn 稳定前缀</td><td>拥有独立 Session ID 的冻结副本</td><td>父会话后续事件不会流入 child</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">阅读规则</div><p>“能从日志 replay”必须带上宾语。能重建下一次 Provider request，不等于能重演一次外部工具副作用；能恢复 UI，不等于 UI 展示了完整 raw attempt；能创建 child，不等于两个日志具有跨 ID 的原子 durability。</p></div>
+</section>
+
+<section>
+  <h2>2. 每个模型 attempt 先保存 raw stream，成功后才提交语义消息</h2>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>取当前模型视图</h3><p>每次 attempt 都重新调用 <code>session.deriveMessages()</code>，并结合该 Step 已固定的 system、tools 和 request config。</p></div>
+    <div><span>2</span><h3>记录每个 chunk</h3><p>Provider 迭代器吐出的每一块先追加为 <code>assistant/chunk</code>，同时把 seq 收进本 attempt 的 <code>chunkSeqs</code>。</p></div>
+    <div><span>3</span><h3>规范组装</h3><p><code>BlockAssembler</code> 折叠交错 block、delta、usage、finish 和 adapter-private replay state。</p></div>
+    <div><span>4</span><h3>决定 attempt 命运</h3><p>Error/aborted finish 进入 request-error waterfall；选择 retry 时直接回到循环，不追加 <code>assistant/message</code>。</p></div>
+    <div><span>5</span><h3>提交成功锚点</h3><p>成功时追加 append-origin <code>assistant/message</code>，其 <code>sourceEventSeqs</code> 精确引用本次 attempt 的全部 chunk。</p></div>
+  </div>
+  <div class="claim fact"><div class="claim-label">生产控制流</div><p>Raw observation 先于 semantic commit；失败 attempt 因而留下 chunk 证据，却不会污染模型 Surface。成功消息携带 provider、model、可选 replay state 和 usage，再决定是否执行 tool calls。<evidence id="LOG-ATTEMPT-ASSEMBLY"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">测试源码合同</div><p>一个生成 <code>abc</code> 的 fixture 要求七个协议 chunk 全部按原顺序保留并可重新组装。依赖未安装，本研究核对了测试源码但没有执行。<evidence id="LOG-RAW-CHUNK-TEST"></evidence></p></div>
+</section>
+
+<section>
+  <h2>3. Retry 同时维护“审计真相”和“用户当前看到的真相”</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>失败 attempt 后</th><th>Raw log</th><th>Model Surface</th><th>浏览器 assistant node</th></tr></thead>
+    <tbody>
+      <tr><td>已收到的 chunks</td><td>全部保留，包括 terminal failure chunk</td><td>不进入，因为没有 final assistant/message</td><td><code>llm/retry</code> 到来时清空并隐藏局部 blocks</td></tr>
+      <tr><td>首 token 时间</td><td>事件时间仍在</td><td>无关</td><td>跨 retry 保留，反映用户实际已等待并见过一次响应</td></tr>
+      <tr><td>成功 attempt</td><td>追加自己的 chunks 与 final message</td><td>只投影最终语义消息</td><td>final message 取代局部流状态并 settle</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">客户端定义</div><p>Assistant Definition 以 Turn/Step 为 identity 折叠 chunks；retry reset 不删除日志，只重置展示状态。若 Step 或 Turn 已闭合、存在可见 chunk 证据却没有 final message，它会生成一个 view-only 的 interrupted node。<evidence id="LOG-CLIENT-ASSISTANT"></evidence></p></div>
+  <div class="claim assessment"><div class="claim-label">设计评价</div><p>用户不会在一次自动 retry 后同时看到两个互相冲突的答案，审计者仍能检查失败 attempt。这是同一事实源上的两种有意 projection，而不是 UI 丢日志。</p></div>
+</section>
+
+<section>
+  <h2>4. “每次请求可重建”由 Surface 与完整 Header 两部分共同成立</h2>
+  <pre><code>Request at dispatch boundary
+= fresh Session(log prefix).deriveMessages()
++ foldRequestHeader(log prefix)
+   ├─ provider / model / reasoning effort
+   ├─ system prompt
+   ├─ ordered tool schemas
+   └─ temperature / maxTokens / stop</code></pre>
+  <div class="claim fact"><div class="claim-label">定理式测试</div><p>测试先运行多 Step、工具调用和 prompt/config 变化，再对每个 dispatch 找到首个 response chunk。它用首 chunk 之前的事件创建全新 Session，要求 messages 与真实 request deep-equal；再 fold 最新 request/header，逐字段比较 model、reasoning、system、tools、temperature、maxTokens 和 stop。<evidence id="LOG-REQUEST-RECONSTRUCTION"></evidence></p></div>
+  <p>这里的精确性来自两种互补日志：Message history 由 Surface fold 决定，非消息 request 参数由完整 header snapshot 的 last-wins fold 决定。Raw chunks 证明 Provider 返回了什么，却不参与自己所属请求的输入重建。</p>
+  <aside class="caveat"><strong>边界：</strong>这个合同重建的是 Provider-neutral request value，不是 TCP/SSE 时序，也不承诺复现 adapter、网络或外部服务的异常。Adapter-private replay state 只在拥有它的同类 adapter 重新序列化旧 assistant message 时有意义。</aside>
+</section>
+
+<section>
+  <h2>5. 空 completion 也可以是耐久的成功锚点</h2>
+  <p>当 Provider 正常停止却没有可见 content，或 max-token 截断使不安全的半截 tool call 被 assembler 丢弃时，Agent 仍追加 content 为空的 <code>assistant/message</code>，并引用这次 attempt 的 chunks。Chapter 09 已说明空 assistant 不进入 <code>deriveMessages()</code>；在这里它的作用是记录“请求成功结束过”以及 usage/replay boundary，而不是给模型加入空轮次。</p>
+  <div class="claim inference"><div class="claim-label">为什么需要它</div><p>如果只保留 raw terminal chunk，通用消费者必须理解每个 adapter 的流协议才能判断成功边界。一个统一的语义锚点让 request replay、usage 和 turn completion 不依赖 Provider 方言，同时保持下一请求的 Message 列表干净。<evidence id="LOG-ATTEMPT-ASSEMBLY"></evidence><evidence id="SESSION-SURFACE-PROJECTION"></evidence></p></div>
+</section>
+
+<section>
+  <h2>6. 持久化提供四种不同的读面</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>API</th><th>Cold source</th><th>是否提交 recovery</th><th>是否发布 live Session</th><th>主要用途</th></tr></thead>
+    <tbody>
+      <tr><td><code>prepare(id)</code></td><td>读取、修复、校验，并预留唯一 Session object</td><td>是</td><td>由调用者随后 publish/rollback</td><td>resume 的 ownership transaction</td></tr>
+      <tr><td><code>load(id)</code></td><td>返回平衡 logical inspection</td><td>是</td><td>否</td><td>需要 durable recovered view 的读者</td></tr>
+      <tr><td><code>inspect(id)</code></td><td>返回平衡 logical inspection</td><td>否</td><td>否</td><td>冷 history、query、fork source</td></tr>
+      <tr><td><code>readFrom(id, seq)</code></td><td>直接读已存物理 suffix</td><td>否，也不合成 closers</td><td>否</td><td>增量存储/复制与 raw 检查</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">生产语义</div><p>四条路径共享 per-session serialization 和格式校验，但刻意选择不同的恢复与 ownership 语义。<code>readFrom</code> 在支持 seek 的 backend 只读 suffix，否则读取完整前缀再 slice；它不借用 prepared cache。<evidence id="LOG-PERSISTENCE-READ-FACES"></evidence></p></div>
+  <p>对 live Session，<code>inspect</code> 可返回仍在 open turn 的内存快照；<code>load</code> 则先 flush，并拒绝把 open live turn 包装成“完整 durable inspection”。同一个函数名不能只看“是否读到了 events”，还要看它承诺的 logical balance 与 ownership。</p>
+</section>
+
+<section>
+  <h2>7. Crash repair 不伪造成功，只确定性地封闭未知状态</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>崩溃尾部事实</th><th>合成结果</th><th>给后续模型的指引</th></tr></thead>
+    <tbody>
+      <tr><td>Assistant 请求了 tool，但还没有 <code>tool/call</code></td><td><code>TOOL_NOT_STARTED</code> error result，无 source seq</td><td>如果仍需要，可以重试</td></tr>
+      <tr><td>已有 <code>tool/call</code>，但没有 <code>tool/result</code></td><td><code>TOOL_OUTCOME_UNKNOWN</code>，引用 call event seq</td><td>先查外部状态或询问；仅只读/幂等操作可安全重试</td></tr>
+      <tr><td>Step 仍开着</td><td>补 <code>step/end</code></td><td>恢复结构不变量，不声称完成</td></tr>
+      <tr><td>Turn 仍开着</td><td>补 <code>turn/end {kind:'interrupted'}</code></td><td>下一轮看到一次明确中断</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">确定性算法</div><p>扫描器每遇 Turn boundary 重置 pending calls，只修复最后一个 open turn；synthetic seq 从最后真实 seq 连续递增，time 沿用最后真实事件，Map insertion order 保持调用顺序。Balanced 或空日志不产生任何事件。<evidence id="LOG-REPAIR-CLOSERS"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">Torn write 合同</div><p>Backend 可以返回“有效提交前缀 + torn marker”。恢复先截掉不完整物理残片，再保留所有已提交的 open-turn 事实并追加 closers，而不是回滚整个 Turn。<evidence id="LOG-TORN-TAIL-CONTRACT"></evidence></p></div>
+</section>
+
+<section>
+  <h2>8. Cold history 可以逻辑完整，而磁盘此刻仍物理未闭合</h2>
+  <div class="claim fact"><div class="claim-label">两个都是真的</div><p><code>inspect()</code> 的 inspection 使用 <code>storedEvents + synthetic closers</code>，但不调用 <code>commitRepair</code>；<code>load()</code>/<code>prepare()</code> 才在 revision 仍匹配时提交恢复。契约测试明确要求 inspect 前后 backend revision 不变，而 load 后 revision 变化。<evidence id="LOG-REPAIR-CONTRACT"></evidence><evidence id="LOG-PREPARED-COMMIT"></evidence></p></div>
+  <pre><code>physical artifact:  turn/start → tool/call ───────────────┐
+                                                         │ inspect only
+logical history:   turn/start → tool/call → unknown result → step/end → interrupted turn/end
+
+load / prepare:    compare revision → commit repair → reload exact committed graph</code></pre>
+  <p>因此冷浏览器 History 可以安全显示一次中断闭合，而同一时刻 <code>readFrom</code> 或 raw artifact 仍展示 open physical tail。前者回答“按恢复规则，这段会话逻辑上是什么”；后者回答“后端确实存了哪些字节/事件”。把这两者强行统一，反而会丢失诊断能力。</p>
+  <aside class="caveat"><strong>细节：</strong>Prepared Session 构造时还可能拥有 constructor-owned <code>session/end-seed</code>；inspection 刻意只返回 balanced stored events 与 closers，不把这个生命周期 marker 冒充已持久事实。</aside>
+</section>
+
+<section>
+  <h2>9. Write-behind 把热路径提交与磁盘 durability 分开</h2>
+  <div class="claim fact"><div class="claim-label">队列合同</div><p>Persistence listener 克隆每个 committed event 进入 per-Session write-behind。固定 deadline 形成稳定 batch；写失败时 batch 以原顺序放回队首并暂停自动重试，避免后台紧密重试。显式 <code>flush()</code> 取消 timer、加入共享 barrier，并重试/排空直到 active write 与 pending queue 都静止。<evidence id="LOG-WRITE-BEHIND"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">语义 checkpoints</div><p>标准 policy 在模型 stream 真正构造前、顶层 tool body 前以及每个 pre-step 前 flush。失败则不 dispatch adapter 或副作用体；嵌套 tool 调用复用已经耐久的外层 call。<evidence id="LOG-CHECKPOINT-POLICY"></evidence></p></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>边界</th><th>此前必须耐久的事实</th><th>防止的歧义</th></tr></thead>
+    <tbody>
+      <tr><td>Provider request 前</td><td>用户输入、request header、step start 与动态上下文</td><td>模型已被调用，磁盘却无法重建输入</td></tr>
+      <tr><td>顶层 tool body 前</td><td>assistant tool call 与 <code>tool/call</code></td><td>副作用发生，但日志连调用开始都没有</td></tr>
+      <tr><td>下一 Step 前</td><td>上一 Step 的响应与 tool results</td><td>下一请求依赖尚未耐久的历史</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>10. Core Fork 是 live source 的 inclusive prefix copy</h2>
+  <div class="claim fact"><div class="claim-label">Core primitive</div><p><code>SessionStore.fork</code> 只接受当前 store 中的精确 live instance。Boundary 省略时取最后事件；显式值必须是存在的连续 seq，inclusive slice 不能结束在 open Turn 中。Child header 继承 cwd，并记录 <code>parentSession</code> 与复制前缀的精确 <code>seedLength</code>。<evidence id="LOG-CORE-FORK"></evidence></p></div>
+  <ul class="audit-list">
+    <li>空 source 可以产生带 lineage 的空 child。</li>
+    <li>Source 后面已有 open Turn 时，仍可选择它之前的旧稳定 boundary。</li>
+    <li>Turn 结束后的 title、plugin marker 等 log-only event 可以包含在 prefix 中。</li>
+    <li>稳定性只以 Turn bracket 为硬边界；跨 prefix 的 plugin bracket 可随 seed 继承，并由新的 end-seed marker 划开 ownership。</li>
+    <li>Seed 被 detach、snapshot 和 freeze；父子不共享可变 event array。</li>
+  </ul>
+  <div class="claim fact"><div class="claim-label">测试源码矩阵</div><p>测试覆盖空 fork、冻结 seed、父日志 open tail 前的早期 cut、各种 turn-end reason、trailing log-only 事件，以及不存在/陈旧 instance/非法 boundary/open turn/重复 child ID 的拒绝。<evidence id="LOG-FORK-CONTRACT"></evidence></p></div>
+</section>
+
+<section>
+  <h2>11. Host Fork 把消息锚点提升为“包含整轮”的产品语义</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>输入情况</th><th>选择的 completed boundary</th></tr></thead>
+    <tbody>
+      <tr><td><code>atSeq</code> 位于已完成 Turn 内</td><td>第一个 <code>turn/end.seq ≥ atSeq</code>，所以消息按钮不会截掉同轮后半段</td></tr>
+      <tr><td><code>atSeq</code> 位于当前 open Turn</td><td>拒绝，不会悄悄退回更早 Turn</td></tr>
+      <tr><td><code>atSeq</code> 省略或超过日志末尾</td><td>最后一个 completed Turn</td></tr>
+      <tr><td>Boundary 后有独立事件</td><td>继续纳入，直到下一个 <code>turn/start</code> 之前</td></tr>
+    </tbody>
+  </table></div>
+  <p>Host 可以从 attached live state 或 cold <code>inspect</code> 读 source，不需要先 resume Agent。它复制 prefix，继承 cwd、lineage、seedLength 和 source 当前 composition，创建新 Agent，再尝试继承 Workspace。若 Workspace attach 失败，响应明确返回已创建 child ID；child 不会因为外围归组失败而被隐式撤销。<evidence id="LOG-HOST-FORK"></evidence><evidence id="LOG-HISTORY-CONTRACT"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">语义</div><p>这是 snapshot copy，不是 Git 式共享对象数据库，也不是 event branch pointer。父子各自拥有从 seq 0 开始的完整前缀，后续独立 append；lineage 只由 Header 关联。</p></div>
+</section>
+
+<section>
+  <h2>12. Fork publication 与跨 Session durability 之间存在明确 crash window</h2>
+  <div class="claim inference"><div class="claim-label">源码级高置信推断，未做故障注入</div><p>Host 读取 live parent 时不先 flush，创建 child 后 <code>session/created</code> listener 以异步 <code>initFor()</code> 开始持久化 seed；parent 和 child 的写入只在各自 session ID 链上串行，没有一个跨 ID transaction。因而 API 返回“forked”证明 child 已在 live registry 发布，却不证明 parent prefix 与 child seed 已原子共同耐久。<evidence id="LOG-PERSISTENCE-ADMISSION"></evidence><evidence id="LOG-HOST-FORK"></evidence></p></div>
+  <p>这并不会破坏正常进程中的 child 内容：child 已复制完整内存前缀。风险只出现在恰当时刻进程崩溃或 backend 写失败时，可能出现 child 尚未物化，或 child 已写入而 parent 的同一尾部仍在 write-behind 的非对称状态。当前设计的权威 durability primitive 是显式 flush，而 Fork API 没有在返回前对父子做双 barrier。</p>
+  <aside class="caveat"><strong>不要过度推断：</strong>本研究没有运行 crash injection，也没有声称必然丢失；结论是生产控制流不存在原子 parent+child 持久化保证。是否需要更强保证取决于产品把 Fork 响应当作 live admission 还是 durable checkpoint。</aside>
+</section>
+
+<section>
+  <h2>13. History 分页保留连续 raw range，而不是返回 Message DTO</h2>
+  <div class="claim fact"><div class="claim-label">分页算法</div><p>Host 从窗口尾部向前数 append-origin user/assistant messages。Model-only replacement 不占 <code>maxMessages</code>；assistant/message 的 <code>sourceEventSeqs</code> 把 cut 推到该 attempt 的最早 chunk，所以一页不会从流中间开始。返回值仍是所有类型的连续 raw event range。<evidence id="LOG-HISTORY-PAGINATION"></evidence></p></div>
+  <p>Tail page 自然包含尚无 final message 的 partial chunks；较早页面只按 <code>beforeSeq</code> 截断。每个 entry 可携带一个 Host 当前根据 presenter registry 计算的 tool <code>view</code>，但 view 从不持久化，也不属于 event envelope。调用参数若在更早页，当前页 backscan 找不到时会降级成 generic presentation；事实本身仍完整。<evidence id="LOG-HISTORY-VIEW"></evidence></p>
+  <div class="claim fact"><div class="claim-label">同一时刻的响应</div><p>所有异步 source/composition 准备结束后，Host 同步复制 events 并读取 projection watermark，避免一个 history 响应把 N 时刻的事件与 N+1 时刻的 baseline 拼在一起。Cold source 使用 logical <code>inspect</code>，且整个读取不会发布 Agent。<evidence id="LOG-HISTORY-CUT"></evidence><evidence id="LOG-HISTORY-CONTRACT"></evidence></p></div>
+</section>
+
+<section>
+  <h2>14. 浏览器通过“拉尾页 + 缓存 live + seq 补洞”收敛</h2>
+  <pre><code>subscribe starts ────────────────┐
+                               ├─ liveBuffer
+history tail request ──────────┘
+            ↓ install raw window
+drop seq overlap → append contiguous live tail
+            ↓
+if next.seq &gt; tail.seq + 1: buffer + refetch tail + restitch</code></pre>
+  <div class="claim fact"><div class="claim-label">Session client</div><p>Open 时先拉 History；若 <code>session/subscribed.lastSeq</code> 已超过 page tail，立刻再拉一次。安装窗口后按 seq 拼接期间收到的 frames：重叠丢弃，hole 不直接 append，而是缓存并触发 tail repair。<evidence id="LOG-CLIENT-STITCH"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">UI 增量 engine</div><p><code>ConversationNodeAssembler</code> 在完整替换时重建 Context，在 live append 时只匹配一个 tail event，在 prepend 较旧页面时保留已有 Context/View identity 并局部 replay dependency。具体业务 Definition 决定 assistant、tool、turn 等如何成为可见节点。<evidence id="LOG-CONVERSATION-ASSEMBLER"></evidence></p></div>
+  <p>因此重连不是“从 server offset 继续推”；它是用 durable/raw History 建基线，再用 seq 对 live frames 去重和补洞。Seq 同时承担 ordering、dedup、gap detection 与 UI correlation。</p>
+</section>
+
+<section>
+  <h2>15. Query trace 和 Raw export 服务不同的审计问题</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>能力</th><th>做什么</th><th>证据边界</th></tr></thead>
+    <tbody>
+      <tr><td>Event records</td><td>Canonical fold 后把每个事件标为 current / shadowed / log-only</td><td>状态是本次完整日志 observation 的结果</td></tr>
+      <tr><td>Event trace</td><td>给出 direct replacement chain、被替换节点、直接 source 与后来直接引用者</td><td>除 replacement chain 外不自动计算完整 transitive provenance</td></tr>
+      <tr><td>Session trace</td><td>沿 Header parent 建祖先与递归后代树</td><td>缺少 parent 时显式 <code>complete:false</code>，不伪造 root</td></tr>
+      <tr><td>Raw ZIP export</td><td>Flush live logs 后逐字节导出 backend artifact、可选后代与引用媒体</td><td>不把 UI view 或当前 Surface 重新写进 artifact</td></tr>
+    </tbody>
+  </table></div>
+  <p>Query 是对逻辑 event graph 的可解释计算；Export 是保全物理证据。前者帮助回答“这个节点为何被遮蔽、从哪里来”，后者帮助独立工具重新检查原始文件。<evidence id="LOG-QUERY-TRACE"></evidence><evidence id="LOG-RAW-EXPORT"></evidence></p>
+</section>
+
+<section>
+  <h2>16. 已确认的边界、缺口与规模风险</h2>
+  <div class="claim assessment"><div class="claim-label">Gap 1：History 请求没有上限</div><p><code>maxMessages</code> 的 wire schema 只要求正整数，没有 maximum；分页还会先复制/过滤整个 event log，而一个 message group 自身可以包含大量 raw chunks。因而调用者可请求很大的页，单个超大 attempt 也可能让响应远超“消息数”的直觉。这是源码可见的资源边界；实际可利用程度还取决于上游日志/传输限制。<evidence id="LOG-HISTORY-SCHEMA"></evidence><evidence id="LOG-HISTORY-PAGINATION"></evidence></p></div>
+  <div class="claim assessment"><div class="claim-label">Gap 2：一次 gap repair 失败后没有定时主动重试</div><p>客户端 catch 后只记录错误并清除 <code>stitching</code>；已缓存 live events 留在 buffer。如果此后没有新 frame 再次触发 gap、也没有 reconnect/resync，它们可以长期不可见。下一次相关事件或重连会再收敛，但当前实现没有 backoff timer。<evidence id="LOG-CLIENT-STITCH"></evidence></p></div>
+  <div class="claim assessment"><div class="claim-label">Gap 3：Fork 没有跨 ID durability transaction</div><p>这是上一节的 crash-window 推断。若产品文案把响应解释为“已永久创建”，需要额外 parent/child flush 或 backend transaction；若只承诺 live child admission，当前语义应在 API 文档中说清楚。</p></div>
+  <ul class="audit-list">
+    <li><strong>有意取舍：</strong>retry 失败内容在 UI 隐藏、在 raw log 保留。</li>
+    <li><strong>有意取舍：</strong>tool render view 是当前代码的即时 projection，跨页缺少 call args 时允许 generic fallback。</li>
+    <li><strong>有意取舍：</strong>logical inspect 可提前给出 deterministic recovery，不强迫只读页面修改磁盘。</li>
+    <li><strong>未知：</strong>本研究没有执行故障注入、超大历史响应或真实断线实验；不能把源码推断写成已复现事故。</li>
+  </ul>
+</section>
+
+<section>
+  <h2>17. 设计评价与验证状态</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>选择</th><th>收益</th><th>成本</th></tr></thead>
+    <tbody>
+      <tr><td>Raw attempt 与 semantic message 双层记录</td><td>失败可审计，模型上下文不受失败输出污染</td><td>消费者必须理解哪层才是当前 truth</td></tr>
+      <tr><td>Repair 只表达 unknown/interrupted</td><td>不会把副作用猜成成功或失败</td><td>恢复后的模型仍需查询外部世界</td></tr>
+      <tr><td>Logical inspection 与 physical read 分开</td><td>冷读无副作用，同时可提供平衡 UI</td><td>“历史里看见”不总等于“磁盘已提交”</td></tr>
+      <tr><td>Fork 复制完整 prefix</td><td>Child 自包含、可独立恢复和导出</td><td>空间重复，跨 ID 原子性需另行实现</td></tr>
+      <tr><td>History convergence 而非 stream offset resume</td><td>断线、重叠和漏帧都能回到 durable truth</td><td>需要重复拉页，失败重试策略仍不完整</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">本章验证范围</div><p>本章交叉核对了 Agent loop、repair、SessionStore Fork、Host History/Fork、persistence coordinator/write-behind、client Session/Conversation assembler、query 与 export 的生产控制流，并阅读了 request reconstruction、fork、repair、torn-tail 和 persistence contract 测试源码。Upstream 没有安装依赖，所以没有声称这些测试在本机通过；下一章继续拆解后端、数据库 schema 与数据所有权。</p></div>
+</section>

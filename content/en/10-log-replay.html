@@ -1,0 +1,222 @@
+<section>
+  <h2>Conclusion: there is no single “Replay,” but six reconstruction contracts that cannot substitute for one another</h2>
+  <div class="thesis"><p>DeepSeek Harness builds raw streams, semantic messages, the model Surface, physical persistence prefixes, browser windows, and Fork lineage on the same seq-numbered log, but it does not collapse them into one universal replay API. A model request can be reconstructed from the log; a failed attempt remains auditable; a crash can be closed deterministically; a disconnect can converge through history plus the live stream; and a Fork copies a stable prefix rather than pointing at a dynamically changing parent branch.</p></div>
+  <p>The most important property is not merely that “chat history is saved.” Different consumers must declare which truth they need. The costs follow from that separation: logical history may be more complete than the physical on-disk log, the UI may deliberately hide a failed attempt, and a published Fork does not imply that parent and child were atomically persisted.</p>
+</section>
+
+<section>
+  <h2>1. Six operations commonly conflated as Replay</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Contract</th><th>Input</th><th>Output</th><th>What it does not guarantee</th></tr></thead>
+    <tbody>
+      <tr><td>Model Surface replay</td><td>The complete event log</td><td>Current <code>deriveMessages()</code></td><td>It does not retain old context shadowed by a replacement</td></tr>
+      <tr><td>Request reconstruction</td><td>The log prefix before request dispatch</td><td>Messages plus the latest complete request header</td><td>It does not reproduce network latency, thrown failures, or hangs</td></tr>
+      <tr><td>Stream replay</td><td><code>assistant/chunk</code></td><td>Streaming blocks, usage, finish, and partial UI</td><td>A failed retry's partial content need not remain visible</td></tr>
+      <tr><td>Crash recovery</td><td>A valid but unclosed durable prefix</td><td>Deterministic synthetic results, step end, and turn end</td><td>It cannot infer the real external outcome of a started side effect</td></tr>
+      <tr><td>Client convergence</td><td>A raw History window, subscribed baseline, and live frames</td><td>A contiguous browser event window and UI projection</td><td>It is not exact stream-offset resume</td></tr>
+      <tr><td>Fork</td><td>A stable completed-Turn prefix</td><td>A frozen copy with its own Session ID</td><td>Later parent events never flow into the child</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">Reading rule</div><p>“Replayable from the log” always needs an object. Reconstructing the next Provider request does not replay an external tool side effect; recovering the UI does not mean the UI displays every raw attempt; creating a child does not provide an atomic durability transaction across two Session IDs.</p></div>
+</section>
+
+<section>
+  <h2>2. Every model attempt records the raw stream before committing a semantic message</h2>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>Read the current model view</h3><p>Every attempt calls <code>session.deriveMessages()</code> again and combines it with the system prompt, tools, and request configuration already fixed for the Step.</p></div>
+    <div><span>2</span><h3>Record every chunk</h3><p>Each item from the Provider iterator is first appended as <code>assistant/chunk</code>, and its seq enters this attempt's <code>chunkSeqs</code>.</p></div>
+    <div><span>3</span><h3>Assemble canonically</h3><p><code>BlockAssembler</code> folds interleaved blocks, deltas, usage, finish, and adapter-private replay state.</p></div>
+    <div><span>4</span><h3>Decide the attempt's fate</h3><p>An error or aborted finish enters the request-error waterfall; a retry action returns directly to the loop without appending <code>assistant/message</code>.</p></div>
+    <div><span>5</span><h3>Commit the successful anchor</h3><p>Success appends an append-origin <code>assistant/message</code> whose <code>sourceEventSeqs</code> cite every chunk in this attempt.</p></div>
+  </div>
+  <div class="claim fact"><div class="claim-label">Production control flow</div><p>Raw observation precedes semantic commit. A failed attempt therefore leaves chunk evidence without contaminating the model Surface. The successful message carries provider, model, optional replay state, and usage before the loop decides whether to execute tool calls.<evidence id="LOG-ATTEMPT-ASSEMBLY"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">Test-source contract</div><p>A fixture producing <code>abc</code> requires all seven protocol chunks to remain in order and be reassembled. Dependencies are absent, so this study reviewed but did not execute the test.<evidence id="LOG-RAW-CHUNK-TEST"></evidence></p></div>
+</section>
+
+<section>
+  <h2>3. Retry preserves both audit truth and current user-visible truth</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>After a failed attempt</th><th>Raw log</th><th>Model Surface</th><th>Browser assistant node</th></tr></thead>
+    <tbody>
+      <tr><td>Chunks already received</td><td>All remain, including the terminal failure chunk</td><td>They do not enter because there is no final assistant message</td><td><code>llm/retry</code> clears and hides the partial blocks</td></tr>
+      <tr><td>First-token time</td><td>Event timestamps remain</td><td>Irrelevant</td><td>Preserved across retry because the user really waited for and may have seen a response</td></tr>
+      <tr><td>Successful attempt</td><td>Appends its own chunks and final message</td><td>Projects only the final semantic message</td><td>The final message replaces partial stream state and settles</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Client Definition</div><p>The Assistant Definition folds chunks under Turn and Step identity. A retry reset never deletes log events; it only resets presentation state. If the Step or Turn closes with visible chunk evidence but no final message, it can create a view-only interrupted node.<evidence id="LOG-CLIENT-ASSISTANT"></evidence></p></div>
+  <div class="claim assessment"><div class="claim-label">Assessment</div><p>The user does not see two conflicting answers after an automatic retry, while an auditor can still inspect the failed attempt. These are two intentional projections of one fact source, not lost UI data.</p></div>
+</section>
+
+<section>
+  <h2>4. “Every request is reconstructable” requires both the Surface and a complete Header</h2>
+  <pre><code>Request at dispatch boundary
+= fresh Session(log prefix).deriveMessages()
++ foldRequestHeader(log prefix)
+   ├─ provider / model / reasoning effort
+   ├─ system prompt
+   ├─ ordered tool schemas
+   └─ temperature / maxTokens / stop</code></pre>
+  <div class="claim fact"><div class="claim-label">Theorem-style test</div><p>The test runs multiple Steps, a tool call, and prompt and configuration changes, then finds the first response chunk for each dispatch. It creates a fresh Session from the events before that chunk and requires its messages to deep-equal the real request; it folds the latest request header and compares model, reasoning, system, tools, temperature, maxTokens, and stop field by field.<evidence id="LOG-REQUEST-RECONSTRUCTION"></evidence></p></div>
+  <p>Exactness comes from two complementary logs: the Surface fold determines Message history, while the last-wins fold over complete header snapshots determines non-message request parameters. Raw chunks prove what the Provider returned; they do not participate in reconstructing the input of their own request.</p>
+  <aside class="caveat"><strong>Boundary:</strong> this contract reconstructs the Provider-neutral request value, not TCP or SSE timing, and it does not promise to reproduce adapter, network, or external-service failures. Adapter-private replay state matters only when the owning adapter family serializes an old assistant message again.</aside>
+</section>
+
+<section>
+  <h2>5. An empty completion can still be a durable success anchor</h2>
+  <p>When a Provider stops normally without visible content, or max-token truncation makes the assembler discard an unsafe partial tool call, the Agent still appends an <code>assistant/message</code> with empty content and cites that attempt's chunks. Chapter 09 established that an empty assistant does not enter <code>deriveMessages()</code>. Here its purpose is to record that a request completed successfully, together with its usage and replay boundary, rather than adding an empty model turn.</p>
+  <div class="claim inference"><div class="claim-label">Why it exists</div><p>If only a raw terminal chunk remained, a generic consumer would need to understand every adapter stream protocol to recognize the success boundary. One uniform semantic anchor lets request replay, usage, and Turn completion remain Provider-neutral while keeping the next request's Message list clean.<evidence id="LOG-ATTEMPT-ASSEMBLY"></evidence><evidence id="SESSION-SURFACE-PROJECTION"></evidence></p></div>
+</section>
+
+<section>
+  <h2>6. Persistence exposes four distinct read faces</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>API</th><th>Cold source behavior</th><th>Commits recovery?</th><th>Publishes a live Session?</th><th>Main use</th></tr></thead>
+    <tbody>
+      <tr><td><code>prepare(id)</code></td><td>Read, repair, validate, and reserve the exact Session object</td><td>Yes</td><td>The caller later publishes or rolls back</td><td>Resume ownership transaction</td></tr>
+      <tr><td><code>load(id)</code></td><td>Return a balanced logical inspection</td><td>Yes</td><td>No</td><td>Readers needing a durably recovered view</td></tr>
+      <tr><td><code>inspect(id)</code></td><td>Return a balanced logical inspection</td><td>No</td><td>No</td><td>Cold history, query, and Fork sources</td></tr>
+      <tr><td><code>readFrom(id, seq)</code></td><td>Read the stored physical suffix directly</td><td>No, and adds no closers</td><td>No</td><td>Incremental storage, replication, and raw inspection</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Production semantics</div><p>The four paths share per-session serialization and format validation but deliberately choose different recovery and ownership semantics. With a seek-capable backend, <code>readFrom</code> reads only the suffix; otherwise it reads the complete prefix and slices it, without borrowing the prepared cache.<evidence id="LOG-PERSISTENCE-READ-FACES"></evidence></p></div>
+  <p>For a live Session, <code>inspect</code> may return an in-memory snapshot whose Turn is still open. <code>load</code> flushes first and refuses to package an open live Turn as a “complete durable inspection.” It is not enough to ask whether a function returns events; its promises about logical balance and ownership matter.</p>
+</section>
+
+<section>
+  <h2>7. Crash repair never invents success; it deterministically closes unknown state</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Crash-tail fact</th><th>Synthetic result</th><th>Guidance to the later model</th></tr></thead>
+    <tbody>
+      <tr><td>The assistant requested a tool but no <code>tool/call</code> exists</td><td><code>TOOL_NOT_STARTED</code> error result with no source seq</td><td>Retry if the operation is still needed</td></tr>
+      <tr><td>A <code>tool/call</code> exists but no <code>tool/result</code> does</td><td><code>TOOL_OUTCOME_UNKNOWN</code> citing the call-event seq</td><td>Check external state or ask first; retry only read-only or idempotent work</td></tr>
+      <tr><td>The Step remains open</td><td>Add <code>step/end</code></td><td>Restore structural invariants without claiming completion</td></tr>
+      <tr><td>The Turn remains open</td><td>Add <code>turn/end {kind:'interrupted'}</code></td><td>Expose an explicit interruption to the next Turn</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Deterministic algorithm</div><p>The scanner resets pending calls at each Turn boundary and repairs only the final open Turn. Synthetic seqs continue after the last real seq, timestamps reuse the last real event, and Map insertion order preserves call order. A balanced or empty log produces no events.<evidence id="LOG-REPAIR-CLOSERS"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">Torn-write contract</div><p>A backend may return a valid committed prefix plus a torn marker. Recovery truncates the incomplete physical fragment, retains every committed open-Turn fact, and appends closers instead of rolling back the whole Turn.<evidence id="LOG-TORN-TAIL-CONTRACT"></evidence></p></div>
+</section>
+
+<section>
+  <h2>8. Cold history can be logically complete while disk is still physically open</h2>
+  <div class="claim fact"><div class="claim-label">Both are true</div><p>An <code>inspect()</code> result uses <code>storedEvents + synthetic closers</code> but does not call <code>commitRepair</code>. Only <code>load()</code> or <code>prepare()</code> commits recovery after the revision still matches. Contract tests explicitly require the backend revision to remain unchanged across inspect and to change after load.<evidence id="LOG-REPAIR-CONTRACT"></evidence><evidence id="LOG-PREPARED-COMMIT"></evidence></p></div>
+  <pre><code>physical artifact:  turn/start → tool/call ───────────────┐
+                                                         │ inspect only
+logical history:   turn/start → tool/call → unknown result → step/end → interrupted turn/end
+
+load / prepare:    compare revision → commit repair → reload exact committed graph</code></pre>
+  <p>A cold browser History can therefore show a safely closed interruption while <code>readFrom</code> or the raw artifact still exposes an open physical tail. The former answers, “What is this conversation logically under the recovery rules?” The latter answers, “What bytes and events did the backend actually store?” Forcing them into one view would remove diagnostic information.</p>
+  <aside class="caveat"><strong>Detail:</strong> the prepared Session construction may also own a constructor-created <code>session/end-seed</code>. The inspection deliberately returns only balanced stored events and closers; it does not misrepresent that lifecycle marker as an already persisted fact.</aside>
+</section>
+
+<section>
+  <h2>9. Write-behind separates hot-path commit from disk durability</h2>
+  <div class="claim fact"><div class="claim-label">Queue contract</div><p>The persistence listener clones each committed event into per-Session write-behind. A fixed deadline forms a stable batch. If a write fails, the batch returns to the front in original order and automatic retry pauses, avoiding a tight background loop. Explicit <code>flush()</code> cancels the timer, joins a shared barrier, and retries and drains until both the active write and pending queue are quiescent.<evidence id="LOG-WRITE-BEHIND"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">Semantic checkpoints</div><p>The standard policy flushes before the model stream is actually constructed, before a top-level tool body, and before every pre-step. Failure prevents dispatch of the adapter or side-effect body; nested tool calls reuse the already durable outer call.<evidence id="LOG-CHECKPOINT-POLICY"></evidence></p></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Boundary</th><th>Facts that must already be durable</th><th>Ambiguity prevented</th></tr></thead>
+    <tbody>
+      <tr><td>Before a Provider request</td><td>User input, request header, Step start, and dynamic context</td><td>The model was called but disk cannot reconstruct its input</td></tr>
+      <tr><td>Before a top-level tool body</td><td>Assistant tool call and <code>tool/call</code></td><td>A side effect occurred but the log does not even record its start</td></tr>
+      <tr><td>Before the next Step</td><td>The previous Step's response and tool results</td><td>The next request depends on history that is not durable</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>10. Core Fork is an inclusive prefix copy from a live source</h2>
+  <div class="claim fact"><div class="claim-label">Core primitive</div><p><code>SessionStore.fork</code> accepts only the exact live instance currently in the store. An omitted boundary means the final event; an explicit value must be an existing contiguous seq, and the inclusive slice may not end inside an open Turn. The child header inherits cwd and records <code>parentSession</code> plus the exact copied-prefix <code>seedLength</code>.<evidence id="LOG-CORE-FORK"></evidence></p></div>
+  <ul class="audit-list">
+    <li>An empty source can produce an empty child with lineage.</li>
+    <li>If the source now has an open Turn, an older stable boundary before that tail remains selectable.</li>
+    <li>Title events, plugin markers, and other log-only events after a Turn can enter the prefix.</li>
+    <li>Turn brackets are the hard stability boundary; a plugin bracket crossing the prefix can be inherited as seed, with the new end-seed marker separating ownership.</li>
+    <li>The seed is detached, snapshotted, and frozen; parent and child do not share a mutable event array.</li>
+  </ul>
+  <div class="claim fact"><div class="claim-label">Test-source matrix</div><p>The tests cover empty forks, frozen seeds, an earlier cut before an open parent tail, every Turn-end reason, trailing log-only events, and rejection of missing or stale instances, invalid boundaries, open Turns, and duplicate child IDs.<evidence id="LOG-FORK-CONTRACT"></evidence></p></div>
+</section>
+
+<section>
+  <h2>11. Host Fork lifts a message anchor into “include the whole Turn” product semantics</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Input case</th><th>Selected completed boundary</th></tr></thead>
+    <tbody>
+      <tr><td><code>atSeq</code> lies in a completed Turn</td><td>The first <code>turn/end.seq ≥ atSeq</code>, so a message's Fork button does not clip the latter half of its Turn</td></tr>
+      <tr><td><code>atSeq</code> lies in the current open Turn</td><td>Reject; never silently fall back to an earlier Turn</td></tr>
+      <tr><td><code>atSeq</code> is omitted or beyond the log tail</td><td>The last completed Turn</td></tr>
+      <tr><td>Standalone events follow the boundary</td><td>Include them through the event before the next <code>turn/start</code></td></tr>
+    </tbody>
+  </table></div>
+  <p>The Host can read attached live state or cold <code>inspect</code> state without resuming an Agent. It copies the prefix, inherits cwd, lineage, seedLength, and the source's current composition, creates the new Agent, and then attempts to inherit the Workspace. If Workspace attachment fails, the response explicitly carries the already created child ID; the child is not implicitly rolled back because peripheral grouping failed.<evidence id="LOG-HOST-FORK"></evidence><evidence id="LOG-HISTORY-CONTRACT"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Semantics</div><p>This is a snapshot copy, not a Git-like shared object database or an event-branch pointer. Parent and child each own a complete prefix beginning at seq zero, then append independently; only the Header links their lineage.</p></div>
+</section>
+
+<section>
+  <h2>12. A clear crash window separates Fork publication from cross-Session durability</h2>
+  <div class="claim inference"><div class="claim-label">High-confidence source inference; no fault injection performed</div><p>The Host does not flush a live parent before reading it. After child creation, the <code>session/created</code> listener starts seed persistence through asynchronous <code>initFor()</code>. Parent and child writes serialize only on their respective Session-ID chains; no cross-ID transaction exists. A successful “forked” response therefore proves that the child was published in the live registry, not that the parent prefix and child seed are atomically durable together.<evidence id="LOG-PERSISTENCE-ADMISSION"></evidence><evidence id="LOG-HOST-FORK"></evidence></p></div>
+  <p>This does not corrupt child content during a healthy process: the child already copied the complete in-memory prefix. The risk exists only when the process crashes or a backend write fails at the relevant moment. The child may not yet be materialized, or the child may be stored while the corresponding parent tail remains in write-behind. Explicit flush is the authoritative durability primitive, and the Fork API does not run a two-sided barrier before returning.</p>
+  <aside class="caveat"><strong>Do not overstate this:</strong> this study did not run crash injection and does not claim inevitable loss. The conclusion is that production control flow provides no atomic parent-plus-child persistence guarantee. Whether that is a defect depends on whether the product defines a Fork response as live admission or as a durable checkpoint.</aside>
+</section>
+
+<section>
+  <h2>13. History pagination preserves a contiguous raw range instead of returning Message DTOs</h2>
+  <div class="claim fact"><div class="claim-label">Pagination algorithm</div><p>The Host counts append-origin user and assistant messages backward from the window tail. Model-only replacements consume no <code>maxMessages</code> quota. An assistant message's <code>sourceEventSeqs</code> moves the cut to the earliest chunk in that attempt, so a page never begins halfway through a stream. The result remains a contiguous raw event range containing all event types.<evidence id="LOG-HISTORY-PAGINATION"></evidence></p></div>
+  <p>The tail page naturally contains partial chunks that do not yet have a final message; older pages are cut only by <code>beforeSeq</code>. Each entry may carry a tool <code>view</code> that the Host computes from the current presenter registry, but that view is never persisted and is not part of the event envelope. If call arguments live on an older page, the current-page backscan can miss them and intentionally fall back to generic presentation; the fact itself remains intact.<evidence id="LOG-HISTORY-VIEW"></evidence></p>
+  <div class="claim fact"><div class="claim-label">One-moment response</div><p>After all asynchronous source and composition preparation, the Host synchronously copies events and reads the projection watermark so one History response cannot combine events at N with a baseline at N+1. A cold source uses logical <code>inspect</code>, and the entire read never publishes an Agent.<evidence id="LOG-HISTORY-CUT"></evidence><evidence id="LOG-HISTORY-CONTRACT"></evidence></p></div>
+</section>
+
+<section>
+  <h2>14. The browser converges through “fetch tail + buffer live + repair by seq”</h2>
+  <pre><code>subscribe starts ────────────────┐
+                               ├─ liveBuffer
+history tail request ──────────┘
+            ↓ install raw window
+drop seq overlap → append contiguous live tail
+            ↓
+if next.seq &gt; tail.seq + 1: buffer + refetch tail + restitch</code></pre>
+  <div class="claim fact"><div class="claim-label">Session client</div><p>Open first fetches History. If <code>session/subscribed.lastSeq</code> is already beyond the page tail, it immediately fetches again. After installing the window, it stitches frames received in the meantime by seq: overlap is dropped, while a hole is buffered and triggers a tail repair instead of being appended directly.<evidence id="LOG-CLIENT-STITCH"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">Incremental UI engine</div><p><code>ConversationNodeAssembler</code> rebuilds Contexts on full replacement, matches only one tail event on live append, and preserves existing Context and View identity while locally replaying dependencies when older pages prepend. Business Definitions decide how assistant, tool, Turn, and other events become visible nodes.<evidence id="LOG-CONVERSATION-ASSEMBLER"></evidence></p></div>
+  <p>Reconnect therefore does not mean “continue from a server stream offset.” It establishes a durable raw-History baseline, then uses seq to deduplicate and repair live frames. Seq simultaneously provides ordering, deduplication, gap detection, and UI correlation.</p>
+</section>
+
+<section>
+  <h2>15. Query trace and raw export answer different audit questions</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Capability</th><th>What it does</th><th>Evidence boundary</th></tr></thead>
+    <tbody>
+      <tr><td>Event records</td><td>After a canonical fold, label every event current, shadowed, or log-only</td><td>Status belongs to this complete-log observation</td></tr>
+      <tr><td>Event trace</td><td>Return the direct replacement chain, removed nodes, direct sources, and later direct citers</td><td>Except for replacement chains, it does not compute full transitive provenance</td></tr>
+      <tr><td>Session trace</td><td>Build ancestors and recursive descendants from Header parent links</td><td>A missing parent returns <code>complete:false</code> rather than inventing a root</td></tr>
+      <tr><td>Raw ZIP export</td><td>After flushing live logs, export backend artifacts byte-for-byte with optional descendants and referenced media</td><td>It never rewrites UI views or the current Surface into the artifact</td></tr>
+    </tbody>
+  </table></div>
+  <p>Query is an explainable computation over the logical event graph; Export preserves physical evidence. The former answers why a node was shadowed and where it came from, while the latter lets independent tooling inspect the original files again.<evidence id="LOG-QUERY-TRACE"></evidence><evidence id="LOG-RAW-EXPORT"></evidence></p>
+</section>
+
+<section>
+  <h2>16. Confirmed boundaries, gaps, and scale risks</h2>
+  <div class="claim assessment"><div class="claim-label">Gap 1: History requests have no upper bound</div><p>The wire schema requires <code>maxMessages</code> only to be a positive integer and sets no maximum. Pagination also first copies or filters the complete event log, while one message group can itself contain many raw chunks. A caller can therefore request a very large page, and one huge attempt can make a response much larger than its “message count” suggests. This is a source-visible resource boundary; practical exploitability still depends on upstream log and transport limits.<evidence id="LOG-HISTORY-SCHEMA"></evidence><evidence id="LOG-HISTORY-PAGINATION"></evidence></p></div>
+  <div class="claim assessment"><div class="claim-label">Gap 2: no timed active retry follows one failed gap repair</div><p>The client catch path only logs the error and clears <code>stitching</code>; buffered live events remain. If no later frame triggers the gap again and no reconnect or resync occurs, they can remain invisible indefinitely. A later relevant event or reconnect converges again, but the current implementation has no backoff timer.<evidence id="LOG-CLIENT-STITCH"></evidence></p></div>
+  <div class="claim assessment"><div class="claim-label">Gap 3: Fork has no cross-ID durability transaction</div><p>This is the crash-window inference from the prior section. If product language treats the response as “permanently created,” it needs another parent-and-child flush or backend transaction. If it promises only live child admission, the API documentation should state that boundary clearly.</p></div>
+  <ul class="audit-list">
+    <li><strong>Intentional tradeoff:</strong> failed-retry content is hidden in the UI and retained in the raw log.</li>
+    <li><strong>Intentional tradeoff:</strong> a tool render view is a current-code projection and may use a generic fallback when call arguments sit on another page.</li>
+    <li><strong>Intentional tradeoff:</strong> logical inspection can expose deterministic recovery without forcing a read-only page to mutate disk.</li>
+    <li><strong>Unknown:</strong> this study did not execute fault injection, oversized-History, or real disconnect experiments; source deductions must not be presented as reproduced incidents.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>17. Design assessment and verification status</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Choice</th><th>Benefit</th><th>Cost</th></tr></thead>
+    <tbody>
+      <tr><td>Record raw attempts and semantic messages separately</td><td>Failures remain auditable without contaminating model context</td><td>Consumers must know which layer is current truth</td></tr>
+      <tr><td>Repair expresses only unknown and interrupted states</td><td>It never guesses that a side effect succeeded or failed</td><td>The recovered model still has to inspect the external world</td></tr>
+      <tr><td>Separate logical inspection from physical reads</td><td>Cold reads stay side-effect-free while presenting balanced UI</td><td>“Visible in history” does not always mean “committed to disk”</td></tr>
+      <tr><td>Fork copies the complete prefix</td><td>The child is self-contained, independently recoverable, and exportable</td><td>Storage is duplicated and cross-ID atomicity requires another mechanism</td></tr>
+      <tr><td>History convergence instead of stream-offset resume</td><td>Disconnects, overlap, and missing frames return to durable truth</td><td>Pages may be fetched again, and repair retry policy remains incomplete</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Chapter verification scope</div><p>This chapter cross-checked production control flow in the Agent loop, repair, SessionStore Fork, Host History and Fork, persistence coordinator and write-behind, client Session and Conversation assembler, query, and export. It also reviewed request-reconstruction, Fork, repair, torn-tail, and persistence-contract test source. Upstream dependencies are not installed, so it does not claim those tests passed locally. The next chapter dissects backends, database schemas, and data ownership.</p></div>
+</section>
