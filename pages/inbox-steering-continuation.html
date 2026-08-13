@@ -6,7 +6,7 @@
 <body data-page="inbox-steering-continuation" data-baseline="47f943859bef60e4160492346772ded9b24f765a" data-lang="en">
   <header class="topbar"><button class="icon-button nav-toggle" type="button" data-nav-toggle aria-label="Open chapter directory" aria-expanded="false">☰</button>
     <a class="brand" href="../index.html"><span class="brand-mark">DS</span><span>Harness Systems Dissection</span></a>
-    <span class="topbar-meta">Pinned baseline 47f943859b · 21 verified / 1 in progress / 36 chapters</span>
+    <span class="topbar-meta">Pinned baseline 47f943859b · 26 verified / 1 in progress / 36 chapters</span>
     <div class="topbar-actions"><a class="language-switch" href="../zh/pages/inbox-steering-continuation.html" lang="zh-CN" aria-label="Read this chapter in Chinese">中文</a><button class="icon-button" type="button" data-theme-toggle aria-label="Toggle light or dark theme">◐</button></div></header>
   <div class="layout"><aside class="sidebar" data-sidebar aria-label="Chapter directory"><input class="filter" data-chapter-filter type="search" placeholder="Filter chapters…" aria-label="Filter chapters"><section class="nav-part" data-part><h2 class="part-title">Introduction</h2>
     <a class="chapter-link" data-chapter-item href="../pages/reading-guide.html">
@@ -38,12 +38,12 @@
     <a class="chapter-link" data-chapter-item href="../pages/sandbox-filesystem.html">
       <span class="chapter-number">20</span><span>Sandbox, Filesystem, and Observation Policy</span><span class="status-dot verified" title="Verified"></span></a><a class="chapter-link" data-chapter-item href="../pages/shell-terminal-jobs.html">
       <span class="chapter-number">21</span><span>Shell, PTY, Terminal, and Background Jobs</span><span class="status-dot verified" title="Verified"></span></a><a class="chapter-link" data-chapter-item href="../pages/web-lsp-mcp-skill.html">
-      <span class="chapter-number">22</span><span>Web, LSP, MCP, and Skills</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/code-mode-self-modification.html">
-      <span class="chapter-number">23</span><span>Code Mode, Self-Modification, and Dynamic Plugins</span><span class="status-dot queued" title="Queued"></span></a></section><section class="nav-part" data-part><h2 class="part-title">Orchestration</h2>
+      <span class="chapter-number">22</span><span>Web, LSP, MCP, and Skills</span><span class="status-dot verified" title="Verified"></span></a><a class="chapter-link" data-chapter-item href="../pages/code-mode-self-modification.html">
+      <span class="chapter-number">23</span><span>Code Mode, Self-Modification, and Dynamic Plugins</span><span class="status-dot verified" title="Verified"></span></a></section><section class="nav-part" data-part><h2 class="part-title">Orchestration</h2>
     <a class="chapter-link" data-chapter-item href="../pages/multi-agent.html">
-      <span class="chapter-number">24</span><span>Multi-Agent Coordination</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/workflow-ralph.html">
-      <span class="chapter-number">25</span><span>Workflow and Ralph</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link current" data-chapter-item href="../pages/inbox-steering-continuation.html">
-      <span class="chapter-number">26</span><span>Inbox, Steering, and Continuation</span><span class="status-dot queued" title="Queued"></span></a></section><section class="nav-part" data-part><h2 class="part-title">Reliability and Product Surfaces</h2>
+      <span class="chapter-number">24</span><span>Multi-Agent Coordination</span><span class="status-dot verified" title="Verified"></span></a><a class="chapter-link" data-chapter-item href="../pages/workflow-ralph.html">
+      <span class="chapter-number">25</span><span>Workflow and Ralph</span><span class="status-dot verified" title="Verified"></span></a><a class="chapter-link current" data-chapter-item href="../pages/inbox-steering-continuation.html">
+      <span class="chapter-number">26</span><span>Inbox, Steering, and Continuation</span><span class="status-dot verified" title="Verified"></span></a></section><section class="nav-part" data-part><h2 class="part-title">Reliability and Product Surfaces</h2>
     <a class="chapter-link" data-chapter-item href="../pages/failure-recovery.html">
       <span class="chapter-number">27</span><span>Retries, Errors, Cancellation, and Recovery</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/observability.html">
       <span class="chapter-number">28</span><span>Observability, Telemetry, and Trajectories</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/api-sdk-acp.html">
@@ -56,10 +56,319 @@
       <span class="chapter-number">34</span><span>Gaps, Limitations, and Open Questions</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/glossary-evidence.html">
       <span class="chapter-number">35</span><span>Glossary, Evidence Catalog, and Source Index</span><span class="status-dot queued" title="Queued"></span></a></section></aside>
     <main class="main"><div class="page-shell"><article class="article" data-article><header><div class="page-kicker"><span>Orchestration</span><span>·</span><span>Chapter 26</span></div>
-      <h1>Inbox, Steering, and Continuation</h1><p class="subtitle">How mid-run input is queued, claimed, injected, or routed to child Agents</p><div class="page-meta"><span class="status queued">Queued</span><span>Upstream 47f943859b</span><span>Scope: Analyze message classes, wake and next-step behavior, claims, steer, follow-up, activation, and turn boundaries.</span></div></header>
-      <section class="placeholder"><p class="eyebrow">Research queue</p><h2>This chapter has not reached a conclusion state</h2>
-    <p><strong>Current scope:</strong> Analyze message classes, wake and next-step behavior, claims, steer, follow-up, activation, and turn boundaries.</p><p>This page is part of the complete research map, but its source-level control-flow audit is not complete. It must cover all of the following before it can be marked Verified:</p>
-    <ul class="placeholder-checks"><li>Actual bundle and profile assembly entry points</li><li>Public types, events, and configuration schemas</li><li>Normal control flow and exact mutation points</li><li>Concurrency, scope, ownership, and cleanup</li><li>Error, cancellation, retry, and degradation branches</li><li>Persistence, projections, and replay semantics</li><li>Production-path tests and runtime invariants</li><li>Benefits, costs, limitations, and open questions</li></ul></section><section class="learning-notes" aria-labelledby="learning-notes-title"><h2 id="learning-notes-title">My Learning Notes</h2>
+      <h1>Inbox, Steering, and Continuation</h1><p class="subtitle">How mid-run input is queued, claimed, injected, or routed to child Agents</p><div class="page-meta"><span class="status verified">Verified</span><span>Upstream 47f943859b</span><span>Scope: Analyze message classes, wake and next-step behavior, claims, steer, follow-up, activation, and turn boundaries.</span></div></header>
+      <section>
+  <h2>Conclusion: the Inbox Is a Replayable Scheduling Protocol, Not a Temporary Chat-Input Array</h2>
+  <div class="thesis"><p>DeepSeek Harness expresses input intent through two ordered Inbox lists: <code>next-turn</code> holds work that should each open a later Turn, while <code>next-step</code> holds steering or context that should enter together at the nearest available Step boundary. <code>followup</code>, <code>steer</code>, and <code>inject</code> are only three fixed combinations of target list and wake behavior; claim, pre-step admission, Turn-closing checks, and cancellation convergence determine when a message actually becomes visible.</p></div>
+  <p>The important capability is not merely “send another message while work is running.” Pending input itself enters the Session Event Log, allowing stable MessageIds, insertion, editing, cancellation, claiming, recovery, and UI classification to share one fact. The cost is equally explicit: <em>accepted</em> means the Inbox admitted work, not that it ran, produced a reply, or was necessarily fsynced; <code>running</code> describes whole-driver activity rather than a completion handle for one message.</p>
+</section>
+
+<section>
+  <h2>1. First Separate Six Mechanisms with Similar Names</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Name</th><th>Destination</th><th>Wakes?</th><th>Boundary semantics</th></tr></thead>
+    <tbody>
+      <tr><td><code>followup</code></td><td><code>next-turn</code></td><td>Yes</td><td>Ordinary later input; each item gets its own later Turn on the success path</td></tr>
+      <tr><td><code>steer</code></td><td><code>next-step</code></td><td>Yes</td><td>Targets the current Turn's next Step when possible; opens a Turn when idle</td></tr>
+      <tr><td><code>inject</code></td><td><code>next-step</code></td><td>No</td><td>Quiet model context; remains parked while idle until another wake arrives</td></tr>
+      <tr><td>Tool continuation</td><td>Tool results are logged; additional context enters <code>next-step</code></td><td>The current driver continues</td><td>A later Step in the same Turn, not a new follow-up</td></tr>
+      <tr><td>Continuable-child follow-up</td><td>The child Agent's <code>next-turn</code></td><td>Yes</td><td>Always a later FIFO Turn for the child; it cannot redirect the current Turn</td></tr>
+      <tr><td>Child report / settlement notice</td><td>The parent Agent's <code>next-turn</code> or <code>next-step</code></td><td>Policy-dependent</td><td>Child-to-parent traffic, entirely separate from parent-to-child follow-up</td></tr>
+    </tbody>
+  </table></div>
+  <aside class="caveat"><strong>Reading rule:</strong> “continuation” may mean continuing the same Turn after tools, retaining a continuable child's residency, or opening an ordinary later Turn. Treating the noun alone as one state machine produces the wrong architecture.</aside>
+</section>
+
+<section>
+  <h2>2. Queue Class Is Not Message Role: Identity, Source, and Scheduling Placement Are Orthogonal</h2>
+  <p>An Inbox item is still the shared immutable <code>UserMessage</code>: it has a stable <code>id</code>, <code>role: user</code>, exact content blocks, and a required source. Plugins may extend <code>MessageSourceMap</code>; <code>freezeMessage</code> structured-clones and deep-freezes, while creation assigns a fresh UUID. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/llm/llm/src/message.ts#L96-L199" title="Unified message identity, source, and freezing: Messages carry stable IDs, roles, exact content, and extensible sources; existing messages are deep-frozen and new messages receive UUIDs." aria-label="Evidence INBOX-MESSAGE-IDENTITY">INBOX-MESSAGE-IDENTITY</a></p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Dimension</th><th>Question it answers</th><th>Examples</th></tr></thead>
+    <tbody>
+      <tr><td>Message role</td><td>How it enters the provider-neutral conversation</td><td><code>user</code></td></tr>
+      <tr><td>Source</td><td>Who produced it and how the UI should interpret it</td><td><code>user</code>, plugin notice, coordinator relay, subagent report</td></tr>
+      <tr><td>Inbox target</td><td>At which scheduling boundary it is claimed</td><td><code>next-turn</code> / <code>next-step</code></td></tr>
+      <tr><td>Web placement</td><td>Where pending state renders</td><td><code>queued</code> / <code>steering</code> / <code>context</code></td></tr>
+    </tbody>
+  </table></div>
+  <p>A “steering message” is therefore not a third message structure. It is the historical fact that a user-source message was claimed from <code>next-step</code>; a non-user source with the same role is instead interpreted as context by the UI.</p>
+</section>
+
+<section>
+  <h2>3. One Durable Splice Rebuilds Both Lists; Commit Precedes Live Mutation</h2>
+  <pre><code>agent/inbox/spliced {
+  target: next-turn | next-step,
+  start,
+  removedCount?,
+  inserted: full UserMessage[],
+  outcome?: canceled
+}</code></pre>
+  <div class="claim fact"><div class="claim-label">One event vocabulary</div><p>Insertion, editing, removal, claim, and clear all normalize to the same splice. The event carries every full inserted message. Deletion receives <code>outcome: canceled</code> only on user/API/cancellation paths; the loop's claim is a pure deletion without that outcome. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent/src/types.ts#L9-L25" title="Two Inbox targets and the durable splice event: Only next-turn and next-step exist; agent/inbox/spliced records coordinates, complete inserted messages, and an optional canceled outcome." aria-label="Evidence INBOX-EVENT-SCHEMA">INBOX-EVENT-SCHEMA</a></p></div>
+  <div class="claim fact"><div class="claim-label">Commit first</div><p><code>Inbox.mutate()</code> validates coordinates and MessageId uniqueness across both lists, calls <code>session.append</code>, and mutates the in-memory array plus live notifications only after append succeeds. An append failure leaves the Inbox unchanged. A synchronous Session observer sees the pre-splice lists and can recover removed objects from the event coordinates. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent/src/inbox.ts#L128-L219" title="Commit-first splices and the identity invariant: Coordinates are normalized and validated before Session append; live state mutates only after success, and MessageId is unique across both lists." aria-label="Evidence INBOX-COMMIT-IDENTITY">INBOX-COMMIT-IDENTITY</a></p></div>
+  <p>This is also why the Web projection needs no separate command queue: it reads the Agent's current lists and applies the event being emitted once to obtain authoritative post-state.</p>
+</section>
+
+<section>
+  <h2>4. Claim Has a Strict Priority: Every next-step Item, Then at Most One next-turn Item</h2>
+  <pre><code>claim(target) for each proposed Step
+  1. Remove and take every next-step item (FIFO)
+  2. If target = next-turn, remove the head next-turn item
+  3. Emit claimed(message, turn) in that order
+
+First Step of a Turn: target = next-turn
+Later Steps in that Turn: target = next-step</code></pre>
+  <div class="claim fact"><div class="claim-label">Priority is not preemption</div><p>The constructor replays only Inbox splices after <code>seedLength</code>. Claim forms one batch from all current next-step items and appends only one ordinary queued message. It never interrupts a model request already in flight; it can act only at the next pre-step boundary. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent/src/inbox.ts#L24-L78" title="Post-seed replay and claim order: Inbox replays only post-seed splices; claim takes every next-step item first and then one next-turn item when requested." aria-label="Evidence INBOX-CLAIM-REPLAY">INBOX-CLAIM-REPLAY</a></p></div>
+  <p>This creates an often-missed composition: a Turn's first request may include long-parked injected context, steering, and that Turn's ordinary prompt at once, ordered as the next-step batch followed by the next-turn head.</p>
+</section>
+
+<section>
+  <h2>5. Follow-up Preserves the FIFO Turn Mapping, but Status Does Not Flicker Per Turn</h2>
+  <p><code>followup(message)</code> is <code>send(message, next-turn, true)</code>. When idle, wake synchronously reserves the running phase and then starts the driver asynchronously. While running, enqueueing is enough: after the current Turn closes, the live driver checks <code>hasPending</code>, installs a fresh AbortController, and continues with another Turn. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/agent.ts#L113-L132" title="Follow-up, steer, and inject mapping: Unified send inserts before optional wake; followup, steer, and inject map to next-turn+wake, next-step+wake, and next-step+quiet." aria-label="Evidence INBOX-SEND-MAP">INBOX-SEND-MAP</a></p>
+  <div class="claim fact"><div class="claim-label">Property-tested</div><p>Synchronous bursts, sequential sends, and mixed scheduling all verify that N follow-ups produce N strictly increasing Turns on the failure-free path, with exactly one ordinary message per Turn and no reordering. The entire burst still has only a <code>running → idle</code> status trace. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/tests/properties.spec.ts#L107-L190" title="Follow-up FIFO Turn property tests: Synchronous bursts, sequential sends, and mixed settlement verify one increasing Turn per ordinary message without reordering." aria-label="Evidence INBOX-FIFO-PROPERTY">INBOX-FIFO-PROPERTY</a></p></div>
+  <aside class="caveat"><strong>Boundary:</strong> this is the loop's success-path mapping, not an independent Promise per message. A pre-step rejection, cancellation, or error can stop the drain after one Turn and leave adjacent unclaimed work in the Inbox.</aside>
+</section>
+
+<section>
+  <h2>6. Steer Means “Nearest Step Plus Wake,” Not an In-Stream Append to the In-Flight Request</h2>
+  <p><code>steer(message)</code> writes to <code>next-step</code> and requests a wake. If the Agent is normally running, <code>wakeDriver()</code> does not start another driver: the current one should claim it at its next Step boundary. If the Agent is idle, steer opens a Turn itself. The core API therefore does not require <code>running</code>; an idle steer becomes the first input of a new Turn while replay still classifies it as steering. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/agent.ts#L113-L220" title="Input reclassification, driver wake, and latch: Send redirects post-abort waking input to next-turn; idle wake reserves a driver, active work latches only for maintenance/abort, and exit replays it." aria-label="Evidence INBOX-DRIVER-WAKE">INBOX-DRIVER-WAKE</a></p>
+  <div class="claim assessment"><div class="claim-label">Semantic strength</div><p>This is boundary steering, not mutation of the provider request while it is generating tokens. It changes the log prefix seen by the next model call, but cannot retract an emitted chunk and does not automatically cancel the current tool call.</p></div>
+  <p>The Web composer offers steer only while an ordinary session reports running, reducing the surprise that idle steer actually opens a Turn. Direct Host <code>session.prompt(mode: steer)</code> still exposes the underlying semantics.</p>
+</section>
+
+<section>
+  <h2>7. Inject Means “Nearest Step Without Wake”; Its Turn Depends Entirely on Timing</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Injection time</th><th>Outcome</th></tr></thead>
+    <tbody>
+      <tr><td>Agent idle</td><td>Park in <code>next-step</code> until follow-up, steer, or another waking delivery</td></tr>
+      <tr><td>Current pre-step has not claimed</td><td>Join this batch</td></tr>
+      <tr><td>Pre-step already claimed; assembly/listener/model/tool is active</td><td>Miss this request and enter the next Step</td></tr>
+      <tr><td>Inside an <code>agent/turn-stopping</code> listener</td><td>The post-listener reread can open another Step in the same Turn</td></tr>
+      <tr><td>An aborted driver is converging</td><td>No wake latch; remain parked for a future wake</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Claim cutoff</div><p>A test pauses the first pre-step listener and calls inject then steer. Both remain in next-step, are absent from the first request, and appear in insertion order in the second. If the current batch is rejected, later next-step input survives but still needs a fresh wake. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/tests/interception.spec.ts#L257-L363" title="Pre-step claim cutoff and late-input tests: Inject and steer arriving during pre-step miss the first request and enter the next Step in order; input after a blocked batch survives." aria-label="Evidence INBOX-PRESTEP-CUTOFF-TEST">INBOX-PRESTEP-CUTOFF-TEST</a></p></div>
+</section>
+
+<section>
+  <h2>8. Pre-step Consumes Before Admission: Reject Does Not Automatically Put the Original Message Back</h2>
+  <pre><code>turn/start
+  → inbox.claim(target)                 // durable pure deletion
+  → assemble system prompt
+  → agent/pre-step waterfall
+       ├─ enter(messages) → step/start → user/message* → model
+       └─ reject          → turn/end(blocked), no Step
+</code></pre>
+  <div class="claim fact"><div class="claim-label">One-way claim</div><p>The loop has already removed the complete batch before listeners run. A listener may preserve, replace, or empty messages. Reject records a blocked Turn; the original batch is not marked canceled, does not become <code>user/message</code>, and is not restored to the queue. An empty first enter instead produces a completed Turn with no Step. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/agent.ts#L245-L329" title="Turn/Step claim, admission, and closing machine: A Turn starts before claim; reject yields blocked with no Step, empty enter yields completed with no Step, next-step continues the Turn, and other pending work opens another Turn." aria-label="Evidence INBOX-TURN-MACHINE">INBOX-TURN-MACHINE</a></p></div>
+  <p>If assembly or a listener throws, the Turn closes with error. next-turn work not yet claimed and next-step work arriving later remain queued, but the driver stops. The design makes input claim the commit point rather than successful model dispatch.</p>
+</section>
+
+<section>
+  <h2>9. Tool Continuation and turn-stopping Reuse next-step but Have Different Producers</h2>
+  <p>After the model emits tool calls, results enter the log in model order. Each finalized result's <code>additionalContexts</code> is then spliced into next-step in order. Without <code>concludesTurn</code>, the loop opens another Step in the same Turn. A conclusion still cannot skip next-step input that already exists. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/tool-calls.ts#L145-L158" title="Ordered tool-result and additional-context commit: Each finalized tool result is appended in model order, then its additionalContexts are passed one by one to the next-step acceptor." aria-label="Evidence INBOX-TOOL-CONTEXT">INBOX-TOOL-CONTEXT</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/agent.ts#L287-L399" title="Same-Turn continuation after tool results: An unconcluded tool outcome continues the Turn into a later Step, and existing next-step work prevents an immediate close even after conclusion." aria-label="Evidence INBOX-TOOL-CONTINUATION">INBOX-TOOL-CONTINUATION</a></p>
+  <div class="claim fact"><div class="claim-label">Last objection point</div><p>When the model appears ready to end and next-step is empty, the loop awaits <code>agent/turn-stopping</code> and rereads next-step. A regression test proves that steer from this listener forces Step 2; if a listener-injected batch is rewritten to empty at pre-step, no extra model call occurs. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/tests/contract-regressions.spec.ts#L317-L340" title="Turn-stopping steering regression: When the model would otherwise stop, steer from a turn-stopping listener forces a second model Step in the same Turn." aria-label="Evidence INBOX-TURN-STOPPING-TEST">INBOX-TURN-STOPPING-TEST</a></p></div>
+  <aside class="caveat"><strong>Do not conflate them:</strong> tool continuation is a later Step for the current Agent and current Turn. Subagent continuation is the ability to send more work to a child Agent across multiple Turns and process-residency epochs.</aside>
+</section>
+
+<section>
+  <h2>10. <code>running</code> Belongs to the Whole Driver; Maintenance Still Appears Idle</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Observation</th><th>What it means</th><th>What it does not guarantee</th></tr></thead>
+    <tbody>
+      <tr><td><code>status: running</code></td><td>A driver is reserved and may be in pre-step, model, tools, Turn close, or between drained Turns</td><td>One particular message is executing; the current Turn certainly still accepts steer</td></tr>
+      <tr><td><code>status: idle</code></td><td>No turn driver; a maintenance task may still be active</td><td>The Inbox is empty</td></tr>
+      <tr><td><code>whenIdle()</code></td><td>Wait for current activity and replacement activity started before retirement to stabilize</td><td>A result for one MessageId</td></tr>
+      <tr><td><code>runMaintenance()</code></td><td>Exclusively own non-Turn activity from true idle; latch waking input</td><td>Expose maintenance itself to the model</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Activity ownership</div><p>The public types define running as the complete drain interval and keep maintenance externally idle. <code>whenIdle</code> follows replacement work by comparing activity Promises rather than binding to a send. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent/src/runtime-types.ts#L43-L143" title="Agent status, whenIdle, maintenance, and input contracts: Running spans the whole driver drain, maintenance remains externally idle, whenIdle follows replacement activity, and all three input boundaries are explicit." aria-label="Evidence INBOX-ACTIVITY-CONTRACT">INBOX-ACTIVITY-CONTRACT</a></p></div>
+</section>
+
+<section>
+  <h2>11. Read Cancel Across Three Layers: Signal, Pending Input, and Already-Claimed Input</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Call</th><th>Current activity</th><th>Unclaimed Inbox</th><th>Claimed batch</th></tr></thead>
+    <tbody>
+      <tr><td><code>cancel(cause)</code></td><td>Abort when non-idle</td><td>Clear next-step then next-turn and write canceled splices; also clears quiet parked input while idle</td><td>Never restored</td></tr>
+      <tr><td><code>cancel(cause,{keepInbox:true})</code></td><td>Abort when non-idle</td><td>Preserve, but pre-abort work is not automatically woken</td><td>Never restored</td></tr>
+      <tr><td>Web <code>session.cancel</code></td><td>Calls the keepInbox form</td><td>Preserves ordinary queue and steering</td><td>Never restored</td></tr>
+      <tr><td>Subagent interrupt</td><td>Calls the keepInbox form and returns immediately</td><td>Preserves and parks until a later waking send</td><td>Never restored</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Implementation contract</div><p>Default cancel always invokes Inbox.clear and aborts only a non-idle phase; keepInbox skips clear. Tests prove that a waking send may already be claimed before cancel is called, leaving nothing for keepInbox to preserve. Default cancel drops a mid-step queued tail and steering. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/agent.ts#L134-L140" title="Cancel clear and abort implementation: Default cancel clears the Inbox and wake latch, keepInbox skips clearing, and only a non-idle phase receives the abort signal." aria-label="Evidence INBOX-CANCEL-CODE">INBOX-CANCEL-CODE</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/tests/cancel.spec.ts#L75-L174" title="Claimed work, keepInbox, and latch tests: Tests prove claimed work is not restored, pre-abort queued work parks, post-abort waking sends replay, and default cancel clears the latch." aria-label="Evidence INBOX-CANCEL-BEHAVIOR-TEST">INBOX-CANCEL-BEHAVIOR-TEST</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/tests/cancel.spec.ts#L384-L403" title="Default cancellation drops the queued tail: Default cancel during a running Turn records an aborted ending and drops the queued tail before it runs." aria-label="Evidence INBOX-CANCEL-DROP-TEST">INBOX-CANCEL-DROP-TEST</a></p></div>
+</section>
+
+<section>
+  <h2>12. The Abort-to-Idle Wake Latch Repairs Cancellation Convergence but Leaves a Narrower Retirement Gap</h2>
+  <pre><code>Active Turn is aborted but not yet idle
+  ├─ already queued + keepInbox → preserved but parked (no latch)
+  ├─ new waking send afterward → force next-turn + wakeRequested=true
+  ├─ default cancel            → clear Inbox + clear latch
+  └─ disposed                  → never latch
+
+Old driver finally: idle → if latched and pending remains → new driver</code></pre>
+  <div class="claim fact"><div class="claim-label">Why reclassification matters</div><p>Send samples abort state before insertion. Even a post-abort steer is redirected to next-turn so it cannot join a Turn already committed to end. Replay after convergence orders the old <code>turn/end</code> before the new <code>turn/start</code>; removing the latched message suppresses an empty replay. Regression tests cover same-tick and slow convergence, maintenance, default cancel, and disposal. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/tests/cancel.spec.ts#L103-L218" title="Abort-to-idle wake-latch test matrix: Covers pre-abort parking, post-abort replay, latch clearing/removal, and slow cancellation convergence." aria-label="Evidence INBOX-CANCEL-LATCH-TEST">INBOX-CANCEL-LATCH-TEST</a></p></div>
+  <aside class="caveat"><strong>Known gap:</strong> the design record explicitly leaves the sub-microtask window after the final <code>hasPending</code> check but before driver exit. The phase is still running and not aborted, so a new wake does not latch even though it may have missed the final check; the input then parks until another wake. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/.agents/notes/implemented/bug-fix/2026-08-07-cancel-convergence-wake-latch.md#L9-L29" title="Cancellation-convergence latch decision and remaining gap: Records why the latch exists, why it distinguishes post-abort wakes, and how the post-hasPending sub-microtask gap can still park input." aria-label="Evidence INBOX-WAKE-LATCH-NOTE">INBOX-WAKE-LATCH-NOTE</a></aside>
+</section>
+
+<section>
+  <h2>13. Turn Records Alone Cannot Answer “What Happened to This Work?”</h2>
+  <p>A no-Step Turn may mean an empty claim, a listener rewrite to empty, pre-step rejection, cancellation, or error. Reading <code>turn/end</code> alone cannot distinguish “nothing ran” from “input was consumed before reaching the model.” <code>foldConsumedWork</code> therefore joins steps, pure-deletion claims, and canceled splices. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent/src/consumed-work.ts#L60-L107" title="Joint event fold for consumed work: A single pass joins steps, claims, turn endings, and canceled splices to distinguish accounted Turns from dropped-unrun input." aria-label="Evidence INBOX-CONSUMED-WORK">INBOX-CONSUMED-WORK</a></p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>History shape</th><th>Accounting</th></tr></thead>
+    <tbody>
+      <tr><td>Entered a Step</td><td>The Turn consumed work</td></tr>
+      <tr><td>Claim followed by blocked / aborted / error</td><td>The Turn consumed work</td></tr>
+      <tr><td>Claim followed by completed with no Step</td><td>Treat as listener-emptying, not a completed work Turn</td></tr>
+      <tr><td>Inbox canceled without replacement</td><td><code>droppedUnrun: true</code></td></tr>
+      <tr><td>One splice replaces an old message with a new one</td><td>Still pending, not dropped</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Regression coverage</div><p>Dedicated tests cover failed claims, stopped claims, blocked claims, empty rewrites, claims outside a Turn, unrun drops, replacements, and a later Turn absorbing an older drop. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent/tests/consumed-work.spec.ts#L38-L158" title="Consumed-work boundary tests: Covers no work, failed/cancelled/blocked claims, empty rewrites, out-of-Turn claims, drops, replacements, and later absorption." aria-label="Evidence INBOX-CONSUMED-WORK-TEST">INBOX-CONSUMED-WORK-TEST</a></p></div>
+</section>
+
+<section>
+  <h2>14. “Logged,” “Pushed to Web,” and “Fsynced” Are Three Different Commit Points</h2>
+  <pre><code>Host prompt accepted
+  → Inbox splice synchronously appended to live Session
+  → API may return accepted
+  → JSONL write-behind batch (fixed window by default)
+
+First pre-step checkpoint
+  → flush enqueue + turn/start + claim
+Before model-adapter dispatch
+  → flush step/start + user/message + request prefix</code></pre>
+  <div class="claim fact"><div class="claim-label">Fail closed before side effects</div><p>The checkpoint policy flushes at pre-step and the <code>llm/stream</code> boundary. The latter delays downstream-stream construction, so a flush failure prevents model dispatch. Top-level tool dispatch uses the same posture. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-checkpoint-policy/src/index.ts#L20-L82" title="Semantic checkpoints before model and tool side effects: Pre-step and llm/stream boundaries flush the Session; flush failure prevents model or top-level tool side-effect dispatch." aria-label="Evidence INBOX-CHECKPOINT-POLICY">INBOX-CHECKPOINT-POLICY</a></p></div>
+  <div class="claim fact"><div class="claim-label">Hard-crash experiment</div><p>An E2E child process is killed at model dispatch. Recovery still contains insertion, turn/start, claim, step, user message, and request prefix, plus synthesized interrupted closers. This delivery reran that file's two tests and both passed. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-checkpoint-policy/tests/crash-recovery.e2e.ts#L82-L110" title="Hard-crash recovery at model dispatch: After a hard child-process kill, recovery retains the complete request prefix with interrupted closers and repairs missing tool results as unknown outcomes." aria-label="Evidence INBOX-CRASH-RECOVERY">INBOX-CRASH-RECOVERY</a></p></div>
+  <p>The JSONL backend batches live events behind a fixed window; flush and teardown drain immediately. Every batch append is fsynced, and failure rolls the file back to its prior byte length. A synchronous prompt <code>accepted</code> is therefore Session-level admission, not an independent fsync receipt. A product promising power-loss safety before acknowledgement would need to await an explicit checkpoint. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-persistence-jsonl/README.md#L40-L52" title="JSONL fsync, write-behind, and flush: Initial and later batches are fsynced with rollback on failure; live events use a fixed batching window while flush and teardown drain." aria-label="Evidence INBOX-JSONL-DURABILITY">INBOX-JSONL-DURABILITY</a></p>
+</section>
+
+<section>
+  <h2>15. Resume Rebuilds Pending Work but Does Not Run Merely Because It Rebuilt; Fork Seeds Do Not Copy Ancestor To-Dos</h2>
+  <p>The resume path prepares a Session from persistence and then rejoins the same prepare/setup/publish path as creation. A new <code>ReactLoopAgent</code> constructor restores the last Turn number and Inbox from the log. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/index.ts#L647-L709" title="Persisted Agent resume path: Resume prepares from persistence, rejoins shared setupAndPublish, and publishes a new Agent handle with resume source." aria-label="Evidence INBOX-AGENT-RESUME">INBOX-AGENT-RESUME</a></p>
+  <div class="claim fact"><div class="claim-label">Seed ownership boundary</div><p>Inbox replays only <code>session.events.slice(seedLength)</code>. Historical splices copied from a parent Session into a fork seed are child context history, not newly pending child work. Messages accepted by the child after its seed but never claimed do recover. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent/src/inbox.ts#L24-L39" title="Inbox seed-ownership boundary: Construction explicitly skips events before seedLength and reconstructs pending state only from the Session&#39;s own suffix splices." aria-label="Evidence INBOX-SEED-BOUNDARY">INBOX-SEED-BOUNDARY</a></p></div>
+  <p>Construction and publication do not call wake. An ordinary Host cold resume is normally followed immediately by a waking prompt; a continuable-child cold resume likewise calls followup next, so older pending work proceeds with the new wake under the two-list claim rule. Resuming an Agent alone does not promise to consume parked input.</p>
+</section>
+
+<section>
+  <h2>16. The Ordinary Host API Returns Admission, Not a Turn or Reply</h2>
+  <p><code>session.prompt</code> accepts <code>mode: queue | steer</code>. After time-zone handling, durable attachment conversion, and message-source construction, it calls <code>agent.followup</code> or <code>agent.steer</code> and returns <code>{accepted:true}</code> once synchronous enqueueing succeeds. It does not await pre-step, model output, or idle. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/src/api-proxy.ts#L2461-L2517" title="Ordinary prompt admission and mode routing: The Host creates a sourced message, routes queue to followup and steer to steer, and returns accepted after synchronous enqueue succeeds." aria-label="Evidence INBOX-HOST-PROMPT">INBOX-HOST-PROMPT</a></p>
+  <div class="claim fact"><div class="claim-label">Wire contract</div><p>The public contract maps queue/steer directly to the two Agent operations. <code>updateQueue</code> supports edit/remove/steer, while <code>session.cancel</code> explicitly preserves pending work. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/src/api/sessions.ts#L315-L371" title="Session prompt, queue mutation, and cancel wire contract: The contract defines queue/steer prompts, edit/remove/steer mutations, and ordinary cancellation that preserves pending work." aria-label="Evidence INBOX-HOST-CONTRACT">INBOX-HOST-CONTRACT</a></p></div>
+  <p>The Host resolves or resumes a cold ordinary Session first. Direct <code>mode: steer</code> adds no running check, so it retains the core behavior where idle steer opens a Turn. That is a different layer from the UI's conservative submission policy.</p>
+</section>
+
+<section>
+  <h2>17. Queue Edit, Remove, and Strict Steer Address MessageId; Claim Wins the Race</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Action</th><th>Admission</th><th>Implementation</th></tr></thead>
+    <tbody>
+      <tr><td>Edit</td><td>Still pending; text blocks only</td><td>Deep-freeze a replacement while preserving MessageId</td></tr>
+      <tr><td>Remove</td><td>Still pending</td><td>Delete with a canceled splice</td></tr>
+      <tr><td>Strict steer</td><td>Item remains in next-turn and Agent currently reports running</td><td>Remove, then call steer with the same message</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Authority is checked at mutation time</div><p>The Host relocates the message across both lists. If the loop claimed it first, the operation returns <code>queue-item-not-found</code>. Strict steer's running check is stronger than free-form <code>mode: steer</code>, but it is not a capability token bound to one Turn and remains subject to the final retirement window. Subagent-owned Sessions reject these ordinary queue operations. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/src/api-proxy.ts#L2568-L2633" title="MessageId queue mutation and strict steer: The Host relocates pending items, limits edits to text, accepts strict steer only for running next-turn items, removes then steers the same message, and cancels with keepInbox." aria-label="Evidence INBOX-HOST-QUEUE-MUTATION">INBOX-HOST-QUEUE-MUTATION</a></p></div>
+</section>
+
+<section>
+  <h2>18. Web Uses Whole Snapshots for the Live Mirror and Durable Splices to Recover Historical Identity</h2>
+  <pre><code>Session splice (observer sees pre-state)
+  → Host applies this splice to current lists
+  → session/queue { complete items[] }
+       next-turn              → queued
+       next-step + user       → steering
+       next-step + non-user   → context
+</code></pre>
+  <div class="claim fact"><div class="claim-label">Post-state projection</div><p>The Host explicitly projects both lists and splits next-step into steering/context by source.kind. Its event observer applies the emitted splice to pre-state rather than waiting for live Inbox mutation. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/src/api-proxy.ts#L1326-L1355" title="Authoritative Web projection of both Inbox lists: The Host projects next-turn and next-step, distinguishes steering/context by user source, and applies the current splice inside the synchronous observer to derive post-state." aria-label="Evidence INBOX-HOST-PROJECTION">INBOX-HOST-PROJECTION</a></p></div>
+  <div class="claim fact"><div class="claim-label">Reconnect baseline</div><p>The mux sends <code>session/subscribed</code> first and emits a queue baseline only when pending work exists. The client clears the old generation on subscribed, so “no later queue frame” correctly means an empty queue rather than retaining disconnected phantom rows. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/src/api-proxy.ts#L3430-L3455" title="Mux reconnect queue baseline: Reconnect establishes Session subscriptions and then sends a complete queue baseline only for Agents that still have pending work." aria-label="Evidence INBOX-RECONNECT-HOST">INBOX-RECONNECT-HOST</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/runtime/src/client/sessions/session.ts#L412-L485" title="Client-generation queue reset: The client clears the old queue mirror on session/subscribed and then accepts the same stream&#39;s later snapshot, correctly handling an omitted empty baseline." aria-label="Evidence INBOX-RECONNECT-CLIENT">INBOX-RECONNECT-CLIENT</a></p></div>
+  <p>The Queue mirror is a whole-snapshot last-wins value. Pending steering retires when a durable <code>user/message</code> with the same MessageId appears. Historical replay instead reads a non-canceled removal from next-step and then checks user source to reconstruct the same <code>user/message</code> as steering. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/runtime/src/client/sessions/queue-mirror.ts#L23-L73" title="Queue snapshot mirror and durable handoff: The client replaces the queue from whole snapshots and retires one pending steering row when user/message with the same MessageId arrives." aria-label="Evidence INBOX-CLIENT-MIRROR">INBOX-CLIENT-MIRROR</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/runtime/src/client/sessions/steering-history.ts#L20-L63" title="Durable steering history classification: Replay records identities removed from next-step without cancellation and classifies only the later user-source user/message as steering." aria-label="Evidence INBOX-HISTORY-CLASSIFICATION">INBOX-HISTORY-CLASSIFICATION</a></p>
+</section>
+
+<section>
+  <h2>19. The UI Places Queued and Steering Input Separately, and Treats “Accelerated Send” as Policy, Not Truth</h2>
+  <p>QueueDock shows only <code>placement=queued</code> and provides edit, remove, and per-row steer. The steer button is enabled only while running. Pending steering instead renders as a user-style bubble at the conversation tail and hands off after the durable message enters history. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/ui-conversation/src/client/queue/QueueDock.tsx#L27-L205" title="QueueDock filtering and row actions: The Dock displays only queued placement and offers text edit, remove, and running-only steer for ordinary sessions." aria-label="Evidence INBOX-QUEUE-DOCK">INBOX-QUEUE-DOCK</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/ui-conversation/src/client/chat/ChatView.tsx#L400-L406" title="Pending steering at the conversation tail: ChatView renders every pending steering item as a separate bubble after the running indicator." aria-label="Evidence INBOX-PENDING-STEERING-UI">INBOX-PENDING-STEERING-UI</a></p>
+  <div class="claim fact"><div class="claim-label">Enter policy</div><p>A non-running or non-steer-capable transport always queues. A busy ordinary session follows its saved Queue/Steer preference, while Cmd/Ctrl+Enter chooses the opposite. Accelerated Enter on an empty draft can strict-steer every queued row. Held Enter is suppressed to prevent repeated sends. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/ui-conversation/src/client/input/submission-policy.ts#L17-L57" title="Busy-Enter queue/steer decision: Non-running or non-steer transports force queue; busy state follows the preference, accelerated gesture chooses the opposite, and direct steer is explicitly best-effort." aria-label="Evidence INBOX-SUBMISSION-POLICY">INBOX-SUBMISSION-POLICY</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/ui-conversation/src/client/skeleton/InputBar.tsx#L313-L339" title="Enter deduplication and whole-queue steer gesture: Repeated Enter is suppressed; accelerated Enter on an empty draft steers every still-pending queued row, otherwise submission follows policy." aria-label="Evidence INBOX-INPUT-GESTURES">INBOX-INPUT-GESTURES</a></p></div>
+  <aside class="caveat"><strong>Product wording:</strong> direct composer steer is a best-effort next boundary. Per-row QueueDock promotion additionally checks “still queued + currently running.” Both eventually call the same Agent steer and should not imply that an already-dispatched model request can be edited.</aside>
+</section>
+
+<section>
+  <h2>20. A Continuable Child's Activation Is a Residency Epoch, Not a Request or Result</h2>
+  <p><code>startContinuable</code> establishes a durable child. Later <code>followup</code> hides the resident-versus-cold-resume distinction and routes every item through the child's single Inbox. The success boundary is acceptance of a message id by that Inbox; it does not await Turn start or return a child reply. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/index.ts#L203-L275" title="Continuable-child start/followup/interrupt/report seam: Start ends at initial Inbox acceptance; later followup is the next FIFO Turn; interrupt preserves pending work; report flows from the exact child to its direct parent." aria-label="Evidence INBOX-CONTINUATION-SEAM">INBOX-CONTINUATION-SEAM</a></p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Activation state</th><th>Derived condition</th></tr></thead>
+    <tbody>
+      <tr><td>running</td><td>Child Agent is running, or the manager recorded a waking message before synchronous send completed</td></tr>
+      <tr><td>waiting</td><td>Child Agent is quiescent but still owns undisposed descendant Activations</td></tr>
+      <tr><td>settled</td><td>Agent is quiescent with no owned children, so its handle can be disposed</td></tr>
+    </tbody>
+  </table></div>
+  <p>One Activation may execute many FIFO Turns and may remain resident after its own Agent becomes idle because descendants still run. The manager owns only residency and ownership; the Agent loop and Inbox remain the sole owners of Turn ordering. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/continuation.ts#L1-L19" title="Activation as a residency epoch: An Activation is explicitly not a request, result, cancellation, or task; it can execute many FIFO Turns while the Agent Inbox remains the sole Turn queue." aria-label="Evidence INBOX-ACTIVATION-MODEL">INBOX-ACTIVATION-MODEL</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/continuation.ts#L151-L159" title="Derived Activation running/waiting/settled states: State is derived from Agent activity and the owned-child set rather than introducing a second execution state machine." aria-label="Evidence INBOX-ACTIVATION-STATE">INBOX-ACTIVATION-STATE</a></p>
+</section>
+
+<section>
+  <h2>21. Parent-to-Child Delivery Is Always Follow-up; a Lock Linearizes Delivery Against Disposal</h2>
+  <p>For a resident child, the manager submits under a child-id lock. If disposal has begun, delivery waits for release and then cold-resumes. For an absent child, it inspects persistence, authorizes against durable parent lineage before folding, reads only the post-seed continuable descriptor, and reconstructs an Activation. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/continuation.ts#L459-L505" title="Resident, disposal-race, and cold-resume delivery: A per-child lock serializes followup: resident children submit directly, absent children cold-resume, and delivery racing disposal waits for release then retries." aria-label="Evidence INBOX-CONTINUATION-DELIVERY">INBOX-CONTINUATION-DELIVERY</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/continuation.ts#L876-L932" title="Continuable-child cold resume and lineage authorization: Cold resume inspects persistence, authorizes the durable direct parent first, folds only the post-seed descriptor, materializes, and then submits." aria-label="Evidence INBOX-COLD-RESUME">INBOX-COLD-RESUME</a></p>
+  <div class="claim fact"><div class="claim-label">Acceptance fence</div><p>Final admission is a no-await synchronous span checking caller signal, manager drain, Activation disposal, and direct-parent authority. It adds MessageId to the <code>accepted</code> set before invoking child <code>Agent.followup</code>, then marks the Activation announced. Every parent-to-child message therefore enters <code>next-turn</code>; it never steers the child's current Turn. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/continuation.ts#L1125-L1204" title="Synchronous admission fence for child follow-up: A no-await span checks signal, drain, disposal, and lineage; it records the accepted ID before synchronously calling child Agent.followup and marking announced." aria-label="Evidence INBOX-CONTINUATION-ADMISSION">INBOX-CONTINUATION-ADMISSION</a></p></div>
+  <div class="claim fact"><div class="claim-label">Interrupt is not settlement</div><p>Interrupt authorizes only against a live Activation, calls <code>cancel(...,{keepInbox:true})</code>, and returns immediately. Pending work and descendants remain, claimed work is not restored, and an absent target is an accepted no-op. A later waking follow-up restarts the parked queue. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/continuation.ts#L507-L568" title="Continuable-child interrupt semantics: Interrupt authorizes the live target, calls cancel with keepInbox, and returns immediately; claimed work is not restored, pending work and descendants remain, and absence is a no-op." aria-label="Evidence INBOX-CHILD-INTERRUPT">INBOX-CHILD-INTERRUPT</a></p></div>
+</section>
+
+<section>
+  <h2>22. Child-to-Parent Has Two Independent Messages: Explicit Report and Automatic Settlement Account</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Message</th><th>Source</th><th>Parent scheduling</th><th>Ends child?</th></tr></thead>
+    <tbody>
+      <tr><td>Explicit report</td><td><code>subagent-report</code> relay</td><td><code>wakeup → followup</code>; <code>quiet → inject</code></td><td>No</td></tr>
+      <tr><td>Settlement notice</td><td><code>subagent-settled</code> notice</td><td>parent closing → inject; idle → followup; busy → steer</td><td>It accounts for ended residency; it is not words authored by the child</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Explicit reporting</div><p>Only the exact resident child Agent may report. The recipient is derived from durable direct-parent lineage rather than caller choice. wakeup versus quiet is a parent scheduling policy; reporting does not alter the child's Turn or Activation. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/continuation.ts#L583-L693" title="Exact-child reporting and parent scheduling: Only the exact resident child may report; direct parent comes from lineage; wakeup uses followup, quiet uses inject, and reporting does not end the child." aria-label="Evidence INBOX-CHILD-REPORT">INBOX-CHILD-REPORT</a></p></div>
+  <div class="claim fact"><div class="claim-label">Settlement notification</div><p>The manager delivers settlement after the child handle is released but before parent ownership is released, preventing the parent watcher from disposing first. A busy parent receives steer, letting several simultaneous child completions coalesce into one next-step batch. Notice failure is logged and dropped, and final flush is best-effort. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/continuation.ts#L1363-L1465" title="Settlement-notice ordering and routing: Notice delivery precedes parent-ownership release; closing parents receive inject, idle parents followup, busy parents steer; failures drop and final flush is best-effort." aria-label="Evidence INBOX-SETTLEMENT-NOTICE">INBOX-SETTLEMENT-NOTICE</a></p></div>
+</section>
+
+<section>
+  <h2>23. Child Web and Model Control Surfaces Are Intentionally Narrower Than Ordinary Sessions</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Surface</th><th>Follow-up</th><th>Steer</th><th>Stop</th></tr></thead>
+    <tbody>
+      <tr><td>Web continuable child</td><td>Requires live direct parent; text only; returns MessageId</td><td>None; client ignores mode and uses subagent.prompt</td><td>May interrupt by durable address while parent is offline</td></tr>
+      <tr><td>Web one-shot child</td><td>Read-only</td><td>None</td><td>None</td></tr>
+      <tr><td>Model <code>send_message</code></td><td>The exact live direct parent sends a later FIFO Turn to its child</td><td>None</td><td>A live ancestor can use <code>interrupt_agent</code> on a descendant</td></tr>
+    </tbody>
+  </table></div>
+  <p>The wire contract defines prompt receipt as an Inbox MessageId and interrupt receipt as signal acceptance rather than target quiescence. Host child prompt requires a live parent, while interrupt deliberately performs no parent, catalog, or persistence lookup. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/src/api/subagents.ts#L38-L119" title="Subagent prompt and interrupt receipt contract: Prompt receipt is an accepted MessageId with independent later execution; interrupt receipt acknowledges only the cancel signal, preserves pending work, and accepts absent/idle targets." aria-label="Evidence INBOX-SUBAGENT-WIRE">INBOX-SUBAGENT-WIRE</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/src/api-proxy.ts#L2737-L2799" title="Subagent Host prompt and offline-parent interrupt: Child prompt requires a live parent and calls continuation followup; interrupt performs no parent/catalog/persistence lookup and lets the live Activation authorize the durable address." aria-label="Evidence INBOX-SUBAGENT-HOST">INBOX-SUBAGENT-HOST</a></p>
+  <p>The client makes one-shot children read-only. A running continuable child keeps Send and exposes Stop separately, so new input becomes a later Turn. With the parent offline, input is disabled but a live child can still be stopped. The model tool likewise states that <code>send_message</code> returns no reply and cannot redirect current work. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/runtime/src/client/sessions/session.ts#L184-L329" title="Client ordinary/child prompt and cancel routing: Ordinary sessions pass queue/steer through; one-shot children are read-only; continuable children are text-only and ignore mode; cancel routes to session.cancel or subagent.interrupt." aria-label="Evidence INBOX-CHILD-CLIENT">INBOX-CHILD-CLIENT</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/ui-conversation/src/client/skeleton/InputBar.tsx#L541-L555" title="Independent Send and Stop for a running child: A running ordinary session makes Stop primary, while a continuable child retains Send as primary and exposes Stop separately so follow-ups can queue." aria-label="Evidence INBOX-CHILD-COMPOSER">INBOX-CHILD-COMPOSER</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/ui-subagent/src/client/index.ts#L43-L52" title="Child composer while the parent is offline: One-shot children are always read-only; a parent-offline continuable child keeps the default composer while running to expose Stop, then becomes read-only after stopping." aria-label="Evidence INBOX-CHILD-OFFLINE-UI">INBOX-CHILD-OFFLINE-UI</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/tool-subagent-control/src/index.ts#L25-L119" title="Model contract for send_message and interrupt_agent: send_message uses the exact caller for child followup, cannot redirect the current Turn, and returns no child reply; interrupt only requests cancellation and preserves the queue." aria-label="Evidence INBOX-CONTROL-TOOLS">INBOX-CONTROL-TOOLS</a></p>
+</section>
+
+<section>
+  <h2>24. Two Reproducible Documentation Drifts Exist at the Pinned Baseline</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Adjacent documentation/comment</th><th>What it says</th><th>Current production code</th></tr></thead>
+    <tbody>
+      <tr><td><code>api/events.ts</code></td><td>A pending message becomes durable only when claimed; pending work has no durable Session event</td><td><code>agent/inbox/spliced</code> is appended before live mutation and insertion carries the complete message</td></tr>
+      <tr><td>ApiProxy README</td><td>Pending next-step steering stays outside the Web projection</td><td><code>queueItems()</code> projects both lists, labels user-origin next-step as steering, and ChatView renders its pending bubble</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Not an interpretive difference</div><p>The wire comments directly contradict the current durable event schema and Inbox implementation. The README directly contradicts the current Host projection and UI. These are comparisons within the same pinned commit, not runtime speculation. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/src/api/events.ts#L36-L84" title="Durability drift in queue wire comments: The file carries complete pending messages in queue frames yet says they become durable only at claim and have no durable Session event, contradicting the Inbox splice implementation." aria-label="Evidence INBOX-WIRE-DOC-DRIFT">INBOX-WIRE-DOC-DRIFT</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/README.md#L41" title="ApiProxy README drift on next-step projection: The README says next-step steering stays outside Web projection, while current queueItems and ChatView explicitly project and render it." aria-label="Evidence INBOX-README-DRIFT">INBOX-README-DRIFT</a></p></div>
+  <aside class="caveat"><strong>More precise wording:</strong> the pending-queue Web snapshot is a transient control plane, while the Inbox splices supporting it are Session events. A logically committed Session event still does not mean the JSONL backend has completed fsync.</aside>
+</section>
+
+<section>
+  <h2>25. Guarantee Matrix and Design Assessment</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Claim</th><th>Guaranteed</th><th>Not guaranteed</th></tr></thead>
+    <tbody>
+      <tr><td>Ordinary follow-up</td><td>FIFO in one Inbox; one Turn per item during a successful drain</td><td>An independent result Promise per item; automatic continuation after rejection/error</td></tr>
+      <tr><td>Steer</td><td>The nearest Step boundary not already crossed; can wake from idle</td><td>Mutation of an in-flight request; absolute freedom from retirement races</td></tr>
+      <tr><td>Inject</td><td>Model-facing context at the next claim</td><td>Self-wake; guaranteed membership in the current Turn</td></tr>
+      <tr><td>Cancel keepInbox</td><td>Preservation of work not yet claimed</td><td>Restoration of claimed work; automatic wake for pre-abort queued work</td></tr>
+      <tr><td>Prompt acceptance</td><td>Synchronous Inbox/Session admission and a MessageId for child delivery</td><td>Model dispatch, a produced reply, or completed physical fsync</td></tr>
+      <tr><td>Continuable child</td><td>Cold resume across residency; parent-to-child always a later FIFO Turn</td><td>A synchronous child result from send_message; current-Turn steering</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">Final assessment</div><p>The strongest design choice is avoiding separate pending-work queues for UI, plugins, and subagents. Two lists, one splice vocabulary, stable identities, and one claim algorithm span the kernel, recovery, and product surface. The expensive complexity accumulates around “acceptance is not execution”: pre-step claims first, cancel does not roll back, driver status spans Turns, and Web snapshots plus physical persistence each add their own commit point. The system has filled most observability gaps with consumed-work folding, checkpoints, and a wake latch. Public documentation still needs correction; stronger no-stranding or crash-safe acknowledgement would require a new explicit protocol, not more optimistic wording.</p></div>
+  <div class="claim fact"><div class="claim-label">Verification status</div><p>Beyond branch-by-branch tracing of production source, wire contracts, READMEs, and tests at the pinned commit, this delivery executed 13 targeted Agent/Inbox/Host/client/subagent Vitest files (379 tests passed) and separately ran the hard-crash checkpoint file under the E2E configuration (2 tests passed): 14 files and 381 tests passed in total.</p></div>
+</section>
+<section class="learning-notes" aria-labelledby="learning-notes-title"><h2 id="learning-notes-title">My Learning Notes</h2>
     <p class="privacy">Autosaved only in this browser. Nothing is uploaded or committed. Export Markdown whenever you want to keep a copy.</p><textarea data-learning-notes aria-label="My Learning Notes" placeholder="Record your understanding, questions, counterexamples, and transferable principles…"></textarea>
     <div class="note-footer"><span data-note-saved>Local draft</span><button type="button" data-note-export>Export Markdown</button>
     <button type="button" class="danger" data-note-clear>Clear</button><span data-note-count>0 characters</span></div></section><nav class="pagination" aria-label="Chapter pagination"><a href="../pages/workflow-ralph.html"><small>← Previous chapter · 25</small><strong>Workflow and Ralph</strong></a><a class="next" href="../pages/failure-recovery.html"><small>Next chapter · 27 →</small><strong>Retries, Errors, Cancellation, and Recovery</strong></a></nav></article>
