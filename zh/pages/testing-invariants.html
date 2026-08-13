@@ -170,16 +170,17 @@ real assembled subprocess ◄─────────────────
 <section>
   <h2>11. 平台矩阵不是复制同一套命令，而是分配不同证据责任</h2>
   <p>Linux PR workflow 把 Node 24 static、coverage 与 consumer 分成独立 jobs。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/.github/workflows/ci.yml#L63-L257" title="Linux 静态、覆盖与消费者门禁: 定义 Linux 上相互独立的静态检查、覆盖率与消费方验证作业及其依赖。" aria-label="证据 TINV-CI-LINUX">TINV-CI-LINUX</a>Consumer gate graph 拥有 build、package-consumption checks、assembled snapshots、browser snapshot 与 built-bin smoke。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/scripts/run-gates.ts#L374-L419" title="Consumer job 的实际 gate 闭包: Consumer graph 组装 build、publint、built companion、snapshot、browser snapshot、docs typecheck、Node-next types 与 built-bin smoke，并编码依赖顺序。" aria-label="证据 TINV-CI-CONSUMERS">TINV-CI-CONSUMERS</a>另一个矩阵在 Node 22.19 与 26 上运行 compatibility contracts，避免主版本的绿色掩盖支持边界。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/.github/workflows/ci.yml#L260-L296" title="Node 版本矩阵: 在 Node 22.19 与 26 的独立 matrix jobs 中安装依赖并运行同一个 check:node-compat compatibility-smoke 命令。" aria-label="证据 TINV-NODE-MATRIX">TINV-NODE-MATRIX</a></p>
-  <p>Windows 有两条不同信号：必需的 Wine workflow job 委托 runner provision checksum-verified Windows Node，确认它报告 <code>win32 x64</code>，并且只运行 workspace build 与文档站 production build 两个 surface。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/.github/workflows/ci.yml#L328-L489" title="Wine 与原生 Windows 作业: 分别定义必需的 Wine build/site 信号和使用真实 Windows kernel 的完整但非阻塞作业。" aria-label="证据 TINV-WINDOWS">TINV-WINDOWS</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/scripts/wine-windows-gates.sh#L31-L282" title="Wine Windows runner 的实质检查: Runner 校验 Windows Node archive checksum 和 win32 x64 身份，并并行执行 Host/Client build 与 VitePress production-site build 两个 blocking surface。" aria-label="证据 TINV-WINE-RUNNER">TINV-WINE-RUNNER</a>真实 Windows kernel 的 <code>windows-native</code> 跑 complete inventory，但结果独立且不进入 required verdict。最终 <code>all checks passed</code> 使用 <code>if: always()</code> 聚合列明的 blocking jobs，并把 failed、cancelled、skipped 都视为失败；native Windows 明确不在 <code>needs</code> 中。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/.github/workflows/ci.yml#L904-L935" title="必需结果汇总: 列出 required job，排除原生 Windows，并把跳过、取消或失败都判为总门禁失败。" aria-label="证据 TINV-REQUIRED-VERDICT">TINV-REQUIRED-VERDICT</a></p>
+  <p>Windows 有两条不同信号：pull request 的 <code>windows</code> workflow job 委托 runner provision checksum-verified Windows Node，确认它报告 <code>win32 x64</code>，并且只运行 workspace build 与文档站 production build 两个 surface。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/.github/workflows/ci.yml#L328-L489" title="Wine 与原生 Windows 作业: 定义 pull-request Wine job 与真实 Windows kernel 的完整作业；后者明确不进入 all-checks-passed.needs。" aria-label="证据 TINV-WINDOWS">TINV-WINDOWS</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/scripts/wine-windows-gates.sh#L31-L282" title="Wine Windows runner 的实质检查: Runner 校验 Windows Node archive checksum 和 win32 x64 身份，并并行执行 Host/Client build 与 VitePress production-site build 两个 surface。" aria-label="证据 TINV-WINE-RUNNER">TINV-WINE-RUNNER</a>真实 Windows kernel 的 <code>windows-native</code> 跑 complete inventory，但结果独立且不在 <code>all-checks-passed.needs</code> 中。最终 <code>all checks passed</code> 使用 <code>if: always()</code> 聚合列明的 jobs，并把 failed、cancelled、skipped 都视为失败。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/.github/workflows/ci.yml#L904-L935" title="all-checks-passed 结果汇总: 列出 aggregate 依赖、排除原生 Windows，并把跳过、取消或失败都判为汇总失败；该 YAML 本身不证明实时 ruleset。" aria-label="证据 TINV-REQUIRED-VERDICT">TINV-REQUIRED-VERDICT</a></p>
   <div class="table-scroll"><table>
     <thead><tr><th>信号</th><th>拥有的结论</th><th>不拥有的结论</th></tr></thead>
     <tbody>
       <tr><td>Linux Node 24</td><td>主静态、覆盖率、组装 snapshot 与产物消费</td><td>Windows kernel 行为</td></tr>
       <tr><td>Node 22.19 / 26</td><td>显式 compatibility smokes</td><td>完整主 gate inventory</td></tr>
-      <tr><td>Wine Windows</td><td>必需的 win32 build/site 可执行性</td><td>真实 kernel、ACL、native process 语义</td></tr>
-      <tr><td>Native Windows</td><td>真实 kernel 上的完整观察性 inventory</td><td>当前 branch protection verdict</td></tr>
+      <tr><td>Wine Windows</td><td><code>all-checks-passed</code> aggregate 内的 win32 build/site 可执行性</td><td>真实 kernel、ACL、native process 语义</td></tr>
+      <tr><td>Native Windows</td><td>真实 kernel 上的完整观察性 inventory</td><td><code>all-checks-passed</code> aggregate</td></tr>
     </tbody>
   </table></div>
+  <aside class="caveat"><strong>仓库政策边界：</strong>这些 workflow 文件只能证明 job、trigger 与 <code>all-checks-passed</code> 的依赖图。本研究没有验证仓库实时 ruleset 或 required-status 配置，因此不声称哪些 check 能实际阻止合入。</aside>
 </section>
 
 <section>
@@ -192,7 +193,7 @@ real assembled subprocess ◄─────────────────
       <tr><td>已装载 companion 能在运行中拒绝已编码的关系违规</td><td>未装 companion 的 custom composition 自动获得同样保护</td></tr>
       <tr><td>当前 runtime/config 引用闭合</td><td>外部系统、凭据、网络和业务行为都可用</td></tr>
       <tr><td>机械生成区和类型粘贴与源码一致</td><td>所有手写 prose 的因果解释都准确</td></tr>
-      <tr><td>required jobs 同时成功</td><td>observational lane 或独立 workflow 也属于同一 blocking verdict</td></tr>
+      <tr><td><code>all-checks-passed.needs</code> 列明的 jobs 同时成功</td><td>observational lane 或独立 workflow 也属于同一个 aggregate</td></tr>
     </tbody>
   </table></div>
   <p>最重要的工程纪律不是继续增加一个更大的“总测试”标签，而是在改动计划里先写出需要哪一种反例：局部分支、真实 Loader 组合、durable transcript、跨事件关系、部署闭包、生成契约还是特定 kernel。只有这样，新增测试才会落在能让真实回归变红的层级。</p>
