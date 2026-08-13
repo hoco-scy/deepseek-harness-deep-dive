@@ -48,6 +48,11 @@ for (const chapter of manifests.en.chapters) {
     assert(html.includes("data-chapter-jump"), `${lang}/${chapter.slug}: missing chapter jump`);
     assert(html.includes('class="pagination"'), `${lang}/${chapter.slug}: missing pagination`);
     assert(!html.includes("<evidence"), `${lang}/${chapter.slug}: unresolved evidence tag`);
+    if (chapter.status === "queued") {
+      assert(html.includes('<section class="placeholder">'), `${lang}/${chapter.slug}: queued draft leaked into the public build`);
+    } else {
+      assert(!html.includes('<section class="placeholder">'), `${lang}/${chapter.slug}: promoted chapter still renders a placeholder`);
+    }
   }
   assert(zhChapter !== undefined, `${chapter.slug}: missing Chinese metadata`);
 }
