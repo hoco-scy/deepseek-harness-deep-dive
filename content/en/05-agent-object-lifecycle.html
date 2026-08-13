@@ -1,0 +1,159 @@
+<section>
+  <h2>Conclusion: an Agent is a scoped live execution capability, not the session record itself</h2>
+  <div class="thesis"><p>A <code>Session</code> holds durable, replayable facts. An <code>Agent</code> is the current process's driver, Inbox, scope, and cancellation boundary around that Session. An <code>AgentHandle</code> is the teardown capability held only by an owner.</p></div>
+  <p>These objects are not interchangeable. A Session can exist without a live Agent. The same persisted Session can become a fresh Agent in a later process lifecycle. Finding an Agent in the registry proves that it is currently published, not that the observer may shut it down.</p>
+</section>
+
+<section>
+  <h2>1. The interface package deliberately knows nothing about the concrete loop</h2>
+  <div class="claim fact"><div class="claim-label">Package boundary</div><p><code>@deepseek-ai/dsh-agent</code> defines the Agent interface, registry, Inbox, initiator scope, and the full <code>agent/*</code> live-event vocabulary. <code>dsh-agent-loop</code> supplies concrete construction and driving through a single <code>AgentFactory</code> slot. On every create/resume, the registry retraces the factory through the caller's context so lifecycle effects belong to the fiber that actually initiated the operation. <evidence id="AGENT-FACTORY-SEAM"></evidence></p></div>
+  <div class="claim inference"><div class="claim-label">Mechanism-level deduction</div><p>The UI, ACP bridge, subagent providers, and tests can depend only on <code>ctx.agents</code> without importing ReactLoopAgent. Replacing the loop requires implementing the same Agent/Factory lifecycle contract, but consumers do not need to change. This is the practical meaning of replaceability at the core-object layer.</p></div>
+</section>
+
+<section>
+  <h2>2. Exact anatomy of an Agent</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Member</th><th>Semantics</th><th>Durable?</th></tr></thead>
+    <tbody>
+      <tr><td><code>id</code></td><td>The exact same <code>SessionId</code> as <code>session.id</code>, not a separate Agent UUID</td><td>Identity comes from the Session</td></tr>
+      <tr><td><code>options</code></td><td>Provider, model, and optional positive <code>maxTokens</code> for this instance</td><td>Not intrinsic history; resume may select a new route</td></tr>
+      <tr><td><code>session</code></td><td>The append-only event log and source of truth for derived history</td><td>Yes</td></tr>
+      <tr><td><code>inbox</code></td><td>A pending-work projection reconstructed from durable splice events</td><td>Events are durable; arrays are live projections</td></tr>
+      <tr><td><code>ctx</code></td><td>The Agent's Cordis scope; tools, prompt sections, and listeners unwind with it</td><td>No; rebuilt on resume</td></tr>
+      <tr><td><code>status</code></td><td>Only <code>idle</code> or <code>running</code>; disposal means leaving the registry, not a third status</td><td>Live-only</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Public contract</div><p>The interface also exposes <code>send</code>, <code>followup</code>, <code>steer</code>, <code>inject</code>, <code>cancel</code>, <code>whenIdle</code>, and <code>runMaintenance</code>. <code>running</code> describes the complete driver drain interval, not strictly “a turn is still open.” <evidence id="AGENT-PUBLIC-INTERFACE"></evidence></p></div>
+</section>
+
+<section>
+  <h2>3. The live phase is more precise than public status</h2>
+  <div class="claim fact"><div class="claim-label">Concrete implementation</div><p>ReactLoopAgent has three internal phases: <code>idle(lastTurn)</code>, <code>maintenance(abort, wakeRequested)</code>, and <code>running(abort, turn, step, wakeRequested)</code>. The public layer maps both idle and maintenance to <code>idle</code>, and only running to <code>running</code>. It emits <code>agent/status</code> only when the mapped value changes. <evidence id="AGENT-RUNTIME-SCOPE"></evidence></p></div>
+  <p><code>runMaintenance()</code> synchronously acquires the truly idle phase without inventing a model turn. Waking input received during maintenance remains in the Inbox and starts a driver only after maintenance settles. <code>whenIdle()</code> repeatedly compares the identity of <code>activityDone</code>, so it follows replacement work scheduled before the observed activity retires instead of awaiting only one captured Promise.</p>
+  <div class="claim assessment"><div class="claim-label">Design assessment</div><p>The public state stays simple while internal scheduling retains the required precision. The cost is interpretive: an observer cannot read <code>idle</code> as “absolutely no background maintenance,” nor <code>running</code> as “the model is generating.” Turn and step events carry the precise semantics.</p></div>
+</section>
+
+<section>
+  <h2>4. Every Agent owns a world that can be retracted as one unit</h2>
+  <div class="claim fact"><div class="claim-label">Production source</div><p>The constructor restores the last turn and Inbox from Session events, then calls <code>createScope()</code> with the Agent itself as the scope key and gives <code>agent.ctx</code> its own <code>agent</code> property. Tools, prompts, variables, restrictions, and listeners registered through that context are local to the Agent. <evidence id="AGENT-RUNTIME-SCOPE"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">Setup contract</div><p>Create/resume <code>setup(agentCtx)</code> runs while neither Session nor Agent is in a registry. It may asynchronously mount scoped plugins and return a synchronous <code>commit()</code> that revalidates mutable resources at the publication boundary. Setup composes but must not drive; throws, commit failures, and owner unload all roll back before publication. <evidence id="AGENT-SETUP-CONTRACT"></evidence></p></div>
+  <p>“The Agent capability world is complete before the first model request” becomes a structural guarantee rather than a race in which an <code>agent/created</code> listener tries to finish installation.</p>
+</section>
+
+<section>
+  <h2>5. Create and Resume converge on one atomic publication pipeline</h2>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>Acquire SessionPreparation</h3><p>Create validates and snapshots a fresh session's seed/meta; Resume prepares an existing Session through persistence. Neither is live in the store yet.</p></div>
+    <div><span>2</span><h3>Prepare ReactLoopAgent</h3><p>Create the scope, Inbox, and driver; fuse caller signal, owner fiber, and factory teardown before any resource exists.</p></div>
+    <div><span>3</span><h3>Await setup</h3><p>Call <code>setup(agent.ctx)</code> and let it finish asynchronously while registry lookups still return nothing.</p></div>
+    <div><span>4</span><h3>Synchronous setup commit</h3><p>Perform the final non-yielding validation/commit after every await and before the first publication edge.</p></div>
+    <div><span>5</span><h3>Enter both registries</h3><p>First <code>sessions.enter(session)</code>, then <code>agents.enter(agent, ownerCtx.agent)</code>. This is the authoritative same-ID arbitration boundary.</p></div>
+    <div><span>6</span><h3>Announce in order</h3><p><code>session/created</code> → <code>agent/created</code> → non-vetoing <code>agent/session-start</code>, whose source is startup or resume.</p></div>
+    <div><span>7</span><h3>Return AgentHandle</h3><p>The creation-only signal no longer controls the live object; future lifecycle control belongs to the handle, Agent cancellation, and structural owners.</p></div>
+  </div>
+  <div class="claim fact"><div class="claim-label">Production control flow</div><p>Fresh creation and persistence resume both call <code>setupAndPublish()</code>. Persistence loading is itself bounded by caller signal, owner unload, and factory teardown. <evidence id="AGENT-CREATE-RESUME"></evidence><evidence id="AGENT-PREPARE-PUBLISH"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">Behavioral proof</div><p>Tests hold async setup behind a gate and confirm that both registries remain empty, then verify the complete announcement order. Two same-ID creates may both enter setup, but exactly one publishes and the loser leaves no orphan Session. Aborting a creation signal after a handle returns does not stop the live Agent. <evidence id="AGENT-ATOMIC-TEST"></evidence></p></div>
+</section>
+
+<section>
+  <h2>6. Publication is split into enter and announce</h2>
+  <div class="claim fact"><div class="claim-label">Registry control flow</div><p><code>enter()</code> enforces <code>agent.id === agent.session.id</code>, checks ID collisions, and inserts an exact entry with a stable carrier without emitting an event. <code>announce()</code> may run once only for the current exact entry and marks it announced before dispatch. <evidence id="AGENT-REGISTRY-LIFECYCLE"></evidence></p></div>
+  <p>The split exists for atomic publication and reentrant teardown:</p>
+  <ul class="audit-list">
+    <li>Session and Agent can first enter their stores together so listeners observe a coherent world.</li>
+    <li>If an <code>agent/created</code> listener synchronously requests detach, deletion waits until dispatch returns; every later listener still sees the same live entry.</li>
+    <li>The detach closure captures the entry object, not merely its ID. An old closure cannot delete a later replacement that reuses the ID.</li>
+    <li>Rolling back an entry that was never announced does not emit <code>agent/disposed</code>, avoiding an impossible lifecycle edge.</li>
+  </ul>
+  <div class="claim fact"><div class="claim-label">Reentrancy tests</div><p>Registry tests verify split publication, idempotent detach, isolation from stale capabilities, and stable visibility to every listener when a created listener requests detach. <evidence id="AGENT-REGISTRY-TEST"></evidence></p></div>
+</section>
+
+<section>
+  <h2>7. Teardown has several owners but one quiescence boundary</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Authority</th><th>Why it owns the lifecycle</th><th>What it can do</th></tr></thead>
+    <tbody>
+      <tr><td>Consumer's <code>AgentHandle</code></td><td>It explicitly created or resumed the Agent</td><td>Call memoized <code>dispose()</code></td></tr>
+      <tr><td>Caller fiber</td><td>Structured concurrency: child resources cannot outlive the caller plugin</td><td>Unload triggers the same disposal</td></tr>
+      <tr><td>AgentLoop factory fiber</td><td>Live Agents depend on that provider implementation and service surface</td><td>Provider HMR/unload stops every old instance</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Actual reverse order</div><p>All owners race on one memoized Promise: cancel the driver with <code>{kind:'disposed'}</code>, await <code>whenIdle()</code>, dispose the Agent scope, precisely detach the Agent and then the Session, and finally release factory/owner bookkeeping. <evidence id="AGENT-PREPARE-PUBLISH"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">Reentrant-publication tests</div><p>Even when a <code>session/created</code> or <code>agent/created</code> listener immediately unloads the owner, other listeners still see both registries intact. The observable rollback order is scope disposal, then <code>agent/disposed</code> if it had been announced, and finally <code>session/disposed</code>. <evidence id="AGENT-TEARDOWN-TEST"></evidence></p></div>
+</section>
+
+<section>
+  <h2>8. Runtime owner, durable lineage, and initiator are three different relations</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Relation</th><th>Meaning</th><th>Storage</th><th>Authorization?</th></tr></thead>
+    <tbody>
+      <tr><td>Session <code>parentSession</code></td><td>Durable fork/derivation lineage</td><td>Session header</td><td>Does not automatically authorize current-process operations</td></tr>
+      <tr><td>Registry <code>owner</code></td><td>Which live Agent's scoped context created this live entry</td><td>Process-local AgentEntry</td><td>Supports only exact runtime-ownership queries</td></tr>
+      <tr><td>Current initiator</td><td>Which driver async chain causally triggered this work</td><td><code>AsyncLocalStorage</code></td><td>Explicitly not proof of liveness or authorization</td></tr>
+    </tbody>
+  </table></div>
+  <p>A persisted fork with <code>parentSession</code> may therefore become a runtime root when resumed independently. Conversely, a child created by a current owner cannot carry ambient initiator identity through a worker, HTTP request, process, or durable queue without explicit materialization and validation.</p>
+  <div class="claim fact"><div class="claim-label">Initiator API</div><p><code>withInitiator()</code> and <code>withoutInitiator()</code> isolate and restore identity across concurrent async chains while preserving the exact returned value or Promise. Service teardown rejects new boundaries, drains already returned Promise boundaries, then disables AsyncLocalStorage. A nested chain that starts its own owner unload is released from the drain to prevent self-wait. <evidence id="AGENT-INITIATOR-API"></evidence><evidence id="AGENT-INITIATOR-DRAIN"></evidence></p></div>
+</section>
+
+<section>
+  <h2>9. Inbox is an incremental projection of durable events</h2>
+  <div class="claim fact"><div class="claim-label">Reconstruction</div><p>Constructing an Inbox replays every <code>agent/inbox/spliced</code> event after <code>seedLength</code>. Invalid coordinates or duplicate identities fail recovery instead of being silently repaired. The Inbox has <code>next-turn</code> and <code>next-step</code> lists, but MessageId must be unique across their union. <evidence id="AGENT-INBOX-REPLAY"></evidence><evidence id="AGENT-INBOX-COMMIT"></evidence></p></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Operation</th><th>Durable fact</th><th>Live notification</th></tr></thead>
+    <tbody>
+      <tr><td>append / prepend</td><td><code>agent/inbox/spliced</code> with inserted messages</td><td>Per-message <code>agent/inbox/inserted</code></td></tr>
+      <tr><td>replace</td><td>One splice removes the old value and inserts the new one</td><td>Discard old, then insert new</td></tr>
+      <tr><td>remove / clear</td><td>Deletion splice with <code>outcome:'canceled'</code></td><td>Per-message discarded</td></tr>
+      <tr><td>claim</td><td>Pure deletion splice, not canceled</td><td>Per-message claimed with the owning turn</td></tr>
+    </tbody>
+  </table></div>
+  <p>The implementation calls <code>session.append()</code> before mutating the memory array. A synchronous session observer therefore sees the pre-splice projection and can reconstruct removed messages from normalized coordinates. One step claim takes every pending next-step item first, then one next-turn item when a turn boundary requires it.</p>
+  <div class="claim fact"><div class="claim-label">Behavioral proof</div><p>Tests cover invalid persisted splices, replacement across both lists, duplicate MessageId rejection, and clear writing two canceled events in next-step then next-turn order. <evidence id="AGENT-INBOX-TEST"></evidence></p></div>
+</section>
+
+<section>
+  <h2>10. Follow-up, Steer, Inject, and Cancel are not synonyms</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>API</th><th>Target</th><th>Wakes?</th><th>Earliest consumption boundary</th></tr></thead>
+    <tbody>
+      <tr><td><code>followup(message)</code></td><td>next-turn</td><td>Yes</td><td>A new ordinary turn; one next-turn message at a time</td></tr>
+      <tr><td><code>steer(message)</code></td><td>next-step</td><td>Yes</td><td>The next step of a running Agent; opens a turn when idle</td></tr>
+      <tr><td><code>inject(message)</code></td><td>next-step</td><td>No</td><td>The next pre-step of an existing driver; parks while idle</td></tr>
+      <tr><td><code>cancel(cause)</code></td><td>Clears both by default</td><td>No</td><td>Aborts current activity; idle cancellation does not arm future work</td></tr>
+      <tr><td><code>cancel(cause,{keepInbox:true})</code></td><td>Preserves both</td><td>No</td><td>Aborts only current activity; pending work awaits a later wake</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Implementation mapping</div><p><code>send()</code> first persists Inbox insertion and then drives according to the wake flag. If the current activity is already aborted, new waking input is reclassified to next-turn so it cannot join the converging failed turn. A disposal cause never latches a new wake. <evidence id="AGENT-RUNTIME-SCOPE"></evidence></p></div>
+  <aside class="caveat"><strong>Boundary:</strong> these APIs return queue/control actions, not result Promises for individual messages. <code>whenIdle()</code> proves whole-Agent quiescence but cannot say which <code>turn/end</code> settled a MessageId. Work settlement must be derived from the durable log.</aside>
+</section>
+
+<section>
+  <h2>11. Benefits, costs, and limitations</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Choice</th><th>Benefit</th><th>Cost or limitation</th></tr></thead>
+    <tbody>
+      <tr><td>Separate Agent interface and loop packages</td><td>Consumers and orchestration do not bind to one driver</td><td>A replacement must reproduce a sophisticated lifecycle and event contract</td></tr>
+      <tr><td>Unpublished setup transaction</td><td>The first observer always sees a complete scoped world</td><td>Setup is trusted same-process code; “compose, never drive” is contractual</td></tr>
+      <tr><td>Two-stage enter / announce</td><td>Coherent dual registries and reentrant teardown</td><td>More complex lifecycle code; partially delivered notifications still require paired disposal</td></tr>
+      <tr><td>Handle as teardown capability</td><td>Read-only registry observers cannot stop an Agent</td><td>Every transport/provider must carry ownership explicitly</td></tr>
+      <tr><td>Durable Inbox projection</td><td>Idle injection, cancellation, and resume share one source of truth</td><td>Every queue mutation adds events; one MessageId carries exactly one source</td></tr>
+      <tr><td>Process-local initiator</td><td>Convenient, concurrency-isolated causal attribution in one process</td><td>Cannot cross workers/processes/wires and must never replace explicit authorization</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">Chapter assessment</div><p>DeepSeek Harness does not make Agent a “smart object” that owns every state. It separates durable facts, the live driver, scoped contributions, queued work, ownership capability, and causal attribution. The decomposition is a strong foundation for resume, per-Agent plugins, HMR, and multiple transports. The real cost is that the lifecycle protocol itself resembles a small transaction system; a new provider that bypasses prepare/publish/dispose ordering will break consistency.</p></div>
+</section>
+
+<section>
+  <h2>Chapter verification checklist</h2>
+  <ul class="audit-list">
+    <li>Separated the Agent interface package from the concrete AgentLoop factory.</li>
+    <li>Verified id/session, options, scope, status, and public input/cancellation methods.</li>
+    <li>Traced create and resume from preparation through setup, commit, and all three publication events.</li>
+    <li>Verified same-ID arbitration, creation-only signals, and failure rollback.</li>
+    <li>Traced enter/announce, reentrant detach, and stale-capability protection.</li>
+    <li>Verified shared teardown ownership across consumer, caller fiber, and factory fiber.</li>
+    <li>Separated durable lineage, runtime owner, and process-local initiator.</li>
+    <li>Verified Inbox replay, commit order, claims, cancellation, and MessageId uniqueness.</li>
+  </ul>
+</section>
