@@ -1,0 +1,184 @@
+<section>
+  <h2>Conclusion: the complete log preserves facts; the Surface decides what the model sees now</h2>
+  <div class="thesis"><p>A DeepSeek Harness Session is neither a message array nor a Provider SDK transcript. It is an immutable, contiguously numbered, extensible SessionEvent log, with a replaceable model-visible Surface folded over it. Compaction, tool-result pruning, and other context rewrites only shadow old nodes on the Surface; the original events remain in the complete log.</p></div>
+  <p>This design preserves three semantics at once: original facts for audit and replay, the current Surface for the next model request, and append-origin events for the human transcript that must not be rewritten by compaction. These three layers are the prerequisite for understanding persistence, compaction, recovery, and the UI.</p>
+</section>
+
+<section>
+  <h2>1. SessionHeader and the SessionEvent Log have different jobs</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Layer</th><th>What it stores</th><th>How it changes</th><th>Semantic owner</th></tr></thead>
+    <tbody>
+      <tr><td><code>SessionHeader</code></td><td>Format version, session ID, createdAt, cwd, parent, seedLength, subagent origin/depth, and agent preset</td><td>Snapshotted at creation, outside the event log</td><td>Lifecycle identity and the composition required for recovery <evidence id="SESSION-FORMAT-HEADER"></evidence></td></tr>
+      <tr><td><code>SessionEvent[]</code></td><td>Conversation, request, tool, policy, compaction, orchestration, and diagnostic facts</td><td>Append only; seq grows contiguously from 0</td><td>The logical source of truth for Agent interaction</td></tr>
+      <tr><td><code>SessionSurface</code></td><td>The current ordered sequence of model-visible event seqs</td><td>Append or positional replace</td><td>Input to the next <code>deriveMessages()</code></td></tr>
+    </tbody>
+  </table></div>
+  <p><code>parentSession</code> and <code>seedLength</code> in the Header are durable fork lineage; <code>delegationDepth</code> prevents a resumed child Agent from being mistaken for a root; <code>agentPreset</code> binds the tool and prompt composition needed on recovery. None needs to masquerade as a conversation event.</p>
+</section>
+
+<section>
+  <h2>2. The event envelope is small, but its constraints are strong</h2>
+  <div class="claim fact"><div class="claim-label">Fixed envelope</div><p>Every event belongs to a union discriminated by <code>type</code>: <code>{type, seq, time, data}</code>. Its only optional fields are <code>surfaceOp</code>, <code>sourceEventSeqs</code>, and <code>ignorable: true</code>. Seed and load reject every additional envelope key.<evidence id="SESSION-EVENT-ENVELOPE"></evidence></p></div>
+  <ul class="audit-list">
+    <li><code>seq</code> is the only ordering authority within a Session. Live append takes <code>log.length</code>; a seed must be contiguous from 0 with no gaps.</li>
+    <li><code>time</code> records <code>Date.now()</code> wall-clock time and does not promise strict monotonic order. Same-millisecond events or a system-clock rollback do not change seq order.</li>
+    <li><code>data</code> must be lossless JSON, not merely something that <code>JSON.stringify</code> can approximately process.</li>
+    <li>Only <code>user/message</code>, <code>assistant/message</code>, and <code>tool/result</code> may carry Surface metadata.</li>
+    <li>An unknown required event cannot be silently ignored. Only <code>ignorable: true</code> explicitly states that losing it cannot change reconstruction.</li>
+  </ul>
+  <div class="claim inference"><div class="claim-label">Mechanism-level conclusion</div><p>Every cross-event relation is expressed with seq rather than timestamp, array identity, or database row ID. JSONL, SQLite, in-memory replay, and browser transport can therefore share one logical coordinate system.</p></div>
+</section>
+
+<section>
+  <h2>3. The pinned baseline recognizes 44 event types</h2>
+  <div class="claim fact"><div class="claim-label">Generated catalog</div><p>The current build generates its known-event catalog from every <code>SessionEventMap</code> declaration in the repository and contains 44 types. The core package declares 13; package owners add the rest through TypeScript module augmentation.<evidence id="SESSION-CORE-EVENTS"></evidence><evidence id="SESSION-KNOWN-EVENTS"></evidence></p></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Ownership group</th><th>Events, with none omitted</th><th>Count</th></tr></thead>
+    <tbody>
+      <tr><td>Core Session</td><td><code>turn/start</code>, <code>turn/end</code>, <code>step/start</code>, <code>step/end</code>, <code>user/message</code>, <code>assistant/chunk</code>, <code>assistant/message</code>, <code>tool/call</code>, <code>tool/result</code>, <code>todo/write</code>, <code>request/header</code>, <code>request/context</code>, <code>session/end-seed</code></td><td>13</td></tr>
+      <tr><td>Control and policy</td><td><code>agent-preset/selected</code>, <code>agent/inbox/spliced</code>, <code>approval/asked</code>, <code>approval/decided</code>, <code>approval/policy</code>, <code>permission/preset</code>, <code>sandbox/mode</code>, <code>plan/mode</code>, <code>goal/change</code>, <code>schedule/change</code></td><td>10</td></tr>
+      <tr><td>Compaction and retry</td><td><code>compaction/start</code>, <code>compaction/prune</code>, <code>compaction/summary</code>, <code>compaction/end</code>, <code>llm/retry</code>, <code>llm/retry-started</code></td><td>6</td></tr>
+      <tr><td>Auxiliary models and metadata</td><td><code>session/title</code>, <code>session/title-llm-request</code>, <code>web/deepseek-search-llm-request</code>, <code>feedback/record</code></td><td>4</td></tr>
+      <tr><td>Commands and Hooks</td><td><code>command/run</code>, <code>command/done</code>, <code>hook/invoked</code>, <code>hook/result</code></td><td>4</td></tr>
+      <tr><td>Subagents, Workflow, and Code Mode</td><td><code>subagent/descriptor</code>, <code>tool-workflow/run-start</code>, <code>tool-workflow/run-end</code>, <code>tool-workflow/agent-start</code>, <code>tool-workflow/agent-end</code>, <code>tool/code-dispatch</code>, <code>tool/code-dispatch-start</code></td><td>7</td></tr>
+    </tbody>
+  </table></div>
+  <p>The catalog says which vocabulary this build understands, not which events the model sees. Most are log-only audit or control facts; only three Surface event types can derive a Message.</p>
+</section>
+
+<section>
+  <h2>4. Lossless JSON is an admission boundary, not a storage repair</h2>
+  <div class="claim fact"><div class="claim-label">One-pass snapshot</div><p><code>snapshotJsonValue()</code> walks the graph with an explicit task stack and validates while copying from the same property read. A stateful getter cannot swap values between a separate “check” and “copy” pass, and nesting depth is limited by memory rather than the JavaScript call stack.<evidence id="SESSION-LOSSLESS-JSON"></evidence></p></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Accepted</th><th>Rejected</th><th>Reason</th></tr></thead>
+    <tbody>
+      <tr><td>null, boolean, string, finite number</td><td><code>-0</code>, NaN, Infinity</td><td>A JSON round trip must be byte-semantically equivalent</td></tr>
+      <tr><td>Dense plain Array</td><td>Sparse Array, extra own property, Array subclass</td><td>JSON would insert null or lose properties or prototypes</td></tr>
+      <tr><td>Plain or null-prototype object</td><td>Date, Map, Set, class instance, forged prototype</td><td>No <code>toJSON</code> call and no hidden conversion</td></tr>
+      <tr><td>Own enumerable string keys</td><td>Symbol key, non-enumerable key, function, undefined, BigInt, cycle</td><td>These values are dropped, reshaped, or impossible to encode</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Immutability tests</div><p>Events and nested Messages are deep-frozen when admitted; derived history shares those frozen objects. Tests require mutations of content and tool results to throw TypeError, and an invalid graph to be rejected without changing log length.<evidence id="SESSION-IMMUTABILITY-TEST"></evidence></p></div>
+</section>
+
+<section>
+  <h2>5. <code>Session.append()</code> is a two-phase local transaction</h2>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>Own the input</h3><p>Snapshot <code>data</code> and Surface metadata; later caller mutation is irrelevant.</p></div>
+    <div><span>2</span><h3>Construct a candidate</h3><p>Allocate <code>seq = log.length</code>, read wall time, and deep-freeze the complete event.</p></div>
+    <div><span>3</span><h3>Plan the Surface</h3><p>Validate only against the candidate; do not mutate the committed node list yet.</p></div>
+    <div><span>4</span><h3>Precommit dispatch</h3><p><code>internal/dispatch</code> lets invariants and diagnostics validate without mutation; every veto happens before the log changes.</p></div>
+    <div><span>5</span><h3>Commit</h3><p><code>log.push(event)</code> is the logical commit point and invalidates the cached <code>events</code> array.</p></div>
+    <div><span>6</span><h3>Postcommit publish</h3><p>Notify a snapshot of <code>session/event</code> listeners; record and isolate each synchronous throw and asynchronous rejection.</p></div>
+  </div>
+  <div class="claim fact"><div class="claim-label">Production implementation</div><p>The same frozen candidate crosses precommit validation, commit, and observation. A reentrant append during observer notification is rejected so a nested commit cannot reorder later listeners.<evidence id="SESSION-APPEND-COMMIT"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">Atomicity tests</div><p>The tests require an internal-dispatch veto to leave the log, publication, and Surface unchanged. After commit, a hostile observer can neither roll back the event nor prevent later observers from seeing it.<evidence id="SESSION-APPEND-BOUNDARY-TEST"></evidence></p></div>
+  <aside class="caveat"><strong>“Committed” does not mean “on disk”:</strong> a successful <code>append()</code> proves only that the live in-memory log committed. The persistence listener is write-behind; callers need the <code>ctx.sessions.flush(session)</code> durability barrier before treating that prefix as a disk fact.</aside>
+</section>
+
+<section>
+  <h2>6. The Surface is a small replacement calculus over an append-only log</h2>
+  <div class="claim fact"><div class="claim-label">The only visible types</div><p>The runtime recognizes only <code>user/message</code>, <code>assistant/message</code>, and <code>tool/result</code> as Surface-eligible. They must declare a <code>surfaceOp</code>; a boundary, chunk, request, or plugin audit event carrying Surface metadata fails.<evidence id="SESSION-SURFACE-PROJECTION"></evidence><evidence id="SESSION-SURFACE-PROVENANCE"></evidence></p></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Operation</th><th>Change to the current node list</th><th>Change to the complete log</th><th>Main use</th></tr></thead>
+    <tbody>
+      <tr><td><code>append</code></td><td>Add the current event seq at the tail</td><td>Append the same event</td><td>Normal user, assistant, or tool result</td></tr>
+      <tr><td><code>{op:'replace', start, end}</code></td><td>Atomically replace an inclusive range in current Surface order with the new event seq</td><td>Append only the replacement event; never delete old events</td><td>Compaction summaries and tool-result content rewrites</td></tr>
+    </tbody>
+  </table></div>
+  <p><code>start</code> and <code>end</code> identify current Surface nodes by event seq; they are not a contiguous slice of the raw log. Both endpoints must still exist on the current Surface in legal order, while shadowed nodes may be separated by log-only events.<evidence id="SESSION-SURFACE-REPLACE"></evidence></p>
+  <div class="claim fact"><div class="claim-label">Narrow privilege for tool results</div><p>A replacement <code>tool/result</code> may target exactly one current tool result and may change only the nested result block's <code>content</code>. Call ID, error flag, message identity, turn and step, and meta must remain structurally equivalent. Spill or pruning can shorten output without forging another tool execution.</p></div>
+</section>
+
+<section>
+  <h2>7. <code>sourceEventSeqs</code> is explicit provenance, not complete lineage</h2>
+  <div class="claim fact"><div class="claim-label">Validation rules</div><p>When present, the source list must be dense, duplicate-free, composed of non-negative safe integers, and strictly earlier than the current event. A Surface replacement must include at least every shadowed node, or it cannot establish what the new node replaced.<evidence id="SESSION-SURFACE-PROVENANCE"></evidence></p></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Producer</th><th>Typical source</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td>Assistant assembler</td><td>Every <code>assistant/chunk</code> seq from that attempt</td><td>Which raw stream facts produced the final Message</td></tr>
+      <tr><td>Tool result</td><td>The <code>tool/call</code> seq</td><td>Which recorded side-effect intent the result answers</td></tr>
+      <tr><td>Compaction replacement</td><td>All shadowed Surface nodes, optionally plus summary-input facts</td><td>The source set of the model-visible rewrite</td></tr>
+      <tr><td>Ordinary user or plugin message</td><td>Usually absent</td><td>It is a new fact itself and declares no derivation source</td></tr>
+    </tbody>
+  </table></div>
+  <aside class="caveat"><strong>Limit:</strong> <code>sourceEventSeqs</code> is generally optional on append-origin events, so the system does not force every derived fact to carry a complete transitive closure. Replacement coverage is mandatory, but this is not an automatically queryable, complete provenance DAG.</aside>
+</section>
+
+<section>
+  <h2>8. <code>deriveMessages()</code> is a pure projection of the Surface</h2>
+  <div class="claim fact"><div class="claim-label">Rules per node</div><p><code>user/message</code> returns its user message unchanged; a nonempty <code>assistant/message</code> returns the model message; <code>tool/result</code> returns its user-role result. An assistant with empty content carries usage but does not enter the transcript. The other 41 event types all return null.<evidence id="SESSION-SURFACE-PROJECTION"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">Incremental cache</div><p>Without replacement, the projector folds only Surface nodes added since the prior call, making the work O(new nodes). When replace generation changes, it clears and rebuilds from the current node list. Each API call returns a fresh array snapshot while the inner Message objects remain shared frozen event data.<evidence id="SESSION-DERIVED-CACHE"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">Replay-oracle tests</div><p>After ordinary append, an empty assistant, and replacement, the tests construct a fresh Session from the complete events and require its derived result to deep-equal the live incremental cache. An earlier returned array must not grow when later events append. Dependencies are not installed, so this study reviewed but did not run the tests.<evidence id="SESSION-DERIVED-ORACLE-TEST"></evidence></p></div>
+  <div class="claim assessment"><div class="claim-label">Assessment</div><p>Producers write Message framing into content; the Surface projector does not wrap content again by source. This reduces hidden prompt mutation, but every context producer must maintain correct model-facing framing itself.</p></div>
+</section>
+
+<section>
+  <h2>9. One log supports three different read views</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>View</th><th>What it contains</th><th>What it must not represent</th></tr></thead>
+    <tbody>
+      <tr><td>Complete event log</td><td>All 44 fact types, raw chunks, shadowed messages, and control markers</td><td>It is not a Provider message array</td></tr>
+      <tr><td>Current model Surface</td><td>Current node order after replacement, then message projection</td><td>It is not the permanent transcript of what the user once saw</td></tr>
+      <tr><td>Append-origin transcript</td><td>Only message events that originally entered with <code>surfaceOp:'append'</code></td><td>It is not the context of the next post-compaction request</td></tr>
+    </tbody>
+  </table></div>
+  <p>The Surface module explicitly warns that a human transcript built from the current Surface would make already-seen conversation disappear as soon as compaction lands; the replacement copy is a model-only view. Conversely, building the next request only from the append-origin transcript would ignore compaction entirely.</p>
+</section>
+
+<section>
+  <h2>10. A seed separates the recovered prefix from this lifecycle</h2>
+  <div class="claim fact"><div class="claim-label">Admission path</div><p>Every seed event is detached or adopted, frozen, and checked for envelope shape, request header shape, contiguous seq, and a legal Surface transition. Failure cannot leave half a Surface. Construction records seed length as <code>firstLiveSeq</code> and appends <code>session/end-seed</code> when the tail does not already contain it.<evidence id="SESSION-SEED-ACCEPTANCE"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">Idempotence tests</div><p>A fresh Session has no marker; an explicitly empty seed receives one; reopening a seed that already ends with the marker does not append another. The seed prefix remains unchanged and derived Messages match the original Session.<evidence id="SESSION-SEED-REPLAY-TEST"></evidence></p></div>
+  <p>The marker is neither a lock proving that no other writer exists nor a crash checkpoint. It only marks the boundary between constructor seed and events added in this lifecycle, letting forks, resumes, and test replay distinguish inherited facts from new work.</p>
+</section>
+
+<section>
+  <h2>11. Version 0 uses fail-closed compatibility</h2>
+  <div class="claim fact"><div class="claim-label">Format rule</div><p><code>SESSION_FORMAT_VERSION</code> is fixed at 0 in this baseline. Breaking changes to the Header, envelope, core semantics, or Surface mechanism should bump it; this baseline has no upgrade chain or migration and rejects a different version. An ordinary new event theoretically need not bump the format because the envelope has <code>ignorable</code>.<evidence id="SESSION-FORMAT-HEADER"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">Unknown-event gate</div><p>After persistence normalization, the loader checks the whole log against the generated known catalog. An unknown required event produces <code>SessionFormatUnsupportedError</code>; an unknown event marked <code>ignorable:true</code> remains in the loaded log so a consumer that understands it can still read it.<evidence id="SESSION-UNKNOWN-EVENT-GATE"></evidence><evidence id="SESSION-UNKNOWN-EVENT-TEST"></evidence></p></div>
+  <div class="claim assessment"><div class="claim-label">Philosophy</div><p>Required-by-default may reject too much, but it prevents an older runtime from silently reconstructing the wrong conversation when it does not understand new semantics. Forward-compatibility risk is biased toward visible downtime instead of silent corruption.</p></div>
+</section>
+
+<section>
+  <h2>12. Always-on storage guards are separate from optional relational invariants</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Always-on Session root</th><th>Optional <code>dsh-session/invariant</code></th></tr></thead>
+    <tbody>
+      <tr><td>Lossless JSON, snapshot, and freeze</td><td>Turns are contiguous from 1 and do not overlap</td></tr>
+      <tr><td>Envelope shape and contiguous seed seq</td><td>Steps are contiguous from 1 within the current Turn and close properly</td></tr>
+      <tr><td>Surface eligibility, range, and source coverage</td><td>Assistant, chunk, tool, and other execution events occur within the current Step</td></tr>
+      <tr><td>A tool-result replacement may change only content</td><td>Tool calls and results pair within the same Step</td></tr>
+      <tr><td>Limited compatibility validation of request-header shape</td><td>Each owner checks its own plugin-extended events</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Relational checking</div><p>The companion replays a trace from the existing log. On <code>internal/dispatch</code>, a new candidate creates only a staged transition; state advances only when the real <code>session/event</code> arrives. A later precommit-listener veto therefore cannot move invariant state ahead of the log.<evidence id="SESSION-RELATIONAL-INVARIANT"></evidence><evidence id="SESSION-INVARIANT-COMMIT"></evidence></p></div>
+  <aside class="caveat"><strong>Composition boundary:</strong> the root Session does not implicitly load the companion. Without explicitly composing it, well-typed TypeScript calls still receive compile-time protection, but an untrusted cast, a damaged known payload, or a faulty plugin writer does not receive these Turn, Step, and tool runtime guards.</aside>
+</section>
+
+<section>
+  <h2>13. Three integrity gaps and two deliberate tradeoffs</h2>
+  <div class="claim assessment"><div class="claim-label">Gap 1: end-seed writer authority is not enforced</div><p>The type comment calls the constructor the only legitimate writer of <code>session/end-seed</code> and explicitly admits that a plugin append would incorrectly reclassify the preceding live bracket. Yet public <code>append()</code> accepts this type and the optional invariant deliberately leaves it unconstrained. Safety currently relies on in-process plugin discipline, not a capability or runtime guard.<evidence id="SESSION-CORE-EVENTS"></evidence><evidence id="SESSION-APPEND-COMMIT"></evidence></p></div>
+  <div class="claim assessment"><div class="claim-label">Gap 2: ignorable is a reader capability, not a usable writer API</div><p>The envelope defines <code>ignorable?: true</code> and the loader implements its forward-compatible gate, but <code>Session.append(type, data, surfaceIntent?)</code> accepts no envelope options and production source never appends <code>ignorable:true</code>. Ordinary new event producers in this baseline therefore cannot use the documented “ignorable without a version bump” mechanism through the public path.<evidence id="SESSION-EVENT-ENVELOPE"></evidence><evidence id="SESSION-APPEND-COMMIT"></evidence></p></div>
+  <div class="claim assessment"><div class="claim-label">Gap 3: known payloads have no unified runtime schema</div><p>The always-on root deeply validates JSON, the three Message shapes, request headers, and the Surface, but it does not run one schema over all 44 payloads. Relational validation lives in an optional companion. This is a lightweight extension point for trusted code, not a complete defense if third-party plugins are treated as untrusted writers.</p></div>
+  <ul class="audit-list">
+    <li><strong>Deliberate tradeoff:</strong> ordinary appends may omit <code>sourceEventSeqs</code>, avoiding expensive lineage maintenance for every new fact at the cost of incomplete provenance.</li>
+    <li><strong>Deliberate tradeoff:</strong> live commit is separate from disk durability, keeping the hot path synchronous and I/O-free at the cost of requiring callers to use the flush barrier before external side effects.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>14. Strengths, costs, and verification status</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Design choice</th><th>Main benefit</th><th>Main cost</th></tr></thead>
+    <tbody>
+      <tr><td>Complete append-only log plus replaceable Surface</td><td>Preserves audit facts while permitting context governance</td><td>Every consumer must choose the correct view</td></tr>
+      <tr><td>Lossless JSON plus deep-freeze</td><td>Stable replay across backends and no caller-alias mutation</td><td>Cannot directly record rich runtime values such as Date, Map, or typed objects</td></tr>
+      <tr><td>seq as a shared coordinate</td><td>Log, Surface, source lineage, and client dedup share one identity</td><td>Cross-Session causality needs separate Header or event links</td></tr>
+      <tr><td>Module-augmented event vocabulary</td><td>Package owners can extend independently</td><td>Generated catalog, version gate, and owner invariants must remain synchronized</td></tr>
+      <tr><td>Precommit validation plus contained observers</td><td>Clear semantics for vetoes and notification failures</td><td>Observers can compensate but cannot roll back a committed event</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Verification status</div><p>This chapter rechecked the types, production append, Surface, and invariant control flow, the generated vocabulary, and test source. Upstream dependencies are not installed, so every test section describes the contract encoded by tests rather than a local execution result. The next chapter follows raw logs, forks, repair, history, and client replay on top of this event model.</p></div>
+</section>

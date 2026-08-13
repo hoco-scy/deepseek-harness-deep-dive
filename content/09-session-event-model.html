@@ -1,0 +1,184 @@
+<section>
+  <h2>结论：完整日志保存事实，Surface 决定模型此刻看见什么</h2>
+  <div class="thesis"><p>DeepSeek Harness 的 Session 不是消息数组，也不是 Provider SDK transcript。它是一条不可变、连续编号、可扩展的 SessionEvent 日志；其上再折叠出一个可替换的 model-visible Surface。Compaction、tool-result pruning 和其他上下文改写只会在 Surface 上遮蔽旧节点，原始事件仍留在完整日志中。</p></div>
+  <p>这个设计同时保留三种语义：原始事实用于审计和 replay，当前 Surface 用于下一次模型请求，append-origin 事件用于不应被压缩重写的人类 transcript。理解这三层，是理解后续持久化、压缩、恢复和 UI 的前提。</p>
+</section>
+
+<section>
+  <h2>1. SessionHeader 与 SessionEvent Log 分工不同</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>层</th><th>保存内容</th><th>变化方式</th><th>语义 owner</th></tr></thead>
+    <tbody>
+      <tr><td><code>SessionHeader</code></td><td>format version、session ID、createdAt、cwd、parent、seedLength、subagent origin/depth、agent preset</td><td>创建时快照，事件日志之外</td><td>生命周期 identity 与恢复所需 composition <evidence id="SESSION-FORMAT-HEADER"></evidence></td></tr>
+      <tr><td><code>SessionEvent[]</code></td><td>对话、请求、工具、策略、压缩、编排和诊断事实</td><td>只 append；seq 从 0 连续增长</td><td>Agent interaction 的逻辑事实源</td></tr>
+      <tr><td><code>SessionSurface</code></td><td>当前 model-visible event seq 顺序</td><td>append 或 positional replace</td><td>下一次 <code>deriveMessages()</code> 的输入</td></tr>
+    </tbody>
+  </table></div>
+  <p>Header 中的 <code>parentSession</code> 与 <code>seedLength</code> 是持久 fork lineage；<code>delegationDepth</code> 防止子 Agent resume 后被误当顶层；<code>agentPreset</code> 绑定恢复时的工具与 prompt composition。它们不需要伪装成 conversation event。</p>
+</section>
+
+<section>
+  <h2>2. Event envelope 很小，但约束非常强</h2>
+  <div class="claim fact"><div class="claim-label">固定 envelope</div><p>每个事件是按 <code>type</code> 区分的 union：<code>{type, seq, time, data}</code>，可选字段只有 <code>surfaceOp</code>、<code>sourceEventSeqs</code> 和 <code>ignorable: true</code>。任何额外 envelope key 在 seed/load 时拒绝。<evidence id="SESSION-EVENT-ENVELOPE"></evidence></p></div>
+  <ul class="audit-list">
+    <li><code>seq</code> 是会话内唯一排序权威；live append 直接取 <code>log.length</code>，seed 必须从 0 无洞连续。</li>
+    <li><code>time</code> 是 <code>Date.now()</code> 的 wall-clock 记录，不承担严格单调排序；同毫秒或系统时钟回拨都不改变 seq 顺序。</li>
+    <li><code>data</code> 必须是 lossless JSON，而不是“能被 <code>JSON.stringify</code> 大致处理”即可。</li>
+    <li>只有 <code>user/message</code>、<code>assistant/message</code>、<code>tool/result</code> 能携带 Surface metadata。</li>
+    <li>未知 required event 不能静默忽略；只有 writer 明确标 <code>ignorable: true</code> 才表示丢失它不改变重建。</li>
+  </ul>
+  <div class="claim inference"><div class="claim-label">机制结论</div><p>所有跨事件关联都以 seq，而不是 timestamp、array identity 或数据库 row ID 表达。因此 JSONL、SQLite、内存 replay 和浏览器传输可以共用同一逻辑坐标。</p></div>
+</section>
+
+<section>
+  <h2>3. 固定基线识别 44 种事件</h2>
+  <div class="claim fact"><div class="claim-label">生成 catalog</div><p>当前构建的 known-event catalog 从全仓库的 <code>SessionEventMap</code> 声明生成，共 44 种。核心包声明 13 种，其余由各 owner 通过 TypeScript module augmentation 加入。<evidence id="SESSION-CORE-EVENTS"></evidence><evidence id="SESSION-KNOWN-EVENTS"></evidence></p></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>所有权组</th><th>事件（无省略）</th><th>数量</th></tr></thead>
+    <tbody>
+      <tr><td>核心会话</td><td><code>turn/start</code>, <code>turn/end</code>, <code>step/start</code>, <code>step/end</code>, <code>user/message</code>, <code>assistant/chunk</code>, <code>assistant/message</code>, <code>tool/call</code>, <code>tool/result</code>, <code>todo/write</code>, <code>request/header</code>, <code>request/context</code>, <code>session/end-seed</code></td><td>13</td></tr>
+      <tr><td>控制与策略</td><td><code>agent-preset/selected</code>, <code>agent/inbox/spliced</code>, <code>approval/asked</code>, <code>approval/decided</code>, <code>approval/policy</code>, <code>permission/preset</code>, <code>sandbox/mode</code>, <code>plan/mode</code>, <code>goal/change</code>, <code>schedule/change</code></td><td>10</td></tr>
+      <tr><td>压缩与重试</td><td><code>compaction/start</code>, <code>compaction/prune</code>, <code>compaction/summary</code>, <code>compaction/end</code>, <code>llm/retry</code>, <code>llm/retry-started</code></td><td>6</td></tr>
+      <tr><td>辅助模型与元数据</td><td><code>session/title</code>, <code>session/title-llm-request</code>, <code>web/deepseek-search-llm-request</code>, <code>feedback/record</code></td><td>4</td></tr>
+      <tr><td>命令与 Hook</td><td><code>command/run</code>, <code>command/done</code>, <code>hook/invoked</code>, <code>hook/result</code></td><td>4</td></tr>
+      <tr><td>子 Agent、Workflow 与 Code Mode</td><td><code>subagent/descriptor</code>, <code>tool-workflow/run-start</code>, <code>tool-workflow/run-end</code>, <code>tool-workflow/agent-start</code>, <code>tool-workflow/agent-end</code>, <code>tool/code-dispatch</code>, <code>tool/code-dispatch-start</code></td><td>7</td></tr>
+    </tbody>
+  </table></div>
+  <p>Catalog 说明“这份 build 理解哪些 vocabulary”，不说明所有事件都会进入模型。大多数事件是 log-only audit/control facts；只有三类 Surface event 可能派生 Message。</p>
+</section>
+
+<section>
+  <h2>4. Lossless JSON 是写入边界，不是存储后补救</h2>
+  <div class="claim fact"><div class="claim-label">一次遍历 snapshot</div><p><code>snapshotJsonValue()</code> 用显式 task stack 遍历 graph，在同一次 property read 中完成校验与复制，避免 stateful getter 在“先检查、后复制”之间换值；深嵌套受内存而非 JavaScript call stack 限制。<evidence id="SESSION-LOSSLESS-JSON"></evidence></p></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>接受</th><th>拒绝</th><th>原因</th></tr></thead>
+    <tbody>
+      <tr><td>null、boolean、string、有限 number</td><td><code>-0</code>、NaN、Infinity</td><td>必须 JSON round-trip byte-semantically 等价</td></tr>
+      <tr><td>dense plain Array</td><td>sparse Array、额外 own property、Array subclass</td><td>JSON 会补 null 或丢属性/原型</td></tr>
+      <tr><td>plain/null-prototype object</td><td>Date、Map、Set、class instance、伪造 prototype</td><td>不调用 <code>toJSON</code>，不接受隐藏转换</td></tr>
+      <tr><td>own enumerable string keys</td><td>Symbol key、non-enumerable key、function、undefined、BigInt、cycle</td><td>这些值会被丢弃、改形或无法编码</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">不可变性测试</div><p>事件和嵌套 Message 在接纳时 deep-freeze；派生历史共享这些冻结对象。测试对 content 和 tool result 的修改都会抛 TypeError，非法 graph 在源头拒绝且日志长度不变。<evidence id="SESSION-IMMUTABILITY-TEST"></evidence></p></div>
+</section>
+
+<section>
+  <h2>5. <code>Session.append()</code> 是一条两阶段本地事务</h2>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>拥有输入</h3><p>Snapshot <code>data</code> 与 Surface metadata；caller 后续 mutation 不再相关。</p></div>
+    <div><span>2</span><h3>构造候选</h3><p>分配 <code>seq = log.length</code>、读取 wall time，deep-freeze 完整 event。</p></div>
+    <div><span>3</span><h3>计划 Surface</h3><p>只验证 candidate，尚不修改已提交 node list。</p></div>
+    <div><span>4</span><h3>Precommit dispatch</h3><p><code>internal/dispatch</code> 让 invariant/diagnostic 纯验证；任何 veto 都发生在日志变化前。</p></div>
+    <div><span>5</span><h3>Commit</h3><p><code>log.push(event)</code> 是逻辑提交点，同时使旧 <code>events</code> array cache 失效。</p></div>
+    <div><span>6</span><h3>Postcommit publish</h3><p>按 snapshot 的 listener list 通知 <code>session/event</code>；同步 throw 和 async reject 都逐 listener 记录并隔离。</p></div>
+  </div>
+  <div class="claim fact"><div class="claim-label">生产实现</div><p>同一个 frozen candidate 从 precommit validation 穿过 commit 到 observer。Observer 期间的 reentrant append 被拒绝，避免嵌套提交重排后续 listener。<evidence id="SESSION-APPEND-COMMIT"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">原子性测试</div><p>测试证明 internal dispatch veto 不写日志、不发布事件、不推进 Surface；commit 后 hostile observer 不能回滚事件，也不能阻止后续 observer 看见它。<evidence id="SESSION-APPEND-BOUNDARY-TEST"></evidence></p></div>
+  <aside class="caveat"><strong>“提交”不等于“落盘”：</strong><code>append()</code> 返回只证明 live in-memory log 已提交。Persistence listener 是 write-behind；需要 <code>ctx.sessions.flush(session)</code> 的 durability barrier 才能把这一前缀当作磁盘事实。</aside>
+</section>
+
+<section>
+  <h2>6. Surface 是 append-only log 上的一门小型替换演算</h2>
+  <div class="claim fact"><div class="claim-label">唯一可见类型</div><p>Runtime 只承认 <code>user/message</code>、<code>assistant/message</code> 与 <code>tool/result</code> 为 Surface-eligible。它们必须声明 <code>surfaceOp</code>；boundary、chunk、request 或 plugin audit event 携带 Surface metadata 会失败。<evidence id="SESSION-SURFACE-PROJECTION"></evidence><evidence id="SESSION-SURFACE-PROVENANCE"></evidence></p></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Operation</th><th>当前 node list 变化</th><th>完整日志变化</th><th>主要用途</th></tr></thead>
+    <tbody>
+      <tr><td><code>append</code></td><td>把当前 event seq 加到 tail</td><td>追加同一 event</td><td>正常 user/assistant/tool result</td></tr>
+      <tr><td><code>{op:'replace', start, end}</code></td><td>按当前 Surface 顺序，把 inclusive range 原子替换为新 event seq</td><td>只追加 replacement event；旧事件不删除</td><td>Compaction summary、tool-result content rewrite</td></tr>
+    </tbody>
+  </table></div>
+  <p><code>start</code>/<code>end</code> 是当前 Surface node 的事件 seq，不是原始日志中的连续切片。两端必须仍在当前 Surface 且顺序合法；被遮蔽节点可能被其他 log-only 事件隔开。<evidence id="SESSION-SURFACE-REPLACE"></evidence></p>
+  <div class="claim fact"><div class="claim-label">Tool result 特权收窄</div><p>一个 replacement <code>tool/result</code> 只能目标一个当前 tool result，并且只能改嵌套 result block 的 <code>content</code>；call ID、error flag、message identity、turn/step 与 meta 都必须结构等价。这让 spill/prune 可以缩短输出，却不能伪造另一次工具执行。</p></div>
+</section>
+
+<section>
+  <h2>7. <code>sourceEventSeqs</code> 是显式血缘，但不是全覆盖 lineage</h2>
+  <div class="claim fact"><div class="claim-label">校验规则</div><p>Source list 若存在，必须 dense、无重复、全是非负 safe integer 且严格早于当前 event。Surface replacement 还必须至少包含每个被遮蔽 node；否则无法证明新节点替代了什么。<evidence id="SESSION-SURFACE-PROVENANCE"></evidence></p></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>生产者</th><th>典型 source</th><th>语义</th></tr></thead>
+    <tbody>
+      <tr><td>Assistant assembler</td><td>该 attempt 的全部 <code>assistant/chunk</code> seq</td><td>最终 Message 来自哪些 raw stream facts</td></tr>
+      <tr><td>Tool result</td><td><code>tool/call</code> seq</td><td>结果关联哪个已记录的副作用意图</td></tr>
+      <tr><td>Compaction replacement</td><td>全部 shadowed Surface nodes，另可含摘要输入事实</td><td>模型可见替换的来源集合</td></tr>
+      <tr><td>普通 user/plugin message</td><td>通常缺席</td><td>自身就是新事实，不声明派生来源</td></tr>
+    </tbody>
+  </table></div>
+  <aside class="caveat"><strong>限制：</strong>append-origin event 的 <code>sourceEventSeqs</code> 一般是可选的，系统并不强制每条派生事实都有完整传递闭包。Replacement coverage 是强制的，但这不是一张自动可查询的全量 provenance DAG。</aside>
+</section>
+
+<section>
+  <h2>8. <code>deriveMessages()</code> 是 Surface 的纯投影</h2>
+  <div class="claim fact"><div class="claim-label">逐节点规则</div><p><code>user/message</code> 原样返回 user message；非空 <code>assistant/message</code> 返回模型消息；<code>tool/result</code> 返回 user-role result。空 content assistant 只用来承载 usage，不进入 transcript；其他 41 种事件均返回 null。<evidence id="SESSION-SURFACE-PROJECTION"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">增量 cache</div><p>没有 replacement 时只折叠上次之后的新 Surface node，复杂度是 O(new nodes)；replace generation 变化时清空并从当前 node list 重建。每次 API 返回新的 array snapshot，内部 Message object 继续共享冻结 event data。<evidence id="SESSION-DERIVED-CACHE"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">Replay oracle 测试</div><p>测试在普通 append、空 assistant 和 replacement 后，用完整事件创建 fresh Session，要求其派生结果与 live incremental cache deep-equal；之前返回的 array 不会因后续 append 自动增长。依赖未安装，本研究未执行。<evidence id="SESSION-DERIVED-ORACLE-TEST"></evidence></p></div>
+  <div class="claim assessment"><div class="claim-label">设计评价</div><p>Message framing 由 producer 写进 content，Surface projector 不再按 source 二次包裹。这减少隐藏 prompt mutation，却要求每个 context producer自己维护正确的 model-facing framing。</p></div>
+</section>
+
+<section>
+  <h2>9. 同一日志支持三个不同读视图</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>视图</th><th>包含什么</th><th>不应拿它做什么</th></tr></thead>
+    <tbody>
+      <tr><td>Complete event log</td><td>44 类事实、raw chunks、被遮蔽消息、所有 control marker</td><td>不能直接当 Provider messages</td></tr>
+      <tr><td>Current model Surface</td><td>replacement 后的当前 node 顺序，再经 message projection</td><td>不能当用户“曾经看过什么”的永久 transcript</td></tr>
+      <tr><td>Append-origin transcript</td><td>只取最初以 <code>surfaceOp:'append'</code> 进入的 message events</td><td>不能代表压缩后下一请求的上下文</td></tr>
+    </tbody>
+  </table></div>
+  <p>Surface 模块明确警告：如果人类 transcript 直接读取当前 Surface，compaction 一落地就会让用户已经看过的对话消失；replacement copy 是 model-only 视图。反过来，只用 append-origin transcript 构建下一次请求，又会完全忽略压缩。</p>
+</section>
+
+<section>
+  <h2>10. Seed 把恢复前缀与本生命周期分开</h2>
+  <div class="claim fact"><div class="claim-label">接纳路径</div><p>Seed 的每个 event 被 detach/adopt、freeze、校验 envelope、request header、连续 seq 和 Surface transition；失败不会留下半个 Surface。构造完成时 <code>firstLiveSeq</code> 记录 seed 长度，若尾部尚无 <code>session/end-seed</code> 则追加 marker。<evidence id="SESSION-SEED-ACCEPTANCE"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">幂等测试</div><p>Fresh Session 不带 marker；显式空 seed 也会得到一个 marker；已有 marker 的 seed 再打开不会继续追加。Seed prefix 原样保留，派生 Message 与原 Session 相同。<evidence id="SESSION-SEED-REPLAY-TEST"></evidence></p></div>
+  <p>Marker 不是“当前是否有其他 writer”的锁，也不是 crash checkpoint。它只表示 constructor seed 与本生命周期新增事件的边界；fork、resume 和测试 replay 可据此区分继承事实与新工作。</p>
+</section>
+
+<section>
+  <h2>11. Version 0 的兼容策略是 fail-closed</h2>
+  <div class="claim fact"><div class="claim-label">格式规则</div><p><code>SESSION_FORMAT_VERSION</code> 当前固定为 0。Header/envelope/core semantics/Surface mechanism 的破坏性变化应 bump；本基线没有 upgrade chain 或迁移，版本不等即拒绝。普通新事件理论上不必 bump，因为 envelope 有 <code>ignorable</code>。<evidence id="SESSION-FORMAT-HEADER"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">未知事件门</div><p>Persistence normalization 后用 generated known catalog 检查整个日志。未知 required event 会产生 <code>SessionFormatUnsupportedError</code>，而 <code>ignorable:true</code> 的未知 event 会保留在 loaded log，让知道它的消费者仍可读取。<evidence id="SESSION-UNKNOWN-EVENT-GATE"></evidence><evidence id="SESSION-UNKNOWN-EVENT-TEST"></evidence></p></div>
+  <div class="claim assessment"><div class="claim-label">哲学</div><p>默认“required”会导致过度拒绝，但不会让旧 runtime 在不知道新语义的情况下悄悄重建出错误对话。这是把 forward compatibility 的风险偏向可见停机，而不是 silent corruption。</p></div>
+</section>
+
+<section>
+  <h2>12. Always-on storage guards 与 optional relational invariants 分离</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Always-on Session root</th><th>Optional <code>dsh-session/invariant</code></th></tr></thead>
+    <tbody>
+      <tr><td>Lossless JSON、snapshot、freeze</td><td>Turn 从 1 连续编号且不重叠</td></tr>
+      <tr><td>Envelope 与 seed seq 连续</td><td>Step 在当前 Turn 内从 1 连续编号且闭合</td></tr>
+      <tr><td>Surface eligibility、range 与 source coverage</td><td>Assistant/chunk/tool 等 execution event 必须在当前 Step</td></tr>
+      <tr><td>Tool-result replacement 只能改 content</td><td>同 Step 的 tool call/result 配对</td></tr>
+      <tr><td>Request-header shape 的少量兼容校验</td><td>插件扩展事件由各自 owner 的 invariant 检查</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">关系检查</div><p>Companion 从已有日志重放 trace；新 candidate 在 <code>internal/dispatch</code> 中只生成暂存 transition，真正的 <code>session/event</code> 到达后才推进。后续 precommit listener veto 不会让 invariant state 超前。<evidence id="SESSION-RELATIONAL-INVARIANT"></evidence><evidence id="SESSION-INVARIANT-COMMIT"></evidence></p></div>
+  <aside class="caveat"><strong>组合边界：</strong>Root Session 不隐式加载 companion。未显式组合它时，TypeScript 正确调用仍受类型保护，但通过不可信 cast、损坏的已知 payload 或错误插件写出的关系违规不会获得这组 Turn/Step/tool runtime guard。</aside>
+</section>
+
+<section>
+  <h2>13. 三个完整性缺口与两个有意取舍</h2>
+  <div class="claim assessment"><div class="claim-label">缺口 1：end-seed writer authority 未执行</div><p>类型注释称 constructor 是 <code>session/end-seed</code> 的唯一合法 writer，并直接承认 plugin 追加会错误重分类此前 live bracket；但 public <code>append()</code> 接受该 type，optional invariant 也明确不约束它。当前安全性依赖 in-process plugin 自律，而非 capability 或 runtime guard。<evidence id="SESSION-CORE-EVENTS"></evidence><evidence id="SESSION-APPEND-COMMIT"></evidence></p></div>
+  <div class="claim assessment"><div class="claim-label">缺口 2：ignorable 是 reader 能力，不是现成 writer API</div><p>Envelope 定义 <code>ignorable?: true</code>，loader 也实现了 forward-compatible gate；但 <code>Session.append(type, data, surfaceIntent?)</code> 不接受 envelope options，生产源码没有任何 append 写入 <code>ignorable:true</code>。因此本基线的普通新事件 producer 无法通过公共路径使用文档描述的“无需 bump 的可忽略事件”机制。<evidence id="SESSION-EVENT-ENVELOPE"></evidence><evidence id="SESSION-APPEND-COMMIT"></evidence></p></div>
+  <div class="claim assessment"><div class="claim-label">缺口 3：已知 payload 不是统一 runtime-schema</div><p>Always-on root 深校验 JSON、三类 Message、request header 和 Surface，但没有为全部 44 个 payload 运行统一 schema。关系校验又在可选 companion。对受信代码这是轻量扩展点；若把第三方插件视为不可信 writer，这不是完整防线。</p></div>
+  <ul class="audit-list">
+    <li><strong>有意取舍：</strong><code>sourceEventSeqs</code> 对普通 append 可缺席，避免每条新事实都维护昂贵 lineage；代价是 provenance 不完整。</li>
+    <li><strong>有意取舍：</strong>live commit 与 disk durability 分开，保持 hot-path 同步和无 I/O；代价是调用方必须在外部副作用前正确使用 flush barrier。</li>
+  </ul>
+</section>
+
+<section>
+  <h2>14. 优势、代价与验证状态</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>设计选择</th><th>主要收益</th><th>主要代价</th></tr></thead>
+    <tbody>
+      <tr><td>完整 append-only log + replaceable Surface</td><td>保留审计事实，同时允许上下文治理</td><td>每个消费者必须选对视图</td></tr>
+      <tr><td>Lossless JSON + deep-freeze</td><td>跨后端 replay 稳定，消除 caller alias mutation</td><td>无法直接记录 Date/Map/typed object 等丰富 runtime 值</td></tr>
+      <tr><td>seq 统一坐标</td><td>日志、Surface、source lineage、client dedup 共用身份</td><td>跨 Session 因果需要额外 header/event 关联</td></tr>
+      <tr><td>Module-augmented event vocabulary</td><td>Package owner 可独立扩展</td><td>需要 generated catalog、版本门和 owner invariant 保持同步</td></tr>
+      <tr><td>Precommit validation + contained observers</td><td>Veto 与 notification failure 的语义清晰</td><td>Observer 只能补偿，不能回滚已提交事件</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">验证状态</div><p>本章复核了类型、生产 append/surface/invariant 控制流、generated vocabulary 与测试源码。上游依赖未安装，因此所有测试段落都表示“测试定义的预期合同”，不是本地执行结果。下一章将在这份事件模型之上继续追踪 raw log、fork、repair、history 与 client replay。</p></div>
+</section>
