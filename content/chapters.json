@@ -1,0 +1,47 @@
+{
+  "title": "DeepSeek Harness 系统拆解",
+  "description": "固定源码基线、逐模块、可追溯的 DeepSeek Harness 架构研究",
+  "chapters": [
+    {"id":"00","slug":"reading-guide","part":"导论","title":"阅读入口与研究地图","subtitle":"如何阅读、当前进度、全量问题域","status":"drafting","scope":"给出全站结构、完成定义、阅读路径与阶段边界。"},
+    {"id":"01","slug":"methodology","part":"导论","title":"基线、方法与证据规则","subtitle":"怎样把源码事实、机制推导和设计评价分开","status":"verified","scope":"固定上游 commit，说明证据等级、引用稳定性与完成门槛。"},
+    {"id":"02","slug":"design-philosophy","part":"导论","title":"设计哲学总论","subtitle":"Everything is a plugin 背后的运行时观","status":"drafting","scope":"分析可替换核心、可逆副作用、组合优先、显式边界和事件溯源。"},
+    {"id":"03","slug":"module-atlas","part":"导论","title":"219 个包的模块地图","subtitle":"包组、角色、依赖方向与运行时位置","status":"queued","scope":"枚举全部 workspace 包并按定义、提供者、消费者、界面和支撑设施分类。"},
+
+    {"id":"04","slug":"boot-profiles-bundles","part":"核心运行时","title":"启动、Profile、Bundle 与配置叠层","subtitle":"运行中的 dsh 如何由有序插件树组合出来","status":"queued","scope":"追踪 CLI 到 Loader、profile/bundle patch 顺序、隔离域、配置替换语义和卸载。"},
+    {"id":"05","slug":"agent-object-lifecycle","part":"核心运行时","title":"Agent 对象、注册表与生命周期","subtitle":"创建、恢复、收件箱、状态和关闭","status":"queued","scope":"追踪 Agent 接口、registry、create/resume、live handle、initiator 与取消语义。"},
+    {"id":"06","slug":"turn-step-loop","part":"核心运行时","title":"Turn / Step / Loop 状态机","subtitle":"从输入认领到模型、工具和 turn 停止点","status":"queued","scope":"逐分支追踪 durable turn、step、waterfall、空步骤、失败与下一步输入。"},
+    {"id":"07","slug":"prompt-context","part":"核心运行时","title":"提示词组装与上下文注入","subtitle":"Section registry、顺序、作用域、工具 schema 与动态上下文","status":"queued","scope":"分析 system prompt registry、section 顺序、per-step 重建、agent.inject 与上下文插件。"},
+    {"id":"08","slug":"llm-adapters","part":"核心运行时","title":"LLM Adapter 与会话协议转换","subtitle":"内部消息怎样投影到 DeepSeek、Pi AI 与重放适配器","status":"queued","scope":"分析内部消息/流词汇、adapter registry、provider selection、tool call、reasoning、usage 与错误归一化。"},
+    {"id":"09","slug":"session-event-model","part":"会话与持久化","title":"内部会话结构与事件模型","subtitle":"append-only SessionEvent 如何成为模型上下文的事实源","status":"queued","scope":"列出 envelope、事件类型、seq、scope、来源关联、格式版本和 model-visible invariant。"},
+    {"id":"10","slug":"log-replay","part":"会话与持久化","title":"日志、派生历史、重放与 Fork","subtitle":"从原始 chunk 到可重建模型输入和 UI","status":"queued","scope":"追踪 append、deriveMessages、raw chunk、fork boundary、resume、transcript 与 replay fidelity。"},
+    {"id":"11","slug":"persistence-database","part":"会话与持久化","title":"持久化与数据库设计","subtitle":"JSONL、SQLite、通用 Storage 与数据所有权","status":"queued","scope":"分析 session persistence、SQLite schema/migrations、JSONL、KV storage、domain form、附件与工作区。"},
+    {"id":"12","slug":"projections-checkpoints","part":"会话与持久化","title":"Projection、Checkpoint 与冷启动","subtitle":"全量事件之外，系统保存了哪些可丢弃的加速状态","status":"queued","scope":"区分语义 checkpoint、projection cache、watermark、write-behind、tail replay 和恢复门槛。"},
+    {"id":"13","slug":"compaction","part":"上下文治理","title":"压缩体系与上下文压力","subtitle":"工具结果裁剪、摘要替换、溢出恢复分别是什么语义","status":"queued","scope":"确认压缩层级、触发器、token 计量、pruner、summary、surface generation、手动 compact 与失败恢复。"},
+    {"id":"14","slug":"memory-knowledge","part":"上下文治理","title":"记忆与知识：有何能力、又刻意没有什么","subtitle":"会话日志、摘要、Skill、Session Query 与长期语义记忆的边界","status":"queued","scope":"辨析 working context、durable log、session reference、query、skill 和真正跨会话记忆之间的区别。"},
+    {"id":"15","slug":"plan-goal-todo","part":"协作状态","title":"Plan、Goal 与 Todo","subtitle":"三种看似相近但生命周期不同的协作原语","status":"queued","scope":"分析 logged plan mode、goal revision/continuation、todo projection、权限与 UI 呈现。"},
+
+    {"id":"16","slug":"tool-primitives","part":"工具系统","title":"工具定义原语与执行管线","subtitle":"schema、scope、execution mode、presentation 与 waterfall","status":"queued","scope":"拆解 ToolDefinition、registry、快照、pre/guard/around/post/finalize/result 和 Code Mode 子调用。"},
+    {"id":"17","slug":"tool-catalog","part":"工具系统","title":"工具全集与能力分类","subtitle":"每一个模型可见工具的输入、输出、策略与 UI 意图","status":"queued","scope":"从生成 catalog 与源码逐项枚举工具名、提供包、schema、并行模式、危险面和后端 seam。"},
+    {"id":"18","slug":"tool-parallelism","part":"工具系统","title":"工具并行器与结果顺序","subtitle":"barrier、滚动窗口、重分类与模型顺序提交","status":"queued","scope":"追踪 executionMode 分类、并发池、屏障、开跑前重分类、settlement 和 additional context 顺序。"},
+    {"id":"19","slug":"permission-approval","part":"工具系统","title":"权限分析、审批与单调 Guard","subtitle":"谁提出风险、谁能放行、谁只能拒绝","status":"queued","scope":"分析 pre-execute policy、approval waterfall、absence fail-closed、monotonic guards、preset 与每次调用授权。"},
+    {"id":"20","slug":"sandbox-filesystem","part":"执行环境","title":"Sandbox、Filesystem 与观察策略","subtitle":"进程和文件如何共享一个执行世界与根目录策略","status":"queued","scope":"分析 sandbox seam/backends、policy、fs providers、write/edit intent、read-before-edit、E2B 与跨平台实现。"},
+    {"id":"21","slug":"shell-terminal-jobs","part":"执行环境","title":"Shell、PTY、Terminal 与后台作业","subtitle":"短命进程、持久会话、输出留存和生命周期","status":"queued","scope":"追踪 subprocess、shell executor、terminal ownership、job registry、spill、signal 和 kill escalation。"},
+    {"id":"22","slug":"web-lsp-mcp-skill","part":"执行环境","title":"Web、LSP、MCP 与 Skill","subtitle":"稳定工具名、可替换提供者和渐进式能力披露","status":"queued","scope":"分析 web provider registry、LSP 归一化、MCP client 挂载、Skill catalog/load 与提示词暴露。"},
+    {"id":"23","slug":"code-mode-self-modification","part":"执行环境","title":"Code Mode、自修改与动态插件","subtitle":"模型如何编排工具，乃至检查和挂载自己的运行时","status":"queued","scope":"分析 run_code transport、worker runtime、serialized subcall、Cordis inspect/define、VM 与处置生命周期。"},
+
+    {"id":"24","slug":"multi-agent","part":"编排","title":"多 Agent 协同","subtitle":"统一 seam 下的进程内、Fork、ACP、Codex、Claude Code 与 SDK 后端","status":"queued","scope":"分析 provider registry、spawn/fork、上下文继承、continuation activation、控制工具、报告与作业集成。"},
+    {"id":"25","slug":"workflow-ralph","part":"编排","title":"Workflow 与 Ralph","subtitle":"模型编写的 JavaScript 编排怎样桥接到 Agent 调用","status":"queued","scope":"分析 worker-thread engine、agent() bridge、fan-out、结果聚合、事件、错误与固定 Ralph loop。"},
+    {"id":"26","slug":"inbox-steering-continuation","part":"编排","title":"Inbox、Steering 与 Continuation","subtitle":"运行中输入如何被排队、认领、注入或定向到子 Agent","status":"queued","scope":"分析消息类别、wake/next-step、claim、steer、follow-up、activation 与 turn 边界。"},
+
+    {"id":"27","slug":"failure-recovery","part":"可靠性与产品面","title":"重试、错误、取消与恢复","subtitle":"失败发生在不同边界时，哪一层拥有决定权","status":"queued","scope":"分析 provider retry、request-error recovery、tool timeout、abort、cleanup、misconfiguration 和 crash-safe persistence。"},
+    {"id":"28","slug":"observability","part":"可靠性与产品面","title":"可观测、Telemetry 与轨迹","subtitle":"事件日志、投影、脱敏、OTel 和 UI trajectory 的分工","status":"queued","scope":"分析 session telemetry capture/redaction/handoff、OTel logs、stats、trace query、raw events 与运行日志。"},
+    {"id":"29","slug":"api-sdk-acp","part":"可靠性与产品面","title":"API、SDK、JSON-RPC 与 ACP","subtitle":"同一个 Agent runtime 如何被浏览器、自动化和外部客户端驱动","status":"queued","scope":"分析 Host remotes、Typert、WebSocket、stdio SDK、ACP 映射、事件订阅和协议边界验证。"},
+    {"id":"30","slug":"web-ui","part":"可靠性与产品面","title":"Web UI 插件架构","subtitle":"客户端 Cordis、Slot、SessionRuntime 与会话投影","status":"queued","scope":"分析宿主/浏览器双面插件、模块装载、slots、conversation nodes、工具展示、重连与状态所有权。"},
+    {"id":"31","slug":"security-trust","part":"可靠性与产品面","title":"安全模型与信任边界","subtitle":"本地 Agent 产品怎样将自由执行收敛为显式策略","status":"queued","scope":"建立 threat model，覆盖配置信任、模型输入、工具 JSON、审批、沙箱、路径、凭据、远端与自修改。"},
+    {"id":"32","slug":"testing-invariants","part":"可靠性与产品面","title":"测试、快照与运行时不变量","subtitle":"它怎样证明插件组合之后仍然满足系统语义","status":"queued","scope":"分析 100% per-file gate、keyless snapshot、invariant registry、生成文档校验、配置闭包与平台矩阵。"},
+
+    {"id":"33","slug":"tradeoffs","part":"综合结论","title":"优势、代价与设计取舍","subtitle":"哪些复杂度换来了真正的可组合性，哪些仍在偿债","status":"queued","scope":"基于已验证章节综合评价，不把项目自述重复为结论。"},
+    {"id":"34","slug":"open-questions","part":"综合结论","title":"缺口、限制与待验证问题","subtitle":"Developer Preview 中尚未闭合的语义和证据","status":"queued","scope":"记录未实现、弱保证、文档/代码漂移、平台差异及需要运行实验的问题。"},
+    {"id":"35","slug":"glossary-evidence","part":"综合结论","title":"术语、证据目录与源码索引","subtitle":"从概念和 claim 反向定位固定基线源码","status":"queued","scope":"汇总术语、全部证据项、包/符号/事件索引和引用覆盖率。"}
+  ]
+}

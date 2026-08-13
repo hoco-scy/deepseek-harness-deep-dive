@@ -1,0 +1,105 @@
+{
+  "baseline": "47f943859bef60e4160492346772ded9b24f765a",
+  "repository": "https://github.com/deepseek-ai/deepseek-harness",
+  "items": [
+    {
+      "id": "ARCH-PLUGIN-CORE",
+      "kind": "official-doc",
+      "path": "docs/architecture.md",
+      "lines": "9-13",
+      "title": "Cordis 与无特权核心",
+      "supports": "全部产品部件都是插件；通过共享 context 的 service、typed event 和 reversible effect 组合。"
+    },
+    {
+      "id": "ARCH-LAYERS",
+      "kind": "official-doc",
+      "path": "docs/architecture.md",
+      "lines": "15-37",
+      "title": "Profile、Bundle 与 patch 叠层",
+      "supports": "运行时插件树按 bundle、profile patch、home patch、CLI overlay 的顺序组合。"
+    },
+    {
+      "id": "ARCH-TURN",
+      "kind": "official-doc",
+      "path": "docs/architecture.md",
+      "lines": "63-90",
+      "title": "Turn / Step 主流程",
+      "supports": "turn、step、prompt、LLM、工具与 live waterfall 的关系。"
+    },
+    {
+      "id": "ARCH-LOG",
+      "kind": "official-doc",
+      "path": "docs/architecture.md",
+      "lines": "92-102",
+      "title": "Session log 与 capability seam",
+      "supports": "日志是模型上下文事实源；model-visible 必须可从日志重建；seam 包含定义、提供者与消费者。"
+    },
+    {
+      "id": "ROOT-PREVIEW",
+      "kind": "repository-policy",
+      "path": "AGENTS.md",
+      "lines": "5-8",
+      "title": "Developer Preview 的兼容立场",
+      "supports": "首个 tag 前优先正确基础而非兼容 shim；磁盘格式没有兼容承诺。"
+    },
+    {
+      "id": "ROOT-EFFECTS",
+      "kind": "repository-policy",
+      "path": "AGENTS.md",
+      "lines": "91-100",
+      "title": "注册即 effect 与 waterfall 语义",
+      "supports": "贡献通过 effect/on 注册并可处置；waterfall listener 必须调用 next。"
+    },
+    {
+      "id": "ROOT-MODEL-LOGGED",
+      "kind": "repository-policy",
+      "path": "AGENTS.md",
+      "lines": "99-104",
+      "title": "Model-visible 等价于 Logged",
+      "supports": "任何进入模型请求的输入都需要 session event，可从日志重建。"
+    },
+    {
+      "id": "ROOT-BOUNDARIES",
+      "kind": "repository-policy",
+      "path": "AGENTS.md",
+      "lines": "107-116",
+      "title": "显式边界与快速失败",
+      "supports": "跨包默认值显式 resolve，部署参数可配置，错误配置尽早失败，外部 ID 使用 branded 类型。"
+    },
+    {
+      "id": "ROOT-TYPED-TRUST",
+      "kind": "repository-policy",
+      "path": "AGENTS.md",
+      "lines": "115-117",
+      "title": "静态边界和运行时边界的验证哲学",
+      "supports": "同进程静态类型边界信任 TypeScript；解析、模型 JSON、持久化、进程、worker 与 wire 边界做运行时验证。"
+    },
+    {
+      "id": "TOOL-PIPELINE",
+      "kind": "generated-doc",
+      "path": "docs/tool-execution-pipeline.md",
+      "lines": "4-60",
+      "title": "工具执行管线",
+      "supports": "pre、单调 guard、around execute、post、normalization、finalize 和 immutable result 的完整顺序。"
+    },
+    {
+      "id": "TURN-SEQUENCE",
+      "kind": "generated-doc",
+      "path": "docs/agent-lifecycle.md",
+      "lines": "19-80",
+      "title": "Agent turn/step 时序",
+      "supports": "输入认领、durable events、并行工具结算、停止点和 SDK 事件面的时序。"
+    }
+  ],
+  "usage": {
+    "ARCH-LAYERS": 1,
+    "ARCH-LOG": 3,
+    "ARCH-PLUGIN-CORE": 2,
+    "ROOT-BOUNDARIES": 1,
+    "ROOT-EFFECTS": 1,
+    "ROOT-MODEL-LOGGED": 1,
+    "ROOT-PREVIEW": 1,
+    "ROOT-TYPED-TRUST": 1,
+    "TURN-SEQUENCE": 1
+  }
+}

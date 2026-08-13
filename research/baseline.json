@@ -1,0 +1,12 @@
+{
+  "project": "DeepSeek Harness",
+  "repository": "https://github.com/deepseek-ai/deepseek-harness",
+  "commit": "47f943859bef60e4160492346772ded9b24f765a",
+  "shortCommit": "47f943859b",
+  "commitDate": "2026-08-13T19:38:46+08:00",
+  "defaultBranch": "master",
+  "license": "MIT",
+  "capturedAt": "2026-08-13T00:00:00-07:00",
+  "sourcePath": "/home/scy/Code/deepseek-harness",
+  "notes": "Local sourcePath is research-environment metadata only and is not rendered into the public site."
+}

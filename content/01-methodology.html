@@ -1,0 +1,46 @@
+<section>
+  <h2>为什么必须固定 commit</h2>
+  <div class="claim fact">
+    <div class="claim-label">仓库政策</div>
+    <p>DeepSeek Harness 明确处于首个正式 tag 之前的阶段：优先修正基础设计而不是保留兼容 shim；SQLite schema 单调升级，而 session format 仍维持版本 0 且不承诺兼容。<evidence id="ROOT-PREVIEW"></evidence></p>
+  </div>
+  <p>因此，“当前 master 怎样工作”是高漂移陈述。本报告把所有事实绑定到完整 SHA；以后若跟进新版本，将新增 baseline 差异页，而不是悄悄把旧结论替换成新实现。</p>
+</section>
+
+<section>
+  <h2>证据等级</h2>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>生产源码与实际配置</h3><p>最强证据。需要同时看构造、调用、状态改变、失败分支和处置。</p></div>
+    <div><span>2</span><h3>行为测试与快照</h3><p>证明特定输入下的可观察行为，但必须先确认 fixture 真的经过生产装配路径。</p></div>
+    <div><span>3</span><h3>生成文档</h3><p>工具目录、模块图、事件图等由源码生成且有 gate，适合发现覆盖面，不能替代细节控制流。</p></div>
+    <div><span>4</span><h3>人工维护文档</h3><p>适合解释意图和词汇；与代码冲突时，以固定基线源码为准。</p></div>
+    <div><span>5</span><h3>计划与讨论</h3><p>只证明方向和问题意识，不证明运行时已实现。</p></div>
+  </div>
+</section>
+
+<section>
+  <h2>三种陈述必须分开</h2>
+  <div class="claim fact"><div class="claim-label">源码事实</div><p>例如：“工具调用在执行前先写入 <code>tool/call</code>，最终结果以 <code>tool/result</code> 写入 session log。”这可以由时序与生产控制流直接证明。<evidence id="TURN-SEQUENCE"></evidence></p></div>
+  <div class="claim inference"><div class="claim-label">机制推导</div><p>例如：“工具 UI 可以先展示 pending card，同时最终模型历史仍由 durable event 投影。”这需要把事件顺序、presentation 和派生历史三处事实串起来。</p></div>
+  <div class="claim assessment"><div class="claim-label">设计评价</div><p>例如：“事件溯源降低了多产品面的状态分叉风险，但把兼容压力推到了 event vocabulary 和 projection 上。”这是评价，必须同时陈述收益、代价和适用前提。</p></div>
+</section>
+
+<section>
+  <h2>每个模块的统一拆解模板</h2>
+  <ol class="audit-list">
+    <li><strong>业务角色：</strong>模块为哪种用户或运行时需求负责。</li>
+    <li><strong>入口与装配：</strong>由哪个 bundle/profile 挂载，依赖哪些 service。</li>
+    <li><strong>类型与数据：</strong>公开接口、事件、schema、branded id 和持久化形态。</li>
+    <li><strong>真实控制流：</strong>正常路径、分支条件、状态突变的准确时机。</li>
+    <li><strong>并发与生命周期：</strong>scope、owner、取消、卸载、cleanup 和竞态处理。</li>
+    <li><strong>错误语义：</strong>谁分类、谁重试、谁降级、谁保留原始错误。</li>
+    <li><strong>重放与可观测：</strong>哪些事实 durable，哪些只有 live event，如何恢复。</li>
+    <li><strong>验证：</strong>单元、集成、snapshot、runtime invariant 和仍缺失的证据。</li>
+    <li><strong>设计评价：</strong>收益、成本、约束、适用边界和可迁移原则。</li>
+  </ol>
+</section>
+
+<section>
+  <h2>章节完成门槛</h2>
+  <p>只有入口、核心类型、主要状态机、持久化事实、错误路径与关键测试都被纳入，并完成至少一次入口到副作用的控制流复核，章节才会从“撰写中”升级为“已复核”。找不到反例不等于完成；缺乏直接证据的宽泛结论会继续留在“待验证问题”。</p>
+</section>

@@ -1,0 +1,61 @@
+<section>
+  <h2>一句话结论</h2>
+  <div class="thesis">
+    <p>DeepSeek Harness 的核心哲学不是“给 Agent 增加更多内置能力”，而是把产品拆成<strong>可配置组合、作用域隔离、可逆挂载、事件可追溯</strong>的能力网络；复杂功能尽量作为 loop 之外的插件，通过稳定的 service 与 event seam 参与同一条语义主干。</p>
+  </div>
+  <p>这句话包含源码事实，也包含归纳。本页将二者拆开。</p>
+</section>
+
+<section>
+  <h2>原则一：没有特权核心，但存在架构宪法</h2>
+  <div class="claim fact"><div class="claim-label">源码事实</div><p>Cordis context 接收 service、typed event 与 reversible effect；模型 adapter、工具注册表、session log 和 agent loop 自身都作为插件装配，扩展方式是并列挂载插件。<evidence id="ARCH-PLUGIN-CORE"></evidence></p></div>
+  <div class="claim inference"><div class="claim-label">机制推导</div><p>“没有特权核心”不等于“没有核心”。真正难以随意替换的是组合协议：context scope、event 顺序、effect disposal、waterfall delegation、session event 兼容性，以及 service definition/provider/consumer 三方关系。替换实现必须继续遵守这些协议。</p></div>
+  <div class="claim assessment"><div class="claim-label">设计评价</div><p>优势是功能无需持续向一个巨型 loop 注入条件分支，插件可以按 profile 或 per-agent preset 组合；代价是系统正确性从单类局部逻辑扩散为“插件图 + 事件顺序 + 配置叠层”的全局性质，理解和验证成本显著上升。</p></div>
+</section>
+
+<section>
+  <h2>原则二：注册是一种可撤销的生命周期副作用</h2>
+  <div class="claim fact"><div class="claim-label">仓库政策</div><p>贡献必须通过 <code>ctx.effect()</code> / <code>ctx.on()</code> 注册，registry 的 <code>register()</code> 返回 disposer；waterfall listener 必须显式调用 <code>next()</code> 才把控制权交给下游。<evidence id="ROOT-EFFECTS"></evidence></p></div>
+  <div class="claim inference"><div class="claim-label">机制推导</div><p>插件“存在”不是进程级永久事实，而是绑定到某个 Cordis scope 的租约。卸载 scope 必须反向撤销服务、工具、事件 listener 与 provider。这让 per-session / per-agent 组合和运行时自修改成为可能，也要求任何旁路注册都被视为架构违规。</p></div>
+</section>
+
+<section>
+  <h2>原则三：组合优于隐藏默认</h2>
+  <div class="claim fact"><div class="claim-label">源码事实</div><p>运行中的 dsh 从空 entry list 开始，依次应用 profile 声明的 bundles、profile 自己的 patch、home-level patch 和命令行 overlay；patch 按 row id 定位，并整体替换该 row 的 config 或插入新 row。<evidence id="ARCH-LAYERS"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">仓库政策</div><p>跨 package 的默认值要求在拥有该语义的实现中通过显式 <code>resolve(request): Spec</code> 完成；部署相关 tunable 需要成为可验证配置，错误配置应在可判定的最早位置失败。<evidence id="ROOT-BOUNDARIES"></evidence></p></div>
+  <div class="claim assessment"><div class="claim-label">设计评价</div><p>显式叠层让最终运行树可打印、可覆盖、可审计，但“整体替换 config”不是深合并：上层 patch 必须理解下层完整配置形状，否则容易在覆盖一个字段时丢失其他字段。这是一种用可预测语义换取使用者谨慎的选择。</p></div>
+</section>
+
+<section>
+  <h2>原则四：模型看到的东西必须成为耐久事实</h2>
+  <div class="claim fact"><div class="claim-label">源码事实</div><p>session log 是模型历史的事实源，<code>deriveMessages()</code> 从事件投影模型消息；原始 <code>assistant/chunk</code> 被保留以支持重放与 UI fidelity。任何进入模型请求的新增输入都必须对应 session event，并由运行时不变量检查。<evidence id="ARCH-LOG"></evidence><evidence id="ROOT-MODEL-LOGGED"></evidence></p></div>
+  <div class="claim inference"><div class="claim-label">机制推导</div><p>这条规则把提示词工程变成了事件建模问题：插件不能只在请求发送前偷偷拼接字符串；若该内容影响模型行为，就必须能从日志重建。于是 resume、fork、telemetry、snapshot 和 UI 不必各自维护一份“当时模型看到了什么”。</p></div>
+  <div class="claim assessment"><div class="claim-label">设计评价</div><p>这是 DeepSeek Harness 最有价值、也最昂贵的约束之一。它显著改善审计与重放，但每类动态上下文都要设计事件语义、兼容读取和派生规则，不能用一次性的 middleware state 草率实现。</p></div>
+</section>
+
+<section>
+  <h2>原则五：能力不是一个接口，而是闭合的三角色 seam</h2>
+  <div class="claim fact"><div class="claim-label">源码事实</div><p>仓库把可替换能力定义为三类角色：Service Definition 声明接口，Service Provider 实现它，Consumer 使用它（通常是模型可见工具）。只有单一角色不能算完整 seam。<evidence id="ARCH-LOG"></evidence></p></div>
+  <p>这个定义避免把“抽了一个 interface”误认为架构已经可替换。例如文件能力不仅有 <code>ctx.fs</code>，还要有 local/sandbox/E2B provider、模型工具 consumer、观察策略、错误词汇与执行世界的一致性。</p>
+</section>
+
+<section>
+  <h2>原则六：在可信静态边界内简化，在真实不可信边界上验证</h2>
+  <div class="claim fact"><div class="claim-label">仓库政策</div><p>同进程、静态类型已约束的值不重复做敌意运行时校验；解析配置、排队数据、模型/工具 JSON、持久化文件、worker、进程和 wire 边界则必须验证。跨边界 ID 使用 branded 类型而非裸字符串。<evidence id="ROOT-TYPED-TRUST"></evidence></p></div>
+  <div class="claim assessment"><div class="claim-label">设计评价</div><p>这不是“多校验总是更安全”，而是把验证预算放在值可能被伪造、漂移或失真的地方。好处是内部代码不被冗余 guard 淹没；风险是团队必须准确识别边界，一旦把外部数据误当成 typed same-process value，防线会直接缺失。</p></div>
+</section>
+
+<section>
+  <h2>暂定哲学模型</h2>
+  <div class="principle-grid">
+    <div><strong>组合单元</strong><span>Plugin</span></div>
+    <div><strong>能力边界</strong><span>Service seam</span></div>
+    <div><strong>协调机制</strong><span>Typed events / waterfall</span></div>
+    <div><strong>生命周期</strong><span>Scope + reversible effects</span></div>
+    <div><strong>事实源</strong><span>Append-only session log</span></div>
+    <div><strong>产品装配</strong><span>Profile + bundle + patch layers</span></div>
+    <div><strong>安全姿态</strong><span>Boundary validation + fail loud</span></div>
+    <div><strong>扩展策略</strong><span>Plugins, not loop changes</span></div>
+  </div>
+  <aside class="caveat"><strong>尚未完成：</strong>以上是基于架构文档和仓库政策的第一轮归纳。后续章节会用生产源码验证这些原则是否在提示词、工具并行、压缩、checkpoint、多 Agent、workflow 和 UI 中真正一致；出现反例时，本页会修正而不是维护理论完整性。</aside>
+</section>
