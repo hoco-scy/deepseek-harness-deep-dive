@@ -6,7 +6,7 @@
 <body data-page="observability" data-baseline="47f943859bef60e4160492346772ded9b24f765a" data-lang="zh">
   <header class="topbar"><button class="icon-button nav-toggle" type="button" data-nav-toggle aria-label="打开章节目录" aria-expanded="false">☰</button>
     <a class="brand" href="../index.html"><span class="brand-mark">DS</span><span>Harness 系统拆解</span></a>
-    <span class="topbar-meta">固定基线 47f943859b · 27 已复核 / 1 撰写中 / 36 章</span>
+    <span class="topbar-meta">固定基线 47f943859b · 28 已复核 / 1 撰写中 / 36 章</span>
     <div class="topbar-actions"><a class="language-switch" href="../../pages/observability.html" lang="en" aria-label="阅读本章英文版">English</a><button class="icon-button" type="button" data-theme-toggle aria-label="切换明暗主题">◐</button></div></header>
   <div class="layout"><aside class="sidebar" data-sidebar aria-label="章节目录"><input class="filter" data-chapter-filter type="search" placeholder="筛选章节……" aria-label="筛选章节"><section class="nav-part" data-part><h2 class="part-title">导论</h2>
     <a class="chapter-link" data-chapter-item href="../pages/reading-guide.html">
@@ -46,7 +46,7 @@
       <span class="chapter-number">26</span><span>Inbox、Steering 与 Continuation</span><span class="status-dot verified" title="已复核"></span></a></section><section class="nav-part" data-part><h2 class="part-title">可靠性与产品面</h2>
     <a class="chapter-link" data-chapter-item href="../pages/failure-recovery.html">
       <span class="chapter-number">27</span><span>重试、错误、取消与恢复</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link current" data-chapter-item href="../pages/observability.html">
-      <span class="chapter-number">28</span><span>可观测、Telemetry 与轨迹</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/api-sdk-acp.html">
+      <span class="chapter-number">28</span><span>可观测、Telemetry 与轨迹</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link" data-chapter-item href="../pages/api-sdk-acp.html">
       <span class="chapter-number">29</span><span>API、SDK、JSON-RPC 与 ACP</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/web-ui.html">
       <span class="chapter-number">30</span><span>Web UI 插件架构</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/security-trust.html">
       <span class="chapter-number">31</span><span>安全模型与信任边界</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/testing-invariants.html">
@@ -56,10 +56,248 @@
       <span class="chapter-number">34</span><span>缺口、限制与待验证问题</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/glossary-evidence.html">
       <span class="chapter-number">35</span><span>术语、证据目录与源码索引</span><span class="status-dot queued" title="待研究"></span></a></section></aside>
     <main class="main"><div class="page-shell"><article class="article" data-article><header><div class="page-kicker"><span>可靠性与产品面</span><span>·</span><span>第 28 章</span></div>
-      <h1>可观测、Telemetry 与轨迹</h1><p class="subtitle">事件日志、投影、脱敏、OTel 和 UI trajectory 的分工</p><div class="page-meta"><span class="status queued">待研究</span><span>上游 47f943859b</span><span>范围: 分析 session telemetry capture/redaction/handoff、OTel logs、stats、trace query、raw events 与运行日志。</span></div></header>
-      <section class="placeholder"><p class="eyebrow">研究队列</p><h2>本章尚未进入结论状态</h2>
-    <p><strong>当前范围:</strong> 分析 session telemetry capture/redaction/handoff、OTel logs、stats、trace query、raw events 与运行日志。</p><p>页面已经纳入全量研究地图，但尚未完成源码控制流复核。以下是升级为“已复核”之前必须覆盖的检查面：</p>
-    <ul class="placeholder-checks"><li>实际 bundle / profile 装配入口</li><li>公开类型、事件与配置 schema</li><li>正常控制流与状态突变时机</li><li>并发、scope、所有权与 cleanup</li><li>错误、取消、重试和降级分支</li><li>持久化、projection 与 replay 语义</li><li>生产路径测试与运行时不变量</li><li>优势、代价、限制与待验证问题</li></ul></section><section class="learning-notes" aria-labelledby="learning-notes-title"><h2 id="learning-notes-title">我的学习体会</h2>
+      <h1>可观测、Telemetry 与轨迹</h1><p class="subtitle">事件日志、投影、脱敏、OTel 和 UI trajectory 的分工</p><div class="page-meta"><span class="status verified">已复核</span><span>上游 47f943859b</span><span>范围: 分析 session telemetry capture/redaction/handoff、OTel logs、stats、trace query、raw events 与运行日志。</span></div></header>
+      <section>
+  <h2>结论：可观测性是四个协同平面，不是一条万能 Trace 流</h2>
+  <div class="thesis"><p>DeepSeek Harness 没有把 OpenTelemetry、浏览器或运维日志中的任何一个当作事实源。持久、只追加的 Session 日志掌管交互事实；best-effort telemetry seam 把选定副本交给 OTel Logs 管线；host 与浏览器代码为人构建分页投影；本地 logger 则保留既不该进入模型 transcript、也不该泄露给不可信调用者的运维失败。session-query 的“trace”是建立在第一个平面上的第五种视图：它查询确定性的事件关系与 session 谱系，不是分布式 span tracing。</p></div>
+  <p>这种分离是本章的核心结论。即使 export 被禁用，重放与检查仍然成立；exporter 故障不会进入 agent loop；隐私策略也能落在外发副本边界。但代价是这里<strong>不存在单一、无损的可观测性数据流</strong>：ledger 在语义上最完整，却留在本地且高度敏感；telemetry 便于外部分析，但 capture handoff 只维护无持久 ack／outbox 的高水位 cursor，下游 SDK 仍可 retry，因此端到端既非无损也非 exactly-once；浏览器只持有已加载窗口加 host 投影；本地诊断可能包含其他所有表面都没有的 stack。</p>
+</section>
+
+<section>
+  <h2>1. 信号所有权地图</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>平面</th><th>基本单元</th><th>权威范围</th><th>丢失／可见性边界</th></tr></thead>
+    <tbody>
+      <tr><td>Canonical Session ledger</td><td>连续的原始 <code>SessionEvent</code></td><td>重放、模型可见历史、生命周期结果</td><td>完整 payload 可能仅在本地，并可能含 secret</td></tr>
+      <tr><td>Session telemetry + OTel</td><td>Ledger 副本或运维记录</td><td>外部上报与 collector 侧分析</td><td>Best effort、依赖脱敏、capture-side 高水位 handoff；SDK 可 retry</td></tr>
+      <tr><td>Host／浏览器投影</td><td>历史页、投影值、trajectory record</td><td>人工检查与全日志汇总</td><td>原始历史是窗口化的；派生值可独立降级</td></tr>
+      <tr><td>本地运维 logger</td><td>Warning／完整诊断</td><td>插件、持久化、查询与投影健康</td><td>不是可重放的 session 事实，也未必外发</td></tr>
+      <tr><td>Session-query trace</td><td>谱系或事件关系结果</td><td>基于 canonical log 的精确关系</td><td>可选模型工具另加 workspace 授权与错误净化</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">推论</div><p>运维人员必须按 identity 与 sequence 关联这些平面，而不能要求一条流回答所有问题。“对话发生了什么？”从 ledger 开始；“export 是否失败？”从本地诊断开始；“什么离开了机器？”则从 sharing mode、redaction 与 OTel queue 开始。</p></div>
+</section>
+
+<section>
+  <h2>2. Canonical ledger 是交互事实，也是最大的隐私表面</h2>
+  <p>Session event map 明确定义为只追加、无损 JSON，sequence number 连续。它保留 turn／step 边界、原始 stream chunk、组装后的 message、原始工具参数、工具结果与私有展示 metadata、todo、request header、context marker，以及插件扩展事件。持久的 <code>turn/end</code> reason 区分 completed、aborted、blocked、结构化 error、max-token 与 crash repair 产生的 interrupted。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/session/src/types.ts#L152-L309" title="Session 事件日志契约: 定义结构化 turn 结束原因，以及只追加、无损、连续序号的原始事件事实源与主要 payload。" aria-label="证据 OBS-SESSION-LOG">OBS-SESSION-LOG</a></p>
+  <p><code>request/header</code> 不是一个轻量 correlation header。它可携带有效模型配置、完整渲染后的 system prompt，以及含 schema 的完整工具目录；Agent 会在 dispatch 前按需追加 initial、resume 或 change snapshot。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/agent.ts#L407-L470" title="请求头快照的组装与记录: Agent 从有效模型配置、完整 system prompt 与工具目录组装 header，并按 initial、resume、change 记录。" aria-label="证据 OBS-REQUEST-HEADER">OBS-REQUEST-HEADER</a></p>
+  <div class="claim assessment"><div class="claim-label">权衡</div><p>记录足以重建模型可见状态的数据，带来了很强的重放与取证能力，也让本地日志成为高价值敏感资产。“Telemetry disabled”只表示没有 OTel export；它不表示 canonical log 中不存在消息、prompt、工具 payload 或本地路径。</p></div>
+</section>
+
+<section>
+  <h2>3. Capture 把 ledger 事实转换成一份小型外发契约</h2>
+  <pre><code>canonical Session event
+        │ structuredClone(event.data)
+        ▼
+SessionTelemetryRecord
+  channel: ledger | ops
+  time + severity
+  最小 identity attributes
+  完整 structured body
+        │ synchronous redaction waterfall
+        ▼
+backend.emit()  ── 仅 enqueue ──→ exporter-owned queue</code></pre>
+  <p>Ledger record 保留事件时间与完整克隆的 <code>event.data</code>，attribute 只重复 session／event identity 与可选谱系事实。运维 record 没有 event sequence，因此不会被误认作 ledger row。sink 契约要求 <code>emit()</code> 是同步、非阻塞的 enqueue；handoff 之后的 batching、retry、queue bound 与 loss 都归 backend SDK 所有。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-telemetry/src/index.ts#L47-L130" title="Telemetry record 与 sink 契约: 定义 ledger/ops channel、最小 attributes、完整 body、同步非阻塞 emit，以及由 backend 所有的 batching 与 loss。" aria-label="证据 OBS-TELEMETRY-CONTRACT">OBS-TELEMETRY-CONTRACT</a></p>
+  <p>Capture 只做一项固定的高频降采样：每个 <code>(turn, step)</code> 仅外发第一条 <code>assistant/chunk</code>，用作 stream-started 信号。之后的 <code>assistant/message</code> 承载字节完整的组装内容。其他事件类型都按完整 body 通过。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-telemetry/src/coordinator.ts#L179-L220" title="Capture 投影与复制: 每个 turn/step 只交付第一条 chunk，其他 event.data 深拷贝后经 redaction 交给 backend。" aria-label="证据 OBS-TELEMETRY-PROJECTION">OBS-TELEMETRY-PROJECTION</a></p>
+  <div class="claim assessment"><div class="claim-label">推论</div><p>这是带一项明确高频缩减的事件镜像，不是传统 span model。Collector 可按 <code>(session.id, event.seq)</code> 重建有序 ledger record，却不会收到每个 token delta 对应的 chunk record。</p></div>
+</section>
+
+<section>
+  <h2>4. Redaction 同步、可组合、逐条 fail-closed——但默认不存在</h2>
+  <p><code>session-telemetry/record</code> 是作用于外发副本的同步 waterfall。规则围绕 <code>next()</code> 组合；规则可替换下层数据，抛错规则则扣留当前记录，同时 capture containment 保护 agent loop。Live 模式在 append 时执行规则；feedback-gated 模式在 feedback 触发时，对 handoff cursor 之后（无 cursor 时从 <code>firstLiveSeq</code> 起）到该 feedback 的 canonical suffix 执行当下规则。Canonical ledger 永远不会被重写。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-telemetry/src/index.ts#L24-L43" title="同步 redaction waterfall: Seam 不附带规则；listener 同步组合，抛错逐条 fail-closed，只改变外发副本而不重写 canonical log。" aria-label="证据 OBS-TELEMETRY-REDACTION">OBS-TELEMETRY-REDACTION</a></p>
+  <div class="claim fact"><div class="claim-label">事实</div><p>测试分别钉住四个性质：没有 listener 时 secret 原样通过；一条规则可同时清洗 ledger 与 ops record；多个 listener 会叠加；抛错规则只压下自己的 candidate。测试还证明，外发副本已清洗后，canonical log 仍保留原始 secret。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-telemetry/tests/redact.spec.ts#L39-L128" title="Redaction 边界回归测试: 覆盖无规则原样通过、ledger/ops 清洗、listener 叠加、canonical log 不变及抛错扣留。" aria-label="证据 OBS-TEST-REDACTION">OBS-TEST-REDACTION</a></p></div>
+  <aside class="caveat"><strong>隐私边界：</strong>seam 本身不附带任何内置规则。启用上传模式却未挂载部署侧 redactor，会导出原始捕获副本。这里的 redaction 只保护 OTel output，不保护本地持久化、浏览器历史、exact read，或 canonical log 的其他消费者。</aside>
+</section>
+
+<section>
+  <h2>5. Handoff cursor 表示“已交给 backend”，不表示“collector 已收到”</h2>
+  <p>Module-scope 的 <code>WeakMap&lt;Session, seq&gt;</code> 会在 Session 对象仍存活时跨 telemetry fiber reload 保留。adoption 时 coordinator 从 cursor 之后重放；没有 cursor 时从 <code>firstLiveSeq</code> 开始，因此恢复后的进程不会回填上一进程 export 失败的记录。Cursor 仅在 <code>backend.emit()</code> 返回后推进，其文档明确说它标记 handed-off，而非 delivered。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-telemetry/src/coordinator.ts#L32-L169" title="Handoff cursor 与 adoption: Module-scope cursor 标记 handed-off 而非 delivered；live adoption、on-demand suffix 与 firstLiveSeq 起点形成 capture-side at-most-once 高水位，但不约束 downstream retry 或端到端交付语义。" aria-label="证据 OBS-TELEMETRY-HANDOFF">OBS-TELEMETRY-HANDOFF</a></p>
+  <div class="claim assessment"><div class="claim-label">权衡</div><p><code>emit()</code> 只确认一次 enqueue。之后的 queue overflow、exporter retry 耗尽或进程退出，都可能丢失已经推进 cursor 的记录。更微妙的是，若记录 N 抛错而 N+1 成功，高水位 cursor 会越过 N；hot reload 不会重试这个洞。这是 capture-side 的 at-most-once 高水位姿态；downstream SDK retry 是另一层，不能据此声称端到端 at-most-once 或 exactly-once。</p></div>
+  <div class="claim fact"><div class="claim-label">事实</div><p>回归测试证明 coordinator reload 后保留 cursor、不重放已经 handoff 的事件，并证明中间事件被拒绝不会阻止后续事件继续交付。测试也覆盖 first-chunk-only 投影与非阻塞 flush hint。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-telemetry/tests/telemetry.spec.ts#L161-L539" title="Capture、reload 与故障隔离测试: 覆盖 first-chunk-only、on-demand suffix、reload cursor、中间记录拒绝、非等待 flush、shutdown ordering 与 backend 故障 containment。" aria-label="证据 OBS-TEST-HANDOFF">OBS-TEST-HANDOFF</a></p></div>
+</section>
+
+<section>
+  <h2>6. 三种 sharing mode 把 consent 放在不同 commit point</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>模式</th><th>捕获时刻</th><th>释放内容</th><th>运维记录</th></tr></thead>
+    <tbody>
+      <tr><td><code>FULL</code></td><td>每次 live append</td><td>立即交付每条 projected、redacted event</td><td><code>agent-error</code> 与 <code>shutdown</code></td></tr>
+      <tr><td><code>FEEDBACK_ONLY</code></td><td>Canonical <code>feedback/record</code></td><td>handoff cursor 之后（无 cursor 时从 <code>firstLiveSeq</code> 起）至该精确事件的 canonical suffix</td><td>On-demand capture 不产生 ops</td></tr>
+      <tr><td><code>DISABLED</code></td><td>永不</td><td>什么都不释放；不构建 SDK pipeline</td><td>无；只有本地 feedback warning</td></tr>
+    </tbody>
+  </table></div>
+  <p>Backend 先校验 mode，再配置 transport。<code>FEEDBACK_ONLY</code> 只在 emitted object 正是已提交在 <code>session.events[event.seq]</code> 的事件时接受 consent；外形相同的 bus value 会被忽略。随后它读取并清洗 handoff cursor 之后（无 cursor 时从 <code>firstLiveSeq</code> 起）至 feedback sequence 的 canonical suffix。<code>DISABLED</code> 既不创建 coordinator，也不创建 provider／processor／exporter state。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-telemetry-otel/src/index.ts#L43-L252" title="FULL、FEEDBACK_ONLY 与 DISABLED: 默认 disabled；上传模式构建 SDK，FULL live capture；feedback-only 只在 canonical feedback 时释放 eligible suffix：有 cursor 时从其后起，无 cursor 时从 firstLiveSeq 起。" aria-label="证据 OBS-TELEMETRY-MODES">OBS-TELEMETRY-MODES</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-telemetry-otel/tests/otel.spec.ts#L273-L489" title="OTel sharing mode 测试: 覆盖 feedback suffix、non-canonical consent 拒绝、disabled 零 transport、mode disclosure、默认关闭与 fail-loud 配置。" aria-label="证据 OBS-TEST-OTEL-MODES">OBS-TEST-OTEL-MODES</a></p>
+  <p><code>/feedback</code> producer 只记录一条 log-only event，不启动模型工作。acknowledgement 会区分 full、feedback-gated、disabled 与 unconfigured sharing，并且只宣告 entry 已记录——append 不会同步 flush 到磁盘。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/feedback/command-feedback/src/index.ts#L1-L106" title="Feedback 记录与 sharing disclosure: Feedback 是不启动模型、未同步 flush 的 log-only event；确认文本区分四种 sharing 状态。" aria-label="证据 OBS-FEEDBACK-DISCLOSURE">OBS-FEEDBACK-DISCLOSURE</a></p>
+  <div class="claim assessment"><div class="claim-label">权衡</div><p>Feedback-gated sharing 不是“只发送我的 feedback 文本”。它可能释放当前 lifecycle 内，无 cursor 时从 <code>firstLiveSeq</code> 起、有 cursor 时从其后起，并被当前 redaction policy 保留下来的全部 eligible content；resume／fork 的 constructor seed 不会在该进程重发。之后的事件仍留在本地，直到下一条 feedback。</p></div>
+</section>
+
+<section>
+  <h2>7. 随包默认关闭；CLI 对已知 telemetry row 提供最终 export opt-out</h2>
+  <p>Base bundle 会挂载 OTel plugin，但 mode 缺省时解析为 <code>DISABLED</code>。显式选择 <code>FULL</code> 或 <code>FEEDBACK_ONLY</code> 后，会使用 OTLP/HTTP logs endpoint、gzip、10 秒 batch cadence、2,048 的 queue 与 batch size、1 秒 exporter timeout、1.5 秒 processor export timeout，以及 3 秒外层 shutdown deadline。Bundle 没有挂载 redaction listener。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/bundle/base/cordis.patch.yml#L129-L161" title="随包 telemetry 默认配置: Base bundle 默认 DISABLED，未挂载 redaction，并明确 endpoint、gzip、batch、queue 与 shutdown 参数。" aria-label="证据 OBS-BASE-DEFAULT">OBS-BASE-DEFAULT</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-telemetry-otel/tests/loader-composition.e2e.ts#L78-L153" title="真实 Loader telemetry 组合测试: 覆盖外发副本清洗而 canonical secret 保留、feedback-only prefix 与 disabled 本地行为。" aria-label="证据 OBS-TEST-OTEL-COMPOSITION">OBS-TEST-OTEL-COMPOSITION</a></p>
+  <p>在 <code>apps/cli</code> 的 profile composition 中，只要 <code>DSH_TELEMETRY_DISABLED</code> 非空——包括 <code>0</code> 或 <code>false</code>——就会在常规 composition layer 之后对固定 id <code>session-telemetry-otel</code> 追加 disabling patch。若 composition 中没有该 id 的 row，launcher 不生成 patch；只有在它也未通过其他 row id／backend 挂载 telemetry 时，opt-out 才是自然满足。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/apps/cli/src/profile-boot.ts#L56-L170" title="最终 telemetry hard opt-out: 在 apps/cli profile composition 中，任何非空 DSH_TELEMETRY_DISABLED 都在 profile、home 与 CLI overlay 后 patch 固定 row id session-telemetry-otel；其他 row id/backend 不受该 patch 约束。" aria-label="证据 OBS-HARD-OPTOUT">OBS-HARD-OPTOUT</a></p>
+  <div class="claim assessment"><div class="claim-label">推论</div><p>这套叠层策略偏向隐私：上传需要明确的正向 mode；含糊但非空的 kill switch 一律解析为关闭。仍应检查 effective configuration，因为 custom profile 可以选择不同 backend、endpoint、queue 或 redaction rule。</p></div>
+</section>
+
+<section>
+  <h2>8. 当前“OTel”指 structured logs，不是 span 或 meter</h2>
+  <p>实现构建 <code>LoggerProvider → BatchLogRecordProcessor → OTLPLogExporter</code>，分别创建 ledger 与 ops instrumentation scope，把 record time 映射到两个 OTel timestamp，把三级 severity 映射到 INFO／WARN／ERROR，并原样转发 body 与 attributes。Resource 包含产品 name／version 与一个 best-effort 持久化的匿名 <code>user.id</code>。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-telemetry-otel/src/index.ts#L197-L232" title="OTel Logs 管线与字段映射: 构建 LoggerProvider、BatchLogRecordProcessor 与 OTLP log exporter，设置 resource、双 scope、时间、severity、body 与 attributes。" aria-label="证据 OBS-OTEL-PIPELINE">OBS-OTEL-PIPELINE</a></p>
+  <p>该 user id 是存放在 Harness home 下的随机 UUID：持久化成功并收敛后，后续进程会复用同一值；首次并发存在一个窄的 create-to-write 竞态，可能让该次运行产生两个进程 ID；home 不可写时则只保证当前进程内稳定。删除文件会在下次启动重置。它不从 hostname、IP address 或 Git metadata 派生。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/identity/anonymous-user-id/src/index.ts#L1-L100" title="Harness-home 匿名 UUID: 随机 UUID 尝试按 home 持久并在进程内缓存；持久化收敛后后续进程复用，首次并发有窄竞态，不可写时仅当前进程稳定；它不从主机或网络派生。" aria-label="证据 OBS-ANON-ID">OBS-ANON-ID</a></p>
+  <div class="claim fact"><div class="claim-label">事实</div><p>在固定 commit 上，telemetry package 的 OTel 依赖为通用 API、Logs API／SDK、resources、OTLP exporter base 与 OTLP log exporter，不含 trace 或 metrics SDK；实现只构建上一段所述 Logs pipeline。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-telemetry-otel/package.json#L33-L41" title="Telemetry backend 的 OTel 依赖面: Manifest 声明通用 OTel API、Logs API/SDK、resources、OTLP exporter base 与 OTLP log exporter，不声明 trace 或 metrics SDK。" aria-label="证据 OBS-OTEL-DEPENDENCIES">OBS-OTEL-DEPENDENCIES</a>Wire test 通过真实 OTel SDK pipeline 向本地 scripted <code>node:http</code> mock collector 发送 OTLP/HTTP JSON，并验证 <code>service.name</code>／<code>user.id</code>、ledger／ops scope、source timestamp、severity、<code>session.cwd</code>／event attributes 与 shutdown marker。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-telemetry-otel/tests/otel.spec.ts#L1-L163" title="真实 SDK 管线到本地 mock collector 的 wire 测试: 经真实 OTel SDK 管线向本地 scripted node:http mock collector 发送 OTLP/HTTP JSON，并验证 service.name/user.id、双 scope、source timestamp、severity、session.cwd/event attributes 与 shutdown marker。" aria-label="证据 OBS-TEST-OTEL-WIRE">OBS-TEST-OTEL-WIRE</a></p></div>
+  <div class="claim assessment"><div class="claim-label">漂移守卫</div><p>不能因为 package 名称或 OTel 一词就推导“已支持 distributed traces”。若未来出现 trace／metrics SDK dependency、provider construction、span context propagation 或新 exporter，必须重新审计这一结论。</p></div>
+</section>
+
+<section>
+  <h2>9. Batching 与 shutdown 改善尾部交付，但不构成 delivery guarantee</h2>
+  <p>Backend 有意不实现逐 turn 的 <code>flush()</code>；正常 export cadence 归 batch processor。dispose 时，live session 先 enqueue 一条 <code>shutdown</code> ops marker，再由 coordinator 等待 backend shutdown。Backend 将 <code>provider.shutdown()</code> 与自己的 deadline 竞速，因为 SDK transport force-flush 可能超出 processor export timeout。Deadline 到期会拒绝等待，却无法取消底层 transport；coordinator containment 允许应用 teardown 继续。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-telemetry-otel/src/index.ts#L265-L298" title="Batch ownership 与有界 shutdown: Backend 不实现 flush；provider shutdown 与外层 deadline 竞速，deadline 无法取消 SDK transport。" aria-label="证据 OBS-OTEL-SHUTDOWN">OBS-OTEL-SHUTDOWN</a></p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>时刻</th><th>可以宣称</th><th>不能宣称</th></tr></thead>
+    <tbody>
+      <tr><td><code>backend.emit()</code> 返回</td><td>SDK 接受了一次同步 enqueue 尝试</td><td>Collector 已存储记录</td></tr>
+      <tr><td>Scheduled batch export 成功</td><td>该 SDK batch 完成了 export callback</td><td>进程此前所有记录都无 gap</td></tr>
+      <tr><td>Provider shutdown resolve</td><td>SDK 报告已静止</td><td>远端 retention／query system 健康</td></tr>
+      <tr><td>外层 deadline 到期</td><td>Teardown 不再被阻塞</td><td>Pending record 能在进程退出后存活</td></tr>
+    </tbody>
+  </table></div>
+  <aside class="caveat"><strong>故障检测：</strong>full mode 中缺少 shutdown marker 可以提示非正常退出，但也可能只是 telemetry 丢失。feedback-only mode 释放的 prefix 通常没有后续 shutdown marker，因此缺失不能作为 crash signal。</aside>
+</section>
+
+<section>
+  <h2>10. Ledger 的 failure semantics 比外发 ops channel 更丰富</h2>
+  <p>Capture 只把三类情况标成 error severity：自身 block 带 <code>isError=true</code> 的 tool result、reason 为 <code>error</code> 的 <code>turn/end</code>，以及 live <code>agent-error</code>。其他 core 与 plugin event 默认 info；因此 aborted turn、max-token stop 与 clean shutdown 不会仅因运维人员关心就自动成为 ERROR record。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-telemetry/src/coordinator.ts#L228-L302" title="Ops error 与 severity 映射: Agent error 只保留 name/message；只有 error tool result、error turn/end 与 agent-error 映射为 error severity。" aria-label="证据 OBS-TELEMETRY-SEVERITY">OBS-TELEMETRY-SEVERITY</a></p>
+  <p>持久 ledger 保留结构化 turn-end reason 与 tool-result error identity。另一路中，<code>throwError()</code> 在重新抛出前带 turn／step 发出 live <code>agent/error</code>；driver 随后 containment 已上报的失败。Telemetry 把任意 error 归一成 name 与 message，去掉 stack，并把坐标写入 ops attributes。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/agent.ts#L202-L323" title="Live agent error 与 durable turn closure: Agent 在重抛前发出带坐标的 live error，driver containment 后仍在 finally 中记录结构化 turn/end。" aria-label="证据 OBS-DURABLE-FAILURE">OBS-DURABLE-FAILURE</a></p>
+  <div class="claim assessment"><div class="claim-label">推论</div><p>Severity 是保守的 capture default，不是完整 incident policy。若 collector alert 关心 abort 频率、max-token 饱和、缺失 closer、retry 或插件自定义 outcome，就必须检查 event type／body，而不能只筛 <code>severity=ERROR</code>。</p></div>
+</section>
+
+<section>
+  <h2>11. Live UI error 与本地日志暴露不同的故障细节</h2>
+  <p>Host API contract 将 <code>host/agent-error</code> 定义为没有 turn position 的 live failure 唯一出口；其 frame shape 只有 session id 与 message，没有 turn／step。它属于 host stream，而非持久 Session event，所以断线浏览器可能错过。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/src/api/events.ts#L110-L154" title="Host live failure frame: 定义只有 session id/message、没有 turn position 的 transient host/agent-error，并称其为该类 live failure 的唯一出口。" aria-label="证据 OBS-HOST-FAILURE">OBS-HOST-FAILURE</a></p>
+  <p>本地 warning 覆盖有意不进入 ledger 的失败：telemetry capture exception 与 backend shutdown failure；<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-telemetry/src/coordinator.ts#L112-L267" title="Telemetry 故障 containment 日志: Backend shutdown 与逐步 capture 故障只写本地 warning，不影响 agent loop 或应用 teardown。" aria-label="证据 OBS-OPS-LOGS">OBS-OPS-LOGS</a>事件仍被保留在 buffer 中的 background persistence write failure；<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-persistence/src/coordinator.ts#L1325-L1350" title="后台持久化失败诊断: 后台 write 失败写 warning，并明确 buffered events retained；显式 flush 仍传播失败。" aria-label="证据 OBS-PERSISTENCE-DIAGNOSTIC">OBS-PERSISTENCE-DIAGNOSTIC</a>以及让 <code>session.list</code> 与 <code>subagent.history</code> 降级而非阻断响应的 projection computation failure。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/src/api-proxy.ts#L847-L898" title="Projection fail-soft 降级: session.list 与 subagent.history 的 projection helper 会在失败时记录 warning，并返回 undefined 以继续服务不含 projection block 的响应。" aria-label="证据 OBS-PROJECTION-DEGRADE">OBS-PROJECTION-DEGRADE</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/src/api-proxy.ts#L1720-L1764" title="Session list baseline 调用 fail-soft projection helper: session.list 的 attached 与 cold summary baseline 都通过 listProjectionsFor 注入可选 projection block。" aria-label="证据 OBS-SESSION-LIST-PROJECTION">OBS-SESSION-LIST-PROJECTION</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/src/api-proxy.ts#L2668-L2696" title="Subagent history 调用 fail-soft projection helper: subagent.history 的 live 与 detached tail 都通过 fail-soft helper 计算 projection。" aria-label="证据 OBS-SUBAGENT-HISTORY-PROJECTION">OBS-SUBAGENT-HISTORY-PROJECTION</a>普通 <code>session.history</code> 的 projection 计算不在这两个 fail-soft catch 内。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/src/api-proxy.ts#L1555-L1573" title="普通 session history 的直接 projection 路径: 普通 session.history cut 直接调用 live snapshot 或 detached restore，没有 list/subagent helper 的 catch。" aria-label="证据 OBS-SESSION-HISTORY-PROJECTION">OBS-SESSION-HISTORY-PROJECTION</a>Session-query 会尽力在本地记录可打印的完整 stack／cause chain；不可打印值使用固定 placeholder，然后再把错误翻译给模型调用者。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session-query/tool-session-query/src/service-boundary.ts#L116-L171" title="Session-query 完整本地诊断: Service boundary 尽力在本地渲染可打印的完整 stack/cause chain，不可打印值使用固定 placeholder，并防守循环 cause 与诊断自身失败。" aria-label="证据 OBS-QUERY-DIAGNOSTIC">OBS-QUERY-DIAGNOSTIC</a></p>
+  <div class="claim assessment"><div class="claim-label">权衡</div><p>这避免用基础设施噪声污染 transcript，也避免通过产品 API 泄露 stack。代价是 postmortem 同时需要 durable log 与 process log。Transcript 干净不能证明 telemetry、projection、indexing 或 persistence background work 健康。</p></div>
+</section>
+
+<section>
+  <h2>12. Session stats 是确定性的全日志 read model</h2>
+  <p><code>sessionStats</code> 投影报告：至少含一个 closed step 的 distinct turn、closed step、模型 wall time、matched tool wall time、TTFT 总和与样本数，以及 decode duration／tokens。其契约明确声明，这些值从完整 durable log fold，与 client 已加载多少历史无关。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-stats/src/types.ts#L15-L45" title="Whole-log stats 契约: 定义与客户端分页无关的 turn、step、模型/工具时间、TTFT 与 decode 指标。" aria-label="证据 OBS-STATS-CONTRACT">OBS-STATS-CONTRACT</a></p>
+  <p>Pure fold 在 <code>step/start</code> 打开 timing，在第一条非空 token delta 捕获 TTFT，在 <code>assistant/message</code> 结束 model／decode timing；按 <code>callId</code> 配对 tool call／result；在 <code>step/end</code> 计数；在 <code>turn/end</code> 清除未完成 call；负的 clock difference 被 clamp 到零。它还防守 provider usage 与 inherited object key，而不是盲信 event payload。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-stats/src/projection.ts#L1-L183" title="Session stats 纯 fold: 逐事件实现 step、first token、assistant、tool pair 与 turn cleanup 的计数和时序，并防守 usage、clock skew 与 prototype key。" aria-label="证据 OBS-STATS-FOLD">OBS-STATS-FOLD</a></p>
+  <p>浏览器优先使用 host projection；当 <code>sessionStats</code> projection value 不可用时，才退化为可见窗口 fold。它展示 turn／step count、model／tool duration、平均 TTFT、decode token/s、cache hit ratio 与 token total；token billing 来自另一个独立 projection。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/ui-conversation/src/client/chat/StatsLine.tsx#L34-L205" title="Stats UI 的 projection 优先级: UI 优先读取 whole-log sessionStats，缺失时才使用 window fold，并展示 timing、throughput、cache 与 token 信息。" aria-label="证据 OBS-STATS-UI">OBS-STATS-UI</a></p>
+</section>
+
+<section>
+  <h2>13. Stats 测量 recorded event interval，不是 provider billing 或 OTel metrics</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>指标</th><th>记录定义</th><th>重要排除／偏差</th></tr></thead>
+    <tbody>
+      <tr><td>Turns／steps</td><td>含 <code>step/end</code> 的 distinct turn；所有 closed step</td><td>Rejected 或 empty turn 不计</td></tr>
+      <tr><td>Model time</td><td><code>step/start → assistant/message</code></td><td>包含 step 内 retry wait；cancelled partial step 不计时</td></tr>
+      <tr><td>TTFT</td><td><code>step/start → 第一条非空 token delta</code></td><td>第一 token 会跨 step 内 retry 保留</td></tr>
+      <tr><td>Decode rate</td><td>Provider output token 除以 first-token → message duration</td><td>usage 缺失／无效时不形成 token-rate sample</td></tr>
+      <tr><td>Tool time</td><td>每个 matched call／result interval</td><td>并行 interval 求和；未完成 call 排除</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">事实</div><p>Projection test 覆盖 closed、rejected、cancelled、max-token、retry、tool pair、invalid usage、clock skew、late mount 与 reload。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-stats/tests/projection.spec.ts#L58-L291" title="Stats 计数与时序测试: 覆盖 rejected/cancelled/max-token/retry、tool pair、无效 usage、clock skew、late mount 与 HMR。" aria-label="证据 OBS-TEST-STATS">OBS-TEST-STATS</a>分页历史浏览器测试证明 tail page 已携带 whole-log total，加载更早事件不会改变这些值。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/apps/web/tests/stats-paged-history.e2e.ts#L73-L135" title="分页历史 stats E2E: 长历史的 tail page 直接显示 full-session total，load-older 后数值保持不变。" aria-label="证据 OBS-TEST-STATS-PAGING">OBS-TEST-STATS-PAGING</a></p></div>
+  <div class="claim assessment"><div class="claim-label">权衡</div><p>这些数字是可复现的产品 telemetry，但不是 OTel instrument、exclusive CPU time、纯网络延迟或账单事实。并行 tool duration 总和可以大于 wall-clock elapsed time；retry wait 也按设计留在 model interval 中。</p></div>
+</section>
+
+<section>
+  <h2>14. 浏览器分页与修复 gap 时，raw history 仍保持连续</h2>
+  <p>History API 按 append-origin message boundary 分页，因此不会把一条消息与其 chunk／tool event 截开。每项都包含 raw event 与可选 host-computed tool view。只有 tail page 带 in-flight partial 与 projection baseline；读取历史永远不会 resume 或 publish Agent。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/src/api/sessions.ts#L264-L283" title="Raw history 分页契约: 页面按 message origin 对齐，包含 raw event 与 host view；只有 tail 带 partial/projection，读取不会 resume Agent。" aria-label="证据 OBS-HISTORY-API">OBS-HISTORY-API</a></p>
+  <p>Client 只会 prepend 末尾 sequence 与当前 base 恰好相邻的页面；不连续的 older page 会写入 console 并被 fail-soft 丢弃。Live duplicate 按 sequence 去重。向前 gap 会把 incoming event 放入 buffer、重新拉取 tail page，再把 buffer 拼接成连续 raw window。<code>loadOlder</code>／gap-repair 抛出的 transport exception 也会写入 console，而 RPC error result 静默保留当前窗口。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/runtime/src/client/sessions/session.ts#L376-L723" title="客户端连续窗口与 gap repair: Load-older 检查相邻 sequence，live 按 seq 去重，gap 时 buffer、重拉 tail 并拼接；不连续页与 transport exception 写 console，RPC error result 静默保留窗口。" aria-label="证据 OBS-HISTORY-CLIENT">OBS-HISTORY-CLIENT</a></p>
+  <p>Live mux frame 直接携带原始 <code>session/event</code>。Projection update 明确定义为 transient，并可由 replay 重算；allowlist 中的 remote event 则可在该路径上不经 projection 或 redaction 原样转发。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/src/api/events.ts#L65-L154" title="Raw mux、transient projection 与 remote frame: Mux 直接携带 raw session event；projection 是可重算的 transient push；allowlisted remote frame 不做 redaction。" aria-label="证据 OBS-RAW-FRAMES">OBS-RAW-FRAMES</a></p>
+  <div class="claim assessment"><div class="claim-label">推论</div><p>浏览器 continuity 是已加载 slice 的一致性性质，不证明浏览器持有完整日志。Whole-log answer 应来自 host projection 或 exact query service；trajectory／search 对 UI window 的计数必须标注为 window-scoped。</p></div>
+</section>
+
+<section>
+  <h2>15. Trajectory 是浏览器 event ledger，不是 OTel trace pipeline</h2>
+  <p>Trajectory package 明确提供一个 turn-aware、virtualized 的浏览器 ledger，含 timeline、search、folding、local inspector 与 older-page loading。Selection、request total 与 navigation 只覆盖当前 loaded window；in-flight duration 留空而不伪造。它不提供 service，也不向模型请求贡献任何内容。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/ui-trajectory/README.md#L5-L17" title="Trajectory 浏览器视图契约: 定义 window-scoped ledger、分页、虚拟化、timeline、inspector、空白 in-flight duration，以及对模型无影响。" aria-label="证据 OBS-TRAJECTORY-CONTRACT">OBS-TRAJECTORY-CONTRACT</a></p>
+  <p>Builder 按 raw sequence 排序 definition contribution，组装 finalized record、request、call schema、partial assistant output、running call、compaction boundary 与 turn error。这是共享 Session window 上的 target-specific read model；它既不改变 canonical log，也不把 chat view 当作权威输入。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/ui-trajectory/src/client/trajectory-snapshot-builder.ts#L137-L266" title="Trajectory snapshot builder: 按 raw seq 组合 event node、request、schema、partial、running call、compaction 与 turn error。" aria-label="证据 OBS-TRAJECTORY-BUILDER">OBS-TRAJECTORY-BUILDER</a></p>
+  <div class="claim assessment"><div class="claim-label">权衡</div><p>Trajectory 优化的是本地取证理解——chronology、prompt change、tool causality 与 timing——而非远程 correlation。产品语义上称它为“trace view”可以理解，但它没有 trace／span id、parent span context、sampling policy 或 exporter semantics。</p></div>
+</section>
+
+<section>
+  <h2>16. Prompt inspection 很强，也让浏览器访问成为隐私模型的一部分</h2>
+  <p>Trajectory 消费每个 <code>request/header</code>，重建模型配置、完整 system text 与 tool schema，再与上一个 prompt snapshot 对比，计算 initial／system／tools change record。因此 inspector 能精确解释某次 request 使用了哪份 prompt 或工具目录。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/ui-trajectory/src/client/trajectory-request-header-definition.ts#L9-L80" title="Prompt snapshot 与变化检测: 从 request/header 重建 config、完整 system 与 tools，并标注 initial/system/tools 变化。" aria-label="证据 OBS-TRAJECTORY-PROMPT">OBS-TRAJECTORY-PROMPT</a></p>
+  <aside class="caveat"><strong>隐私含义：</strong>有权打开 raw history 或 trajectory 的用户，可能看到已被 OTel redactor 移除的数据，包括渲染后的 instruction、本地路径、tool schema、argument、result 与 file content。Collector access control 只是一个边界；session storage、host API、browser session、export 与 exact-read tool 都需要各自的授权与 retention posture。</aside>
+  <div class="claim assessment"><div class="claim-label">推论</div><p>正是让 trajectory 适合分析 prompt drift 的完整性，也让“安全的 observability UI”成为产品安全问题，而不仅是渲染问题。</p></div>
+</section>
+
+<section>
+  <h2>17. Session-query 的“trace”指确定性谱系与事件关系</h2>
+  <p>统一 query service 把 exact read、filter、surface 与 trace 定义为 backend-independent；只有 full-text search 委托给 indexing backend。完整读取选择 live-preferred source，重放校验 raw log，并返回 detached clone。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session-query/session-query/src/index.ts#L74-L345" title="统一 session-query 服务: Exact read/filter/trace 为 backend-independent；完整读取 replay-validate，并提供 surface、lineage、event trace 与 bounded raw window。" aria-label="证据 OBS-QUERY-SERVICE">OBS-QUERY-SERVICE</a></p>
+  <p><code>traceEvent</code> 标识 target 的 current／shadowed／log-only surface class、positional replacement chain、被替换 event、引用的 source event，以及之后直接从 target 派生的 event。<code>traceSession</code> 遍历 parent ancestry 与有序 descendant；遇到 unresolved parent 会明确报告，遇到 cycle 则拒绝，而不是编造完整 tree。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session-query/session-query/src/tracing.ts#L21-L213" title="Event relationship 与 session lineage: 计算 replacement/source/derived 关系、current/shadowed/log-only classification，以及含 unresolved/cycle 语义的 ancestry/descendants。" aria-label="证据 OBS-QUERY-TRACE">OBS-QUERY-TRACE</a></p>
+  <p>单目标 exact load（如 <code>readSession</code>、<code>readEvent</code>、<code>traceEvent</code>）若 target 已知 live，会直接从内存读取而不查询 persistence，因此 backend failure 不会遮蔽这类当前历史读取；需要枚举完整 corpus 的 <code>traceSession</code>／list／filter 不享有这一保证。Persisted exact target 先 list、再 inspect；若 inspect 后仍 detached，才检查 loaded／listed header compatibility；若期间变成 live，则跳过 detached compatibility branch，由 live snapshot 胜出。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session-query/session-query/src/corpus.ts#L31-L116" title="Live-preferred logical corpus: 单目标 exact load 对已知 live target 不查 persistence；corpus-wide 操作不享有该保证。Persisted exact target 经 list/inspect，仍 detached 才检查 header compatibility，late live attach 则直接胜出。" aria-label="证据 OBS-QUERY-CORPUS">OBS-QUERY-CORPUS</a></p>
+  <div class="claim fact"><div class="claim-label">术语事实</div><p>这些 API 不蕴含 distributed tracing。输入是 session id 与 event sequence number，输出是从日志推导的关系；它们不会启动 span，也不会传播 trace context。</p></div>
+</section>
+
+<section>
+  <h2>18. 模型侧历史访问是 opt-in、workspace-scoped，并在 observation 后重新授权</h2>
+  <p>一个可选 plugin 注册五个工具：session search、event search、session lineage trace、event relationship trace 与 exact event read。随包 host composition 默认不挂载。Exact read 可返回完整、不删节的 target JSON；若要限制过大的 inline result，需要通用 spill policy，而不是本 package。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session-query/tool-session-query/README.md#L5-L76" title="五个模型侧 session-query 工具: 说明五个 opt-in 工具默认不随 host 挂载、exact read 不删节，以及通用 spill policy 的职责。" aria-label="证据 OBS-QUERY-TOOLS">OBS-QUERY-TOOLS</a></p>
+  <p>Caller identity 只来自执行中的 Agent。Self-read 允许；cross-session read 要求 <code>cwd</code> 精确相等；caller 没有 cwd 时只能查看自己。Direct target 在 service call 前授权，并在返回后对 observed header 再检查一次，限制 source-change／TOCTOU 逃逸。未授权 descendant subtree 变成不含隐藏 id 的 null boundary marker。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session-query/tool-session-query/src/workspace-access.ts#L54-L203" title="Workspace 授权与 lineage 剪枝: Caller 来自 Agent；self 或精确 cwd equality 才授权，observed header 再检查，未授权 subtree 变 null marker。" aria-label="证据 OBS-QUERY-AUTH">OBS-QUERY-AUTH</a></p>
+  <p>当前 session 的 event search 截止在 active <code>step/start</code> 之前，因此 invoking output 与 tool call 不能搜索自己。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session-query/tool-session-query/src/operations.ts#L116-L166" title="当前 step 的自搜索边界: 当前 session 的 event search 把上界截到最近 step/start 之前，并对返回 header 再授权。" aria-label="证据 OBS-QUERY-CURRENT-BOUNDARY">OBS-QUERY-CURRENT-BOUNDARY</a>Service failure 会尽力在本地记录完整 diagnostic（不可打印时使用固定 placeholder），再经过统一 sanitizer，向模型只暴露稳定、安全的 code／message；caller cancellation 与精确 local authorization error 会被保留。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session-query/tool-session-query/src/service-boundary.ts#L19-L171" title="模型边界错误净化: 保留 caller cancellation；尽力在本地记录可打印的完整诊断，不可打印时用固定 placeholder；向模型只返回 allowlisted stable code/message 或 generic failure。" aria-label="证据 OBS-QUERY-SANITIZE">OBS-QUERY-SANITIZE</a></p>
+  <div class="claim assessment"><div class="claim-label">权衡</div><p>按原始字符串比较 cwd 很保守，却不等价于 canonical filesystem identity：symlink-equivalent workspace 不共享权限，而刻意以同一字符串创建的所有 session 都共享。部署策略仍需决定是否应让模型看到这五个强力 read tool。</p></div>
+</section>
+
+<section>
+  <h2>19. 隐私边界矩阵</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>数据</th><th>Canonical log／浏览器</th><th>无自定义规则的 FULL export</th><th>FEEDBACK_ONLY（无 cursor 时从 <code>firstLiveSeq</code> 起；否则从 cursor 后起）</th><th>结构性缺席</th></tr></thead>
+    <tbody>
+      <tr><td>User／assistant content</td><td>完整</td><td>完整捕获副本</td><td>eligible suffix，截至 feedback</td><td>否</td></tr>
+      <tr><td>Tool argument／result、command output、file content</td><td>记录时完整</td><td>完整捕获副本</td><td>eligible suffix，截至 feedback</td><td>否</td></tr>
+      <tr><td>System prompt 与 tool schema</td><td>完整 request-header snapshot</td><td>完整捕获副本</td><td>eligible suffix，截至 feedback</td><td>否</td></tr>
+      <tr><td>Todo、compaction、hook summary、feedback</td><td>完整 event data</td><td>完整捕获副本</td><td>eligible suffix，截至 feedback</td><td>否</td></tr>
+      <tr><td>本地 cwd 与 lineage id</td><td>Header／event context</td><td>Attribute／resource correlation</td><td>已释放 record</td><td>否</td></tr>
+      <tr><td>Adapter API credential</td><td>不是 Session event</td><td>此路径中缺席</td><td>此路径中缺席</td><td>是，源于当前结构</td></tr>
+      <tr><td>Error stack</td><td>Turn 保留 flattened／structured failure facts，不含完整 stack</td><td>Ledger 保留这些 turn failure facts；ops 仅 name／message；两者均无完整 stack</td><td>Eligible suffix 可含 turn failure facts；不产生 ops capture</td><td>完整 stack 可能只留在本地日志</td></tr>
+    </tbody>
+  </table></div>
+  <p>Backend README 枚举了上传模式下离开机器的完整数据类别，并明确说明 seam 不附带 redaction rule。API key 缺席，是因为 adapter credential 是 constructor input，不是 Session event；并不是因为系统会自动检测 prompt、file、command 或 tool result 中的任意 secret。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-telemetry-otel/README.md#L36-L42" title="离开机器的数据与 lineage 说明: 枚举上传的消息、工具、文件、prompt、todo、compaction、feedback 与 cwd；无内置 redaction，credential 结构性缺席。" aria-label="证据 OBS-PRIVACY-BOUNDARY">OBS-PRIVACY-BOUNDARY</a></p>
+  <div class="claim assessment"><div class="claim-label">推论</div><p>持久化并收敛后的 anonymous UUID 是 pseudonymous correlation，不是 unlinkability。它避免从机器／网络 metadata 派生 identity，但该稳定值仍允许聚合同一 Harness home 下的多次运行。</p></div>
+</section>
+
+<section>
+  <h2>20. 与 Codex 的公开契约比较：两者都默认关闭 OTel 日志外发，但可观测产品不同</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>维度</th><th>固定源码下的 DeepSeek Harness</th><th>仅限 Codex 公开文档</th></tr></thead>
+    <tbody>
+      <tr><td>默认值</td><td>Session telemetry mode 为 <code>DISABLED</code></td><td>OTel 日志外发默认关闭；需将 <code>[otel].exporter</code> 显式设为 <code>otlp-http</code> 或 <code>otlp-grpc</code>；匿名 usage／health metrics 是独立通道，默认开启</td></tr>
+      <tr><td>Log model</td><td>Canonical session event 的近似镜像，加两种 ops record</td><td>面向 conversation、API／SSE／WebSocket activity、prompt、tool decision 与 tool result 的专用事件</td></tr>
+      <tr><td>Prompt privacy</td><td>无内置 redactor；deployment 提供 waterfall rule</td><td>除非 <code>log_user_prompt=true</code>，否则 user prompt content 默认脱敏</td></tr>
+      <tr><td>信号类型</td><td>审阅实现只有 OTLP Logs pipeline</td><td>文档列出 log、metrics 与 trace exporter 配置；counter／histogram 覆盖 API、stream、WebSocket 与 tool call</td></tr>
+      <tr><td>Shutdown</td><td>SDK shutdown 与 Harness-owned 外层 deadline 竞速</td><td>文档称 exporter 异步 batch，并在 shutdown 时 flush</td></tr>
+      <tr><td>产品侧 trace</td><td>另有从日志派生的 session／event relationship query</td><td>不从公开 OTel 配置推断同等能力</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">公开事实</div><p>Codex 的 <a href="https://learn.chatgpt.com/docs/config-file/config-advanced#observability-and-telemetry" target="_blank" rel="noreferrer">Observability and telemetry</a> 文档描述了 opt-in OTel log export、默认清洗 user prompt、代表性 structured event、metrics、batching 与 shutdown flushing；其 <a href="https://learn.chatgpt.com/docs/config-file/config-reference" target="_blank" rel="noreferrer">configuration reference</a> 暴露独立的 log、metrics 与 trace exporter setting（检索于 2026-08-13）。</p></div>
+  <aside class="caveat"><strong>比较边界：</strong>这里的 DeepSeek 结论来自固定 source 与 test；Codex 结论只来自当前公开文档。本比较不推断 Codex 的非公开 ledger、persistence、redaction implementation、queue-loss behavior 或 session-relation internals。</aside>
+</section>
+
+<section>
+  <h2>21. 漂移观察项与开放运维问题</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>观察项</th><th>结论可能改变的原因</th><th>需要重新验证</th></tr></thead>
+    <tbody>
+      <tr><td>OTel signal 扩展</td><td>可能新增 trace／meter SDK</td><td>Provider、exporter、span context、metric instrument、resource attribute</td></tr>
+      <tr><td>默认 sharing posture</td><td>Bundle 或 launcher composition 可能改变</td><td>Effective mode、最终 opt-out 顺序、endpoint、header</td></tr>
+      <tr><td>Redaction baseline</td><td>可能新增内置或 bundle-mounted rule</td><td>Rule order、fail behavior、ledger／browser scope、test fixture</td></tr>
+      <tr><td>Delivery semantics</td><td>Acknowledged queue 或 persisted outbox 可能替换 handoff cursor</td><td>Ack point、retry identity、gap recovery、shutdown durability</td></tr>
+      <tr><td>Stats semantics</td><td>新 event 或 timing anchor 可能改变 total</td><td>Retry／cancel／parallel-tool math 与 paging stability</td></tr>
+      <tr><td>History authorization</td><td>Workspace identity 可能超越 raw cwd equality</td><td>Canonicalization、tenant／project identity、TOCTOU check</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">开放缺口</div><p>Source test 可以证明 mapping、containment、mode gate 与本地 batching behavior，却不能证明生产 collector 的 authentication、TLS policy、retention、deletion、access control、alert rule、持续 outage 下的 queue saturation behavior，或运维人员是否真的把 ledger gap 与 process log 关联起来。这些属于部署证据，不是 repository fact。</p></div>
+</section>
+
+<section>
+  <h2>22. 本章验证范围</h2>
+  <p>所有仓库结论均针对固定 upstream commit <code>47f943859bef60e4160492346772ded9b24f765a</code>。聚焦验证覆盖 telemetry capture／redaction／handoff、OTel wire mapping 与 mode composition、whole-log stats、session-query tracing 与模型工具授权、浏览器 trajectory assembly，以及分页历史行为。</p>
+  <pre><code>14 个聚焦 unit/source 文件  → 361 passed
+1 个真实 Loader E2E 文件    →   3 passed
+总计                        → 15 文件 / 364 passed
+结构一致性                  → 23 sections / 45 evidence records，顺序完全相等</code></pre>
+  <p>Built-web 分页历史 E2E 已作为证据检查，但没有执行：本隔离任务禁止 build，固定 checkout 也没有 web dist artifact。已执行的 364 个测试证明固定 revision 上的仓库行为；它们不能替代 live collector integration audit、真实部署 redaction rule 的隐私评审、long-outage queue test，或 retention／access-control verification。</p>
+</section>
+<section class="learning-notes" aria-labelledby="learning-notes-title"><h2 id="learning-notes-title">我的学习体会</h2>
     <p class="privacy">内容仅自动保存到当前浏览器，不上传、不进入仓库。你可以导出 Markdown 自行归档。</p><textarea data-learning-notes aria-label="我的学习体会" placeholder="记录你的理解、疑问、反例和可迁移原则……"></textarea>
     <div class="note-footer"><span data-note-saved>本地草稿</span><button type="button" data-note-export>导出 Markdown</button>
     <button type="button" class="danger" data-note-clear>清空</button><span data-note-count>0 字符</span></div></section><nav class="pagination" aria-label="章节翻页"><a href="../pages/failure-recovery.html"><small>← 上一章 · 27</small><strong>重试、错误、取消与恢复</strong></a><a class="next" href="../pages/api-sdk-acp.html"><small>下一章 · 29 →</small><strong>API、SDK、JSON-RPC 与 ACP</strong></a></nav></article>
