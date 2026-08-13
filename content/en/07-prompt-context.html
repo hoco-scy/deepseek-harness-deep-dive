@@ -1,0 +1,182 @@
+<section>
+  <h2>Conclusion: the prompt is a per-step, log-reconstructable program</h2>
+  <div class="thesis"><p>DeepSeek Harness does not build one system string at session creation. For every proposed model step it re-evaluates scoped prompt providers, canonicalizes visible tool schemas, projects volatile runtime facts, admits sourced context messages, and records the effective request state before model I/O.</p></div>
+  <p>This architecture serves three goals at once: per-Agent composition, deterministic replay, and provider prefix-cache stability. It deliberately separates stable instructions from volatile facts rather than calling every model-visible input a “system prompt.”</p>
+</section>
+
+<section>
+  <h2>1. Four model-input lanes with different semantics</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Lane</th><th>Representation</th><th>Durable form</th><th>Typical content</th><th>Change behavior</th></tr></thead>
+    <tbody>
+      <tr><td>Stable instructions</td><td><code>PromptSection[]</code></td><td><code>request/header.system</code></td><td>Harness identity, persona, plan policy, tool usage guidance</td><td>Re-render every step; write a new full header only when the value changes</td></tr>
+      <tr><td>Tool interface</td><td><code>ToolSchema[]</code></td><td><code>request/header.tools</code></td><td>Names, descriptions, JSON parameters visible in this Agent scope</td><td>Canonicalize every step; compare in order</td></tr>
+      <tr><td>Volatile runtime facts</td><td><code>PromptContext[]</code></td><td>Sourced <code>user/message</code> snapshot</td><td>Sandbox mode, approval policy, delegation status</td><td>Append only when the complete rendered snapshot changes</td></tr>
+      <tr><td>Context plugins</td><td><code>agent/pre-step</code> messages</td><td>Sourced <code>user/message</code></td><td>Workspace instructions, current time, tmux location, explicit session references</td><td>Each plugin owns refresh, ordering, bounds, and provenance</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Architectural invariant</div><p>All four lanes become reconstructable before provider dispatch: stable system/tool state is captured in a request-header event, while message-shaped context enters the session surface. The Loop's invariant rebuilds both sides from the log. <evidence id="ROOT-MODEL-LOGGED"></evidence><evidence id="LOOP-REQUEST-INVARIANT"></evidence></p></div>
+</section>
+
+<section>
+  <h2>2. The registry has five reversible contribution types</h2>
+  <div class="claim fact"><div class="claim-label">Production API</div><p><code>SystemPrompt</code> effect-registers sections, contexts, runtime-context suppressors, tool-schema providers, and variables. Registration and disposal emit <code>system-prompt/change</code>; duplicate named entries are rejected within one layer. The built-in identity at order <code>-100</code> and deployment persona at order <code>0</code> are ordinary sections, not hidden string concatenation. <evidence id="PROMPT-REGISTRY-CONTRACT"></evidence></p></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Registration</th><th>Identity</th><th>Evaluation</th><th>Teardown</th></tr></thead>
+    <tbody>
+      <tr><td><code>section({name, order, text, complete?})</code></td><td>Name unique per layer</td><td>Text provider once per assembly; interpolation later</td><td>Exact entry removed with owner effect</td></tr>
+      <tr><td><code>context({name, order, text})</code></td><td>Name unique per layer</td><td>Skipped entirely when runtime context is suppressed</td><td>Exact entry removed</td></tr>
+      <tr><td><code>suppressRuntimeContext()</code></td><td>Anonymous independent token</td><td>Any active suppressor in the scope chain wins</td><td>Only that suppressor is removed</td></tr>
+      <tr><td><code>tools(provider)</code></td><td>Anonymous provider membership</td><td>Returns visible schemas and optional pre-restriction known names</td><td>Provider removed</td></tr>
+      <tr><td><code>variable(name, provider)</code></td><td>Strict lower-case identifier</td><td>Resolved once per assembly; may yield <code>undefined</code></td><td>Exact name removed</td></tr>
+    </tbody>
+  </table></div>
+  <p>The default Agent Loop contributes three variables—<code>provider</code>, <code>model</code>, and <code>cwd</code>—from the Agent and its Session. This is an ownership choice: templates reference values, while the runtime objects remain their source.</p>
+</section>
+
+<section>
+  <h2>3. Scope shadowing occurs before provider evaluation</h2>
+  <div class="claim fact"><div class="claim-label">Scope semantics</div><p>The assembly context sets both <code>agent</code> and <code>scope</code> to the same Agent. Global contributions are overlaid by the farthest ancestor and finally by the nearest scope; the nearest same-name section, context, or variable wins. <evidence id="DESIGN-SCOPED-LAYERS"></evidence><evidence id="PROMPT-STEP-BOUNDARY"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">Test-defined behavior</div><p>A scoped <code>deployment:persona</code> replaces the global persona only for that scope. More importantly, the shadowed global text provider is never evaluated—the effective map is formed before text execution. <evidence id="PROMPT-SCOPE-SHADOW"></evidence></p></div>
+  <div class="claim inference"><div class="claim-label">Mechanism-level deduction</div><p>Shadowing is not post-render string replacement. It is provider selection. A child Agent can inherit its parent's composition and override one named slot without executing the displaced provider or copying the entire prompt.</p></div>
+</section>
+
+<section>
+  <h2>4. One assembly has a precise evaluation order</h2>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>Resolve scope and suppression</h3><p>Collect the existing scope chain and determine whether any global or inherited suppressor is active.</p></div>
+    <div><span>2</span><h3>Evaluate variables</h3><p>Global first, then ancestor-to-nearest scope; a nearer provider overwrites the same name.</p></div>
+    <div><span>3</span><h3>Materialize named entries</h3><p>Build effective section and context maps before text providers run.</p></div>
+    <div><span>4</span><h3>Snapshot tool providers</h3><p>Freeze membership for this generation, invoke each provider, and clone schema parameters.</p></div>
+    <div><span>5</span><h3>Order and evaluate</h3><p>Stable-sort sections/contexts by numeric order, enforce at most one complete section, evaluate text, and canonicalize tools.</p></div>
+    <div><span>6</span><h3>Run expert waterfall</h3><p><code>system-prompt/assemble</code> may cooperatively rewrite the mutable assembly or short-circuit it.</p></div>
+    <div><span>7</span><h3>Reapply hard constraints</h3><p>Restore the original evaluated complete section as the sole section and/or clear contexts when suppression is active.</p></div>
+  </div>
+  <div class="claim fact"><div class="claim-label">Production control flow</div><p>This order is implemented directly in <code>assemble()</code>. Registry output is deterministic before the waterfall; the returned waterfall value is authoritative except for complete-section and suppression enforcement. <evidence id="PROMPT-ASSEMBLY-PIPELINE"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">Mutation tests</div><p>Tool-provider membership is snapshotted, so a provider registered during provider evaluation appears only in the next assembly. Variables use live map iteration, so a variable registered by an earlier variable provider may appear in the same generation. Every assembly receives fresh section/context/tool containers, and tool parameters are structurally cloned. <evidence id="PROMPT-ASSEMBLY-MUTATION-TEST"></evidence><evidence id="PROMPT-VARIABLE-TEST"></evidence></p></div>
+  <aside class="caveat"><strong>Ownership caveat:</strong> registration objects themselves are borrowed rather than frozen. Mutating one behind the registry can change a later assembly without emitting <code>system-prompt/change</code>. The public readonly types discourage this, but runtime immutability begins at the assembled/request snapshots.</aside>
+</section>
+
+<section>
+  <h2>5. <code>complete</code> narrows sections, not the entire assembly</h2>
+  <div class="claim fact"><div class="claim-label">Exact semantics</div><p>One effective <code>complete: true</code> section does not skip variable, context, tool, or waterfall work. The waterfall still runs; afterward the registry restores the originally evaluated complete section as the sole section. Two effective complete sections make assembly fail. <evidence id="PROMPT-ASSEMBLY-PIPELINE"></evidence><evidence id="PROMPT-ASSEMBLY-MUTATION-TEST"></evidence></p></div>
+  <ul class="audit-list">
+    <li>A listener cannot replace the complete section's name or evaluated text.</li>
+    <li>A listener can still alter variables, contexts, and tools.</li>
+    <li>Because interpolation happens later, changing a referenced variable can still change the final rendered complete template.</li>
+    <li>Runtime-context suppression clears contexts even if a waterfall re-adds them.</li>
+  </ul>
+  <div class="claim assessment"><div class="claim-label">Design assessment</div><p><code>complete</code> is a section-authority mechanism, not an unmodifiable whole-request mode. That preserves tool and context composition, but callers requiring a byte-fixed complete prompt must also control the variables it references.</p></div>
+</section>
+
+<section>
+  <h2>6. Rendering is strict and intentionally late</h2>
+  <div class="claim fact"><div class="claim-label">Renderer contract</div><p>Section and context providers return uninterpolated text. Rendering accepts only <code>{{name}}</code> where the name matches <code>[a-z][a-z0-9_]*</code>; unknown, undefined, and malformed references fail loudly. Own-property lookup blocks prototype names unless explicitly registered, replacement values are not scanned again, empty entries disappear, and sections join with blank lines. <evidence id="PROMPT-STRICT-RENDER"></evidence><evidence id="PROMPT-VARIABLE-TEST"></evidence></p></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Failure point</th><th>What has already been logged</th><th>What never happens</th></tr></thead>
+    <tbody>
+      <tr><td>Assembly/provider/tool-order failure</td><td><code>turn/start</code></td><td>No <code>step/start</code>, request header, or adapter call</td></tr>
+      <tr><td>Runtime-context interpolation failure</td><td><code>turn/start</code></td><td>No step opens</td></tr>
+      <tr><td><code>agent/pre-step</code> rejects</td><td><code>turn/start</code>; claimed inbox splice is already durable</td><td>No step or model request; Turn ends blocked</td></tr>
+      <tr><td>Initial accepted message list is empty</td><td>Turn boundary and claim effects</td><td>No step; Turn ends completed</td></tr>
+      <tr><td>System-section interpolation failure</td><td><code>turn/start</code>, <code>step/start</code>, entered user messages</td><td>No request dispatch; <code>step/end</code> still closes in <code>finally</code></td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Cancellation tests</div><p>Cancellation or owner disposal while assembly is blocked produces an aborted Turn with no step, chunks, assistant message, or adapter request. <evidence id="PROMPT-CANCEL-TEST"></evidence></p></div>
+</section>
+
+<section>
+  <h2>7. Tool schemas are part of prompt determinism</h2>
+  <div class="claim fact"><div class="claim-label">Ordering algorithm</div><p>Without explicit configuration, schemas use locale-independent code-unit lexicographic order. An explicit <code>toolOrder</code> must contain exactly one <code>&lt;unlisted-tools&gt;</code> marker and no duplicates. Unknown configured names fail; names known before scope restriction may be absent; unlisted visible tools sort within the marker position. <evidence id="PROMPT-TOOL-ORDER"></evidence></p></div>
+  <p>Schema visibility and usage guidance are distinct registrations. Hiding a tool schema does not automatically remove an independently contributed section that discusses that tool. A package requiring those to move together must make its guidance provider inspect current scope visibility.</p>
+  <div class="claim assessment"><div class="claim-label">Design assessment</div><p>Canonical order is simultaneously a correctness, replay, and cache concern. The registry guarantees order before the expert waterfall; a listener that adds or reorders tools afterward owns the resulting determinism. Equal-name schemas are not silently deduplicated at this layer.</p></div>
+</section>
+
+<section>
+  <h2>8. Assembly frequency: per proposed step, not per retry</h2>
+  <div class="claim fact"><div class="claim-label">Step boundary</div><p><code>preStep()</code> claims inbox input, assembles the scoped prompt, renders dynamic context, proposes a snapshot, and then enters <code>agent/pre-step</code>. Only an accepted, non-empty decision opens <code>step/start</code> and carries that assembly into <code>step()</code>. <evidence id="PROMPT-STEP-BOUNDARY"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">Retry boundary</div><p><code>step()</code> renders the system string once before its provider-retry loop. A retry rebuilds request config, folded header, and durable messages in the same numbered Turn and Step, but reuses that Step's system and tool assembly. <evidence id="PROMPT-RETRY-BOUNDARY"></evidence><evidence id="LOOP-REQUEST-ERROR-TEST"></evidence></p></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Event</th><th>Reassemble?</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td>Tool result requires another model request</td><td>Yes</td><td>It is a new proposed Step; scoped providers and runtime facts may have changed</td></tr>
+      <tr><td>Next user Turn</td><td>Yes</td><td>Every proposed Step evaluates current composition</td></tr>
+      <tr><td>Provider error with retry action</td><td>No</td><td>Retry is another request attempt inside the same Step</td></tr>
+      <tr><td>Prompt registration changes after assembly</td><td>Next Step only</td><td>The current Step already owns a detached assembly snapshot</td></tr>
+      <tr><td>Rejected or empty proposed Step</td><td>Already assembled</td><td>Admission is decided after assembly and dynamic-context projection</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>9. Dynamic runtime context is an append-only full snapshot</h2>
+  <div class="claim fact"><div class="claim-label">Projection state machine</div><p>Runtime context renders named sections under a fixed “supersedes earlier snapshots” preamble. <code>RuntimeContextProjection</code> restores the newest owned snapshot still retained in the Session surface, proposes a sourced user message only when the complete value changes, emits an explicit clear marker when context disappears, and forgets a snapshot when a replacement removes it from the surface. <evidence id="LOOP-RUNTIME-CONTEXT"></evidence></p></div>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>No prior value + empty current value</h3><p>Emit nothing; there is no old semantic state to clear.</p></div>
+    <div><span>2</span><h3>Same retained text</h3><p>Emit nothing; history already carries the effective snapshot.</p></div>
+    <div><span>3</span><h3>Changed non-empty value</h3><p>Propose one full user-role snapshot with plugin and named-section provenance.</p></div>
+    <div><span>4</span><h3>Value becomes empty</h3><p>Propose a clear tombstone so an older snapshot no longer remains semantically active.</p></div>
+    <div><span>5</span><h3>Compaction replaces retained snapshot</h3><p>Reset retained state; the next Step reasserts current context even if its text did not change.</p></div>
+  </div>
+  <p>The candidate is not self-committing. It is appended only if the final <code>agent/pre-step</code> decision enters it. A listener may remove, rewrite, reorder, or reject it; if removed, projection state does not falsely advance and the next Step can propose it again.</p>
+</section>
+
+<section>
+  <h2>10. Other context plugins use the pre-step lane deliberately</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Plugin</th><th>Refresh/admission rule</th><th>Placement and provenance</th></tr></thead>
+    <tbody>
+      <tr><td>Agent instructions</td><td>Composes workspace files and tracks tool-touched paths; preserves pending context when an initial Step will not run</td><td>After the claimed batch and before driver-added runtime context <evidence id="PROMPT-CONTEXT-AGENT-INSTRUCTIONS"></evidence></td></tr>
+      <tr><td>Time context</td><td>Per Step unless a configured refresh interval still covers the last injection; resolves browser or fallback timezone</td><td>Appends a sourced snapshot after downstream pre-step decisions <evidence id="PROMPT-CONTEXT-TIME"></evidence></td></tr>
+      <tr><td>Tmux context</td><td>Step 1 only; requires shell, refresh due, successful location query, and changed state</td><td>Prepends its sourced snapshot to the decision <evidence id="PROMPT-CONTEXT-TMUX"></evidence></td></tr>
+      <tr><td>Session reference</td><td>Explicit host preparation; snapshots bounded referenced Session surfaces in mention order</td><td>Returns one aggregated recall message for the caller to enqueue</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">Design assessment</div><p>These inputs are not mislabeled system sections because their refresh, message position, source attribution, and retention rules differ. The pre-step waterfall is powerful but distributed: final message order depends on listener nesting and each plugin's before/after-<code>next()</code> behavior.</p></div>
+</section>
+
+<section>
+  <h2>11. Request headers make the stable half replayable</h2>
+  <div class="claim fact"><div class="claim-label">Canonical header</div><p>The header holds resolved call config, which fields came from adapter defaults, rendered system text, and ordered tool schemas. Empty system/tool collections canonicalize to absent fields; equality compares config, adapter-default markers, system bytes, and schemas in order. Offline replay folds the latest full snapshot. <evidence id="PROMPT-HEADER-CANONICAL"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">Write policy</div><p>The first request writes <code>initial</code> or <code>resume</code>. Later requests write a full <code>change</code> snapshot only when canonical equality fails. Tests show that per-Step reassembly of an unchanged prompt produces no extra header, while a real section change does. <evidence id="LOOP-REQUEST-BUILD"></evidence><evidence id="PROMPT-HEADER-CHANGE-TEST"></evidence></p></div>
+  <p>The frozen provider request is then formed from the current header plus <code>Session.deriveMessages()</code>. This avoids a second hidden conversation store: both stable instructions and message history have durable anchors.</p>
+</section>
+
+<section>
+  <h2>12. KV-cache reuse is emergent, not a Harness cache</h2>
+  <div class="claim fact"><div class="claim-label">Wire layout</div><p>The direct DeepSeek adapter serializes system text as the first wire message and then appends the derived history. It always requests streaming usage; this path does not set an explicit cache-control directive. <evidence id="PROMPT-DEEPSEEK-WIRE"></evidence></p></div>
+  <div class="claim inference"><div class="claim-label">Mechanism-level deduction</div><p>Cache reuse follows from a byte-stable prefix: stable system/config/tools, append-only message history, and volatile facts appended as user-role snapshots rather than rewriting the beginning. DeepSeek Harness does not maintain its own KV cache in this path.</p></div>
+  <div class="claim fact"><div class="claim-label">Unexecuted real-API test</div><p>A key-gated upstream E2E expects every request after the first to report positive provider cache-read tokens across a tool round trip and a later Turn. Dependencies and credentials were not installed for this study, so this is a reviewed test contract—not a locally observed result. <evidence id="PROMPT-CACHE-E2E"></evidence></p></div>
+</section>
+
+<section>
+  <h2>13. Strengths, costs, and unresolved edges</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Choice</th><th>Benefit</th><th>Cost or edge</th></tr></thead>
+    <tbody>
+      <tr><td>Reassemble every proposed Step</td><td>No stale change-driven cache; current scope is always evaluated</td><td>Every Step pays provider and assembly work</td></tr>
+      <tr><td>Full header snapshots</td><td>Simple, local reconstruction and equality</td><td>Larger log entries than deltas when a large tool catalog changes</td></tr>
+      <tr><td>Append volatile context</td><td>Preserves stable provider-cache prefixes and provenance</td><td>Snapshots accumulate until surface replacement/compaction</td></tr>
+      <tr><td>Strict variables/tool order</td><td>Typos fail before a malformed request reaches the model</td><td>Some configuration errors appear only at first assembly</td></tr>
+      <tr><td>Expert waterfall</td><td>Maximum composability without Loop edits</td><td>Post-waterfall ordering, uniqueness, and consistency belong to listeners</td></tr>
+      <tr><td>Stable numeric section order</td><td>Simple deterministic ordering across distinct values</td><td>Equal orders fall back to registration order, which is composition-sensitive</td></tr>
+      <tr><td>Per-Step assembly, per-attempt request build</td><td>Retry sees newly durable history/config while preserving Step semantics</td><td>Prompt changes during a retry wait for the next Step</td></tr>
+    </tbody>
+  </table></div>
+  <aside class="caveat"><strong>Audit finding:</strong> at the pinned baseline no production Loop subscriber was found for <code>system-prompt/change</code>. Correctness comes from rebuilding and comparing values every Step; the event is a registration-change notification, not a cache-invalidation dependency.</aside>
+  <div class="claim assessment"><div class="claim-label">Chapter assessment</div><p>The strongest idea is not prompt templating but semantic placement. Stable policy belongs in a reconstructable header; volatile policy belongs in sourced snapshots; situational context belongs in independently governed messages. Replay and cache behavior become consequences of the same data model rather than separate optimizations.</p></div>
+</section>
+
+<section>
+  <h2>Chapter verification checklist</h2>
+  <ul class="audit-list">
+    <li>Traced all five registry contribution APIs and their scoped effect ownership.</li>
+    <li>Reconstructed the exact assembly order, including membership snapshots and live variable iteration.</li>
+    <li>Verified scope shadowing occurs before displaced provider evaluation.</li>
+    <li>Separated section, tool-schema, runtime-snapshot, and pre-step message lanes.</li>
+    <li>Verified the proposed-Step boundary and the same-Step provider-retry boundary.</li>
+    <li>Traced strict rendering failures to their exact durable Turn/Step outcomes.</li>
+    <li>Verified header canonicalization, change suppression, request freezing, and log reconstruction.</li>
+    <li>Reviewed—but did not claim execution of—the key-gated DeepSeek cache E2E.</li>
+  </ul>
+</section>

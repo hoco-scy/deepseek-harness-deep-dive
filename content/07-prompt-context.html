@@ -1,0 +1,182 @@
+<section>
+  <h2>结论：Prompt 是一份每 step 求值、可由日志重建的程序</h2>
+  <div class="thesis"><p>DeepSeek Harness 不会在 session 创建时一次性生成 system string。每个拟执行的模型 step 都重新求值 scoped prompt provider、规范化可见 tool schema、投影易变 runtime fact、接纳带 source 的 context message，并在模型 I/O 前记录最终有效的 request state。</p></div>
+  <p>这一架构同时服务三个目标：per-Agent composition、确定性 replay 与 provider prefix-cache 稳定性。它刻意把稳定指令和易变事实分开，而不是把所有 model-visible input 都叫作“system prompt”。</p>
+</section>
+
+<section>
+  <h2>1. 四条语义不同的模型输入通道</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>通道</th><th>表示</th><th>耐久形式</th><th>典型内容</th><th>变化行为</th></tr></thead>
+    <tbody>
+      <tr><td>稳定指令</td><td><code>PromptSection[]</code></td><td><code>request/header.system</code></td><td>Harness identity、persona、plan policy、工具使用指引</td><td>每 step 重渲染；只有值变化才写新的完整 header</td></tr>
+      <tr><td>工具接口</td><td><code>ToolSchema[]</code></td><td><code>request/header.tools</code></td><td>当前 Agent scope 可见的名称、描述和 JSON 参数</td><td>每 step canonicalize，并按顺序比较</td></tr>
+      <tr><td>易变 runtime fact</td><td><code>PromptContext[]</code></td><td>带 source 的 <code>user/message</code> snapshot</td><td>Sandbox mode、approval policy、delegation status</td><td>完整渲染 snapshot 变化时才追加</td></tr>
+      <tr><td>Context plugin</td><td><code>agent/pre-step</code> messages</td><td>带 source 的 <code>user/message</code></td><td>工作区指令、当前时间、tmux 位置、显式 session reference</td><td>每个插件自己拥有刷新、顺序、边界和 provenance</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">架构不变量</div><p>四条通道都会在 provider dispatch 前获得可重建锚点：稳定 system/tool 状态写入 request-header event，message-shaped context 进入 session surface；Loop invariant 再从日志独立重建两侧。<evidence id="ROOT-MODEL-LOGGED"></evidence><evidence id="LOOP-REQUEST-INVARIANT"></evidence></p></div>
+</section>
+
+<section>
+  <h2>2. Registry 有五种可逆贡献</h2>
+  <div class="claim fact"><div class="claim-label">生产 API</div><p><code>SystemPrompt</code> 以 effect 注册 section、context、runtime-context suppressor、tool-schema provider 与 variable。注册/释放都会发 <code>system-prompt/change</code>；同一 layer 内重复的具名项被拒绝。order <code>-100</code> 的 identity 与 order <code>0</code> 的 deployment persona 也是普通 section，并非隐藏的字符串拼接。<evidence id="PROMPT-REGISTRY-CONTRACT"></evidence></p></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>注册</th><th>Identity</th><th>求值</th><th>Teardown</th></tr></thead>
+    <tbody>
+      <tr><td><code>section({name, order, text, complete?})</code></td><td>Name 在单 layer 唯一</td><td>Text provider 每 assembly 一次；稍后插值</td><td>随 owner effect 删除精确 entry</td></tr>
+      <tr><td><code>context({name, order, text})</code></td><td>Name 在单 layer 唯一</td><td>runtime context 被 suppress 时完全不求值</td><td>删除精确 entry</td></tr>
+      <tr><td><code>suppressRuntimeContext()</code></td><td>匿名独立 token</td><td>scope chain 任一 active suppressor 即获胜</td><td>只移除该 suppressor</td></tr>
+      <tr><td><code>tools(provider)</code></td><td>匿名 provider membership</td><td>返回 visible schema 与可选的 restriction 前 known names</td><td>移除 provider</td></tr>
+      <tr><td><code>variable(name, provider)</code></td><td>严格小写 identifier</td><td>每 assembly 解析一次；允许返回 <code>undefined</code></td><td>删除精确 name</td></tr>
+    </tbody>
+  </table></div>
+  <p>默认 Agent Loop 贡献三个变量：<code>provider</code>、<code>model</code> 与 <code>cwd</code>，值分别来自 Agent 和 Session。这是 ownership 选择：template 只引用值，runtime object 仍是事实 owner。</p>
+</section>
+
+<section>
+  <h2>3. Scope shadowing 发生在 provider 求值之前</h2>
+  <div class="claim fact"><div class="claim-label">Scope 语义</div><p>Assembly context 会把 <code>agent</code> 与 <code>scope</code> 同时设为同一 Agent。全局贡献先被最远祖先、再被最近 scope 叠加；同名 section、context 或 variable 由最近 scope 获胜。<evidence id="DESIGN-SCOPED-LAYERS"></evidence><evidence id="PROMPT-STEP-BOUNDARY"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">测试定义的行为</div><p>Scoped <code>deployment:persona</code> 只替换对应 scope 的 global persona。更重要的是，被覆盖的 global text provider 完全不会执行——effective map 在 text 求值之前就已形成。<evidence id="PROMPT-SCOPE-SHADOW"></evidence></p></div>
+  <div class="claim inference"><div class="claim-label">机制推导</div><p>Shadowing 不是渲染后的字符串替换，而是 provider selection。Child Agent 可以继承 parent composition，只覆盖一个 named slot，无需执行被替代 provider 或复制整份 prompt。</p></div>
+</section>
+
+<section>
+  <h2>4. 一次 assembly 有严格求值顺序</h2>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>解析 scope 与 suppression</h3><p>收集已有 scope chain，判断 global 或 inherited suppressor 是否 active。</p></div>
+    <div><span>2</span><h3>求值 variables</h3><p>先 global，再从祖先到最近 scope；近层 provider 覆盖同名值。</p></div>
+    <div><span>3</span><h3>物化 named entries</h3><p>在 text provider 执行前构建 effective section/context map。</p></div>
+    <div><span>4</span><h3>快照 tool providers</h3><p>固定本 generation 的 membership，逐个调用 provider，并 clone schema parameters。</p></div>
+    <div><span>5</span><h3>排序与求值</h3><p>按 numeric order stable-sort section/context，强制最多一个 complete，求值 text，并 canonicalize tools。</p></div>
+    <div><span>6</span><h3>运行 expert waterfall</h3><p><code>system-prompt/assemble</code> 可以合作式改写 mutable assembly，或直接短路。</p></div>
+    <div><span>7</span><h3>重新施加硬约束</h3><p>把原始已求值 complete section 恢复为唯一 section；suppression active 时清空 contexts。</p></div>
+  </div>
+  <div class="claim fact"><div class="claim-label">生产控制流</div><p><code>assemble()</code> 直接实现上述顺序。Waterfall 前的 registry output 具有确定性；返回值具有权威性，但 complete 与 suppression 约束会在最后再次施加。<evidence id="PROMPT-ASSEMBLY-PIPELINE"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">Mutation 测试</div><p>Tool-provider membership 先快照，因此 provider 求值期间新注册的 provider 只进入下一次 assembly；variable 使用 live map iteration，因此早期 variable provider 注册的新 variable 可进入同一 generation。每次 assembly 都获得新的 section/context/tool 容器，tool parameters 也会 structural clone。<evidence id="PROMPT-ASSEMBLY-MUTATION-TEST"></evidence><evidence id="PROMPT-VARIABLE-TEST"></evidence></p></div>
+  <aside class="caveat"><strong>所有权限制：</strong>registry 保存的 registration object 本身是 borrowed，而非 frozen。绕过公共 readonly 类型私下修改它，会改变下一次 assembly，却不会触发 <code>system-prompt/change</code>；运行时 immutability 从 assembled/request snapshot 才开始。</aside>
+</section>
+
+<section>
+  <h2>5. <code>complete</code> 约束 section，不锁死整个 assembly</h2>
+  <div class="claim fact"><div class="claim-label">精确语义</div><p>一个 effective <code>complete: true</code> section 不会跳过 variable、context、tool 或 waterfall。Waterfall 仍完整运行；随后 registry 把原始已求值 complete section 恢复为唯一 section。两个 effective complete section 会让 assembly 失败。<evidence id="PROMPT-ASSEMBLY-PIPELINE"></evidence><evidence id="PROMPT-ASSEMBLY-MUTATION-TEST"></evidence></p></div>
+  <ul class="audit-list">
+    <li>Listener 不能替换 complete section 的 name 或已求值 text。</li>
+    <li>Listener 仍可以改变 variables、contexts 与 tools。</li>
+    <li>因为 interpolation 更晚发生，修改被引用 variable 仍能改变 complete template 的最终文本。</li>
+    <li>Runtime-context suppression 会清掉 waterfall 重新加入的 context。</li>
+  </ul>
+  <div class="claim assessment"><div class="claim-label">设计评价</div><p><code>complete</code> 是 section authority，而不是不可修改的 whole-request mode。它保留 tool/context composition；但若调用方要求 byte-fixed complete prompt，也必须控制该 template 引用的 variables。</p></div>
+</section>
+
+<section>
+  <h2>6. 渲染严格，而且刻意延后</h2>
+  <div class="claim fact"><div class="claim-label">Renderer 合同</div><p>Section/context provider 返回未插值文本。渲染只接受 name 匹配 <code>[a-z][a-z0-9_]*</code> 的 <code>{{name}}</code>；unknown、undefined 和 malformed reference 都快速失败。Own-property lookup 阻止未注册的 prototype name；替换值不二次扫描；空项被丢弃；section 以双换行连接。<evidence id="PROMPT-STRICT-RENDER"></evidence><evidence id="PROMPT-VARIABLE-TEST"></evidence></p></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>失败位置</th><th>此前已记录什么</th><th>绝不会发生什么</th></tr></thead>
+    <tbody>
+      <tr><td>Assembly/provider/tool-order failure</td><td><code>turn/start</code></td><td>无 <code>step/start</code>、request header 或 adapter call</td></tr>
+      <tr><td>Runtime-context interpolation failure</td><td><code>turn/start</code></td><td>不会打开 step</td></tr>
+      <tr><td><code>agent/pre-step</code> reject</td><td><code>turn/start</code>；claimed inbox splice 已耐久</td><td>无 step/model request；Turn 以 blocked 结束</td></tr>
+      <tr><td>首个 accepted message list 为空</td><td>Turn boundary 与 claim effect</td><td>无 step；Turn 以 completed 结束</td></tr>
+      <tr><td>System-section interpolation failure</td><td><code>turn/start</code>、<code>step/start</code>、已进入的 user messages</td><td>无 request dispatch；<code>step/end</code> 仍在 <code>finally</code> 中闭合</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">取消测试</div><p>Assembly 阻塞时 cancel 或 owner disposal，会产生没有 step、chunk、assistant message 或 adapter request 的 aborted Turn。<evidence id="PROMPT-CANCEL-TEST"></evidence></p></div>
+</section>
+
+<section>
+  <h2>7. Tool schema 也是 prompt 确定性的一部分</h2>
+  <div class="claim fact"><div class="claim-label">排序算法</div><p>未显式配置时，schema 按与 locale 无关的 code-unit 字典序排序。显式 <code>toolOrder</code> 必须且只能包含一个 <code>&lt;unlisted-tools&gt;</code> marker，不能重复；未知配置名失败；restriction 前已知的名字可以在当前 scope 缺席；未列出的 visible tool 在 marker 位置内排序。<evidence id="PROMPT-TOOL-ORDER"></evidence></p></div>
+  <p>Schema visibility 与 usage guidance 是两项独立注册。隐藏 tool schema 不会自动删除另一个插件贡献的工具说明；要求二者同步的 package 必须让自己的 guidance provider 检查当前 scope visibility。</p>
+  <div class="claim assessment"><div class="claim-label">设计评价</div><p>Canonical order 同时影响正确性、replay 与 cache。Registry 只保证 expert waterfall 之前的顺序；之后新增或重排 tool 的 listener 自己承担确定性。该层也不会静默去重同名 schema。</p></div>
+</section>
+
+<section>
+  <h2>8. 组装频率：每个拟执行 step 一次，而非每次 retry</h2>
+  <div class="claim fact"><div class="claim-label">Step 边界</div><p><code>preStep()</code> 依次 claim inbox、组装 scoped prompt、渲染 dynamic context、提出 snapshot，再进入 <code>agent/pre-step</code>。只有被接纳且非空的 decision 才打开 <code>step/start</code>，并把该 assembly 交给 <code>step()</code>。<evidence id="PROMPT-STEP-BOUNDARY"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">Retry 边界</div><p><code>step()</code> 在 provider-retry loop 之外只渲染一次 system string。Retry 会在同一编号的 Turn/Step 内重新构建 request config、folded header 和 durable messages，但复用该 Step 的 system 与 tool assembly。<evidence id="PROMPT-RETRY-BOUNDARY"></evidence><evidence id="LOOP-REQUEST-ERROR-TEST"></evidence></p></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>事件</th><th>重新 assemble？</th><th>原因</th></tr></thead>
+    <tbody>
+      <tr><td>Tool result 需要下一次模型请求</td><td>是</td><td>这是新拟执行 Step；scope provider 与 runtime fact 可能已变</td></tr>
+      <tr><td>下一次 user Turn</td><td>是</td><td>每个拟执行 Step 都求值当前 composition</td></tr>
+      <tr><td>Provider error 获得 retry action</td><td>否</td><td>Retry 是同一 Step 内的另一次 request attempt</td></tr>
+      <tr><td>Assembly 后 prompt registration 改变</td><td>下一 Step</td><td>当前 Step 已拥有 detached assembly snapshot</td></tr>
+      <tr><td>Rejected/empty proposed Step</td><td>已经 assemble</td><td>Admission 在 assembly 和 dynamic-context projection 之后决定</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>9. Dynamic runtime context 是 append-only 完整快照</h2>
+  <div class="claim fact"><div class="claim-label">Projection 状态机</div><p>Runtime context 把 named sections 渲染在固定的“supersedes earlier snapshots”声明之后。<code>RuntimeContextProjection</code> 恢复 Session surface 中最新仍 retained 的 owned snapshot；只有完整值变化才提出 sourced user message；context 消失时发明确 clear marker；replacement 从 surface 移除 snapshot 时忘记 retained state。<evidence id="LOOP-RUNTIME-CONTEXT"></evidence></p></div>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>无历史值 + 当前为空</h3><p>不发消息；没有旧语义需要清除。</p></div>
+    <div><span>2</span><h3>与 retained text 相同</h3><p>不发消息；历史已携带有效快照。</p></div>
+    <div><span>3</span><h3>变成新的非空值</h3><p>提出一个完整 user-role snapshot，保留 plugin 与 named-section provenance。</p></div>
+    <div><span>4</span><h3>值变为空</h3><p>提出 clear tombstone，避免旧 snapshot 继续保持语义有效。</p></div>
+    <div><span>5</span><h3>Compaction 替换 retained snapshot</h3><p>重置 retained state；下一 Step 即使文本未变也重新声明当前 context。</p></div>
+  </div>
+  <p>Candidate 不会自行 commit。只有最终 <code>agent/pre-step</code> decision 让它 enter，Loop 才 append；listener 可以删除、改写、重排或 reject。若被删，projection 不会错误推进，下个 Step 可再次提出。</p>
+</section>
+
+<section>
+  <h2>10. 其他 context plugin 刻意使用 pre-step 通道</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Plugin</th><th>刷新/准入规则</th><th>位置与 provenance</th></tr></thead>
+    <tbody>
+      <tr><td>Agent instructions</td><td>组合 workspace files 并追踪工具触及路径；初始 Step 不运行时保留 pending context</td><td>插在 claimed batch 后、driver runtime context 前 <evidence id="PROMPT-CONTEXT-AGENT-INSTRUCTIONS"></evidence></td></tr>
+      <tr><td>Time context</td><td>默认每 Step；若 refresh interval 仍覆盖上次 injection 则跳过；解析 browser 或 fallback timezone</td><td>在 downstream pre-step decision 后追加 sourced snapshot <evidence id="PROMPT-CONTEXT-TIME"></evidence></td></tr>
+      <tr><td>Tmux context</td><td>只在 step 1，且 shell 可用、refresh 到期、location 查询成功、状态变化</td><td>把 sourced snapshot 放在 decision 前面 <evidence id="PROMPT-CONTEXT-TMUX"></evidence></td></tr>
+      <tr><td>Session reference</td><td>显式 host preparation；按 mention 顺序 snapshot 有界 referenced Session surface</td><td>返回单个 aggregated recall message，由 caller enqueue</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">设计评价</div><p>这些输入没有被误叫作 system section，因为它们的刷新、消息位置、source attribution 与 retention 规则各不相同。Pre-step waterfall 很强，但语义是分布式的：最终 message order 取决于 listener nesting，以及每个插件在 <code>next()</code> 前后如何操作。</p></div>
+</section>
+
+<section>
+  <h2>11. Request header 让稳定部分可 replay</h2>
+  <div class="claim fact"><div class="claim-label">Canonical header</div><p>Header 保存 resolved call config、哪些字段来自 adapter default、渲染后的 system text 和有序 tool schemas。空 system/tool collection 归一为字段缺席；equality 比较 config、adapter-default marker、system bytes 与有序 schema；offline replay fold 最后一份完整 snapshot。<evidence id="PROMPT-HEADER-CANONICAL"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">写入策略</div><p>第一次 request 写 <code>initial</code> 或 <code>resume</code>；之后只有 canonical equality 失败才写完整 <code>change</code> snapshot。测试证明每 Step 重组装但值不变时不会增加 header，真实 section 变化才会写第二份。<evidence id="LOOP-REQUEST-BUILD"></evidence><evidence id="PROMPT-HEADER-CHANGE-TEST"></evidence></p></div>
+  <p>Frozen provider request 最终由当前 header 与 <code>Session.deriveMessages()</code> 组成。这避免了第二份隐藏 conversation store：稳定指令与 message history 都有耐久锚点。</p>
+</section>
+
+<section>
+  <h2>12. KV-cache 命中是涌现结果，不是 Harness 自有缓存</h2>
+  <div class="claim fact"><div class="claim-label">Wire 布局</div><p>直接 DeepSeek adapter 把 system text 序列化为首条 wire message，再追加 derived history；始终请求 streaming usage；该路径没有设置显式 cache-control directive。<evidence id="PROMPT-DEEPSEEK-WIRE"></evidence></p></div>
+  <div class="claim inference"><div class="claim-label">机制推导</div><p>Cache reuse 来自 byte-stable prefix：稳定的 system/config/tools、append-only message history，以及把易变事实作为 user-role snapshot 追加，而不是重写开头。该路径中的 DeepSeek Harness 不维护独立 KV cache。</p></div>
+  <div class="claim fact"><div class="claim-label">未执行的真实 API 测试</div><p>上游 key-gated E2E 要求 tool round trip 与后续 Turn 中，首请求后的每次请求都报告正数 provider cache-read token。本研究未安装依赖或凭据，因此这是已审阅的测试合同，不是本地观察结果。<evidence id="PROMPT-CACHE-E2E"></evidence></p></div>
+</section>
+
+<section>
+  <h2>13. 优势、代价与未解决边缘</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>选择</th><th>收益</th><th>代价或边缘</th></tr></thead>
+    <tbody>
+      <tr><td>每个 proposed Step 重 assemble</td><td>没有 stale change-driven cache；始终求值当前 scope</td><td>每 Step 都支付 provider 与组装开销</td></tr>
+      <tr><td>完整 header snapshot</td><td>重建与 equality 简单、局部</td><td>大工具目录变化时比 delta 占更多日志</td></tr>
+      <tr><td>Append volatile context</td><td>稳定 provider-cache prefix 并保留 provenance</td><td>Snapshot 在 surface replacement/compaction 前持续累积</td></tr>
+      <tr><td>严格 variable/tool order</td><td>Typo 在畸形 request 到达模型前失败</td><td>某些配置错误要到首次 assembly 才出现</td></tr>
+      <tr><td>Expert waterfall</td><td>不改 Loop 即获得最大组合能力</td><td>Waterfall 后的顺序、唯一性与一致性由 listener 负责</td></tr>
+      <tr><td>稳定 numeric section order</td><td>不同 order 值之间具有简单确定性</td><td>相同 order 回退到 registration order，受 composition 影响</td></tr>
+      <tr><td>Per-Step assembly、per-attempt request build</td><td>Retry 可读新耐久 history/config，同时保持 Step 语义</td><td>Retry 中途的 prompt 变化要等下一 Step</td></tr>
+    </tbody>
+  </table></div>
+  <aside class="caveat"><strong>审计发现：</strong>固定基线上没有找到生产 Loop 对 <code>system-prompt/change</code> 的订阅。正确性来自每 Step 重建并比较值；该事件是 registration-change notification，不是 cache-invalidation 依赖。</aside>
+  <div class="claim assessment"><div class="claim-label">本章评价</div><p>最有价值的设计不是 template engine，而是语义位置：稳定 policy 进入可重建 header；易变 policy 进入 sourced snapshot；情境 context 进入独立治理的 message。Replay 与 cache 因而成为同一数据模型的结果，而不是两套分离优化。</p></div>
+</section>
+
+<section>
+  <h2>本章复核清单</h2>
+  <ul class="audit-list">
+    <li>已追踪五种 registry contribution API 与 scoped effect ownership。</li>
+    <li>已重建精确 assembly 顺序，包括 membership snapshot 与 live variable iteration。</li>
+    <li>已确认 scope shadow 在 displaced provider 求值前发生。</li>
+    <li>已分开 section、tool schema、runtime snapshot 与 pre-step message 四条通道。</li>
+    <li>已确认 proposed-Step boundary 与 same-Step provider-retry boundary。</li>
+    <li>已把严格 render failure 映射到准确的 durable Turn/Step outcome。</li>
+    <li>已确认 header canonicalization、change suppression、request freeze 与 log reconstruction。</li>
+    <li>已审阅但未声称运行 key-gated DeepSeek cache E2E。</li>
+  </ul>
+</section>
