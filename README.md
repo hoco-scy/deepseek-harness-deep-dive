@@ -8,6 +8,8 @@
 
 This repository is an independent, evidence-driven, module-by-module source study of [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness).
 
+**Read the live report:** [English (default)](https://hoco-scy.github.io/dpsk-harness-analysis/) · [中文](https://hoco-scy.github.io/dpsk-harness-analysis/zh/)
+
 The study is pinned to upstream commit [`47f943859bef60e4160492346772ded9b24f765a`](https://github.com/deepseek-ai/deepseek-harness/tree/47f943859bef60e4160492346772ded9b24f765a). DeepSeek Harness is still in Developer Preview, so later upstream changes will never silently rewrite the factual baseline of this report.
 
 ### Scope
@@ -47,6 +49,8 @@ This public repository contains only an independent analysis of publicly availab
 ## 中文
 
 本仓库是对 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的独立、证据驱动、逐模块源码研究。
+
+**在线阅读：**[English（默认）](https://hoco-scy.github.io/dpsk-harness-analysis/) · [中文](https://hoco-scy.github.io/dpsk-harness-analysis/zh/)
 
 研究固定在上游 commit [`47f943859bef60e4160492346772ded9b24f765a`](https://github.com/deepseek-ai/deepseek-harness/tree/47f943859bef60e4160492346772ded9b24f765a)。DeepSeek Harness 尚处于 Developer Preview，后续上游变化不会静默改写本报告中的事实基线。
 
