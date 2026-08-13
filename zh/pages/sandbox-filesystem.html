@@ -6,7 +6,7 @@
 <body data-page="sandbox-filesystem" data-baseline="47f943859bef60e4160492346772ded9b24f765a" data-lang="zh">
   <header class="topbar"><button class="icon-button nav-toggle" type="button" data-nav-toggle aria-label="打开章节目录" aria-expanded="false">☰</button>
     <a class="brand" href="../index.html"><span class="brand-mark">DS</span><span>Harness 系统拆解</span></a>
-    <span class="topbar-meta">固定基线 47f943859b · 17 已复核 / 1 撰写中 / 36 章</span>
+    <span class="topbar-meta">固定基线 47f943859b · 21 已复核 / 1 撰写中 / 36 章</span>
     <div class="topbar-actions"><a class="language-switch" href="../../pages/sandbox-filesystem.html" lang="en" aria-label="阅读本章英文版">English</a><button class="icon-button" type="button" data-theme-toggle aria-label="切换明暗主题">◐</button></div></header>
   <div class="layout"><aside class="sidebar" data-sidebar aria-label="章节目录"><input class="filter" data-chapter-filter type="search" placeholder="筛选章节……" aria-label="筛选章节"><section class="nav-part" data-part><h2 class="part-title">导论</h2>
     <a class="chapter-link" data-chapter-item href="../pages/reading-guide.html">
@@ -33,11 +33,11 @@
     <a class="chapter-link" data-chapter-item href="../pages/tool-primitives.html">
       <span class="chapter-number">16</span><span>工具定义原语与执行管线</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link" data-chapter-item href="../pages/tool-catalog.html">
       <span class="chapter-number">17</span><span>工具全集与能力分类</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link" data-chapter-item href="../pages/tool-parallelism.html">
-      <span class="chapter-number">18</span><span>工具并行器与结果顺序</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/permission-approval.html">
-      <span class="chapter-number">19</span><span>权限分析、审批与单调 Guard</span><span class="status-dot queued" title="待研究"></span></a></section><section class="nav-part" data-part><h2 class="part-title">执行环境</h2>
+      <span class="chapter-number">18</span><span>工具并行器与结果顺序</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link" data-chapter-item href="../pages/permission-approval.html">
+      <span class="chapter-number">19</span><span>权限分析、审批与单调 Guard</span><span class="status-dot verified" title="已复核"></span></a></section><section class="nav-part" data-part><h2 class="part-title">执行环境</h2>
     <a class="chapter-link current" data-chapter-item href="../pages/sandbox-filesystem.html">
-      <span class="chapter-number">20</span><span>Sandbox、Filesystem 与观察策略</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/shell-terminal-jobs.html">
-      <span class="chapter-number">21</span><span>Shell、PTY、Terminal 与后台作业</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/web-lsp-mcp-skill.html">
+      <span class="chapter-number">20</span><span>Sandbox、Filesystem 与观察策略</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link" data-chapter-item href="../pages/shell-terminal-jobs.html">
+      <span class="chapter-number">21</span><span>Shell、PTY、Terminal 与后台作业</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link" data-chapter-item href="../pages/web-lsp-mcp-skill.html">
       <span class="chapter-number">22</span><span>Web、LSP、MCP 与 Skill</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/code-mode-self-modification.html">
       <span class="chapter-number">23</span><span>Code Mode、自修改与动态插件</span><span class="status-dot queued" title="待研究"></span></a></section><section class="nav-part" data-part><h2 class="part-title">编排</h2>
     <a class="chapter-link" data-chapter-item href="../pages/multi-agent.html">
@@ -56,10 +56,208 @@
       <span class="chapter-number">34</span><span>缺口、限制与待验证问题</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/glossary-evidence.html">
       <span class="chapter-number">35</span><span>术语、证据目录与源码索引</span><span class="status-dot queued" title="待研究"></span></a></section></aside>
     <main class="main"><div class="page-shell"><article class="article" data-article><header><div class="page-kicker"><span>执行环境</span><span>·</span><span>第 20 章</span></div>
-      <h1>Sandbox、Filesystem 与观察策略</h1><p class="subtitle">进程和文件如何共享一个执行世界与根目录策略</p><div class="page-meta"><span class="status queued">待研究</span><span>上游 47f943859b</span><span>范围: 分析 sandbox seam/backends、policy、fs providers、write/edit intent、read-before-edit、E2B 与跨平台实现。</span></div></header>
-      <section class="placeholder"><p class="eyebrow">研究队列</p><h2>本章尚未进入结论状态</h2>
-    <p><strong>当前范围:</strong> 分析 sandbox seam/backends、policy、fs providers、write/edit intent、read-before-edit、E2B 与跨平台实现。</p><p>页面已经纳入全量研究地图，但尚未完成源码控制流复核。以下是升级为“已复核”之前必须覆盖的检查面：</p>
-    <ul class="placeholder-checks"><li>实际 bundle / profile 装配入口</li><li>公开类型、事件与配置 schema</li><li>正常控制流与状态突变时机</li><li>并发、scope、所有权与 cleanup</li><li>错误、取消、重试和降级分支</li><li>持久化、projection 与 replay 语义</li><li>生产路径测试与运行时不变量</li><li>优势、代价、限制与待验证问题</li></ul></section><section class="learning-notes" aria-labelledby="learning-notes-title"><h2 id="learning-notes-title">我的学习体会</h2>
+      <h1>Sandbox、Filesystem 与观察策略</h1><p class="subtitle">进程和文件如何共享一个执行世界与根目录策略</p><div class="page-meta"><span class="status verified">已复核</span><span>上游 47f943859b</span><span>范围: 分析 sandbox seam/backends、policy、fs providers、write/edit intent、read-before-edit、E2B 与跨平台实现。</span></div></header>
+      <section>
+  <h2>结论：这里没有一个万能的“沙箱”，而是四条需要同时成立、却彼此独立的策略链</h2>
+  <div class="thesis"><p>DeepSeek Harness 把安全与一致性拆成四层：<strong>进程 argv confinement</strong> 限制 shell 的文件写副作用；<strong>Filesystem provider</strong> 定义路径身份、读取与原子发布；<strong>进程内写围栏</strong>按 sandbox mode 拒绝越界文件 mutation；<strong>observation policy</strong>要求 Session 在修改前见过目标及其版本。权限预设与升级审批只负责选择更宽的 mode，不能替代上述任何一层。这个分解很清晰，但名称容易制造过强直觉：<code>read-only</code> 不是“不可读取秘密”，<code>workspace-write</code> 也不是网络、进程、设备或凭据隔离。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/sandbox/sandbox/src/index.ts#L23-L175" title="进程文件副作用约束的沙箱合同: 源码把三种 mode 定义为文件副作用策略，并要求 provider 按调用接收完整 policy、返回精确包装 argv、enforcement 与诊断规则；不可用时必须 fail closed。" aria-label="证据 SANDBOX-SEAM">SANDBOX-SEAM</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/sandbox/sandbox/README.md#L37-L43" title="沙箱官方边界与带内诊断限制: README 明确把策略范围限制为文件副作用，排除网络、进程、系统调用、设备与凭据，并记录 stderr denial/runner attribution 的带内限制。" aria-label="证据 SANDBOX-DOC-BOUNDARY">SANDBOX-DOC-BOUNDARY</a></p></div>
+  <div class="claim assessment"><div class="claim-label">审计主结论</div><p>shipped base composition 把这些层正确拼在一起，但核心 service 并不证明它们必然来自同一安全世界。自定义 composition、共享临时目录、进程外写入者、符号链接竞态和远端进程身份复用，仍是部署者必须理解的剩余边界。</p></div>
+</section>
+
+<section>
+  <h2>1. 先分清四种 contract</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>层</th><th>回答的问题</th><th>不回答的问题</th></tr></thead>
+    <tbody>
+      <tr><td><code>SandboxProvider</code></td><td>这组精确 argv 应如何被 runner 包装，写文件时允许到哪里</td><td>命令能读什么、能否联网、能看见哪些进程</td></tr>
+      <tr><td><code>FileSystem</code></td><td>路径如何解析、目标如何定址、文件如何读写与发布</td><td>默认不承诺 root containment，也不承诺读前见过</td></tr>
+      <tr><td><code>fs-sandbox</code></td><td>一次 write/edit 的目标是否位于当前 mode 的 writable roots</td><td>不围住 read，也不是内核级任意代码边界</td></tr>
+      <tr><td><code>fs-observation-policy</code></td><td>当前 Session 是否观察过“存在/缺席 + 版本”，修改前是否仍匹配</td><td>不是身份授权、路径授权，也不证明看过完整文件</td></tr>
+    </tbody>
+  </table></div>
+  <p>Sandbox mode 只有 <code>read-only</code>、<code>workspace-write</code>、<code>danger-full-access</code> 三个值，而且生产类型明确把它定义为“file-effect confinement”。provider 返回的不只是 argv，还返回 full/partial enforcement、拒绝签名和 runner failure 规则；调用方必须执行返回的 argv，不能静默回退到原命令。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/sandbox/sandbox/src/index.ts#L23-L175" title="进程文件副作用约束的沙箱合同: 源码把三种 mode 定义为文件副作用策略，并要求 provider 按调用接收完整 policy、返回精确包装 argv、enforcement 与诊断规则；不可用时必须 fail closed。" aria-label="证据 SANDBOX-SEAM">SANDBOX-SEAM</a></p>
+</section>
+
+<section>
+  <h2>2. 默认值有两层：service 默认只读，shipped base 默认 workspace-write</h2>
+  <div class="claim fact"><div class="claim-label">不要把 schema 默认等同于产品默认</div><p><code>sandbox-policy</code> 自身的配置默认是 <code>read-only</code>；base bundle 则显式把部署默认覆盖为 <code>workspace-write</code>，并把 approval policy 设为 <code>ask</code>。因此缺省 service 实例和 shipped 产品组合得到不同结果，两者都是源码事实。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/bundle/base/cordis.patch.yml#L166-L205" title="发布基线的沙箱与审批默认值: Base bundle 安装 local sandbox 与共享 policy，缺省把 mode 设为 workspace-write；approval 随之为 ask，并发布 read-only、workspace-write 与 danger-full-access presets。" aria-label="证据 SANDBOX-SHIPPED-POLICY">SANDBOX-SHIPPED-POLICY</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/sandbox/sandbox-policy/src/index.ts#L60-L150" title="共享沙箱策略的逐调用解析: SandboxPolicyService 自身默认 read-only；每次 resolve 都按显式 mode、Session 最后 override、部署默认的顺序选 mode，并优先以 Session cwd 作为 workspace root。" aria-label="证据 SANDBOX-POLICY">SANDBOX-POLICY</a></p></div>
+  <p>每次调用的有效策略按固定优先级解析：已获批的显式 mode → Session event 中最后一个 mode → 部署默认。policy root 来自当前 Session cwd；没有 Session 时回退到已规范化的部署 root。<code>workspace-write</code> 的可写集合是 workspace root、固定 <code>/tmp</code> 和平台 <code>os.tmpdir()</code>，经过 realpath 尽力规范化与去重；<code>read-only</code> 没有 writable root。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/sandbox/sandbox/src/roots.ts#L20-L55" title="可写根的规范化与推导: canonicalPath 尽力使用 native realpath；writableRoots 在 read-only 下为空，在 workspace-write 下规范化、去重 workspace root、/tmp 与 os.tmpdir()。" aria-label="证据 SANDBOX-WRITABLE-ROOTS">SANDBOX-WRITABLE-ROOTS</a></p>
+</section>
+
+<section>
+  <h2>3. Mode 是 Session 事件，不是 shell 进程上的可变全局变量</h2>
+  <pre><code>deployment default
+        ↓
+last sandbox/mode event in this Session
+        ↓
+approved per-call override (one execution only)
+        ↓
+SandboxExecutionPolicy { mode, root, sessionId }</code></pre>
+  <p>Session mode 从 <code>sandbox/mode</code> 事件 fold 得出；唯一正式写入口也只是追加该事件。这样 resume/replay 能重建 permission 状态，而一次性批准不会偷偷变成 Session 的持久默认。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/sandbox/sandbox-policy/src/session-mode.ts#L24-L71" title="Session 沙箱模式事件与 fold: sandbox/mode 是 log-only Session event；effectiveSandboxMode 反向寻找最后一次写入，setSandboxMode 的唯一动作是追加该事件。" aria-label="证据 SANDBOX-MODE-EVENT">SANDBOX-MODE-EVENT</a></p>
+  <aside class="caveat"><strong>状态范围：</strong>mode 属于 Session，local provider 的某些资源却属于更长寿命的 Context/provider。二者不可互换：策略解析每次调用重做，runner probe 结果和 Windows workspace grant 则可能被复用。</aside>
+</section>
+
+<section>
+  <h2>4. 升级审批是一条严格单调的 pre-execution 流程</h2>
+  <p>调用只能从只读升级到 workspace/full，或从 workspace 升级到 full；相同或更窄 mode 都不是合法“升级”。<code>sandbox_permissions</code> 与 <code>justification</code> 必须成对出现，审批发生在任何执行之前，并把取消 signal 传给 approval service。只有 <code>allowed-once</code> 返回更宽的单次 policy；拒绝、取消和 unavailable 都不会执行原命令。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/sandbox/sandbox/src/escalation.ts#L22-L187" title="严格单调且执行前完成的升级审批: 升级表只允许严格更宽的目标；参数必须成对且理由非空，审批在执行前携带取消 signal，只有 allowed-once 返回本次调用的更宽 mode。" aria-label="证据 SANDBOX-ESCALATION">SANDBOX-ESCALATION</a></p>
+  <div class="claim assessment"><div class="claim-label">权限不是沙箱</div><p>approval 回答“这一次是否允许扩大边界”，sandbox provider 回答“扩大后的边界如何落实”。把前者当成后者，会在 approval service 缺失、runner 不可用或 partial enforcement 时得出错误安全结论。</p></div>
+</section>
+
+<section>
+  <h2>5. Local backend 是平台方言链，不是一个跨平台同构实现</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>平台</th><th>候选链 / profile</th><th>enforcement</th><th>关键差异</th></tr></thead>
+    <tbody>
+      <tr><td>Linux</td><td>bwrap → Landlock</td><td>bwrap full；Landlock 可为 partial</td><td>bwrap 把 <code>/</code> 只读 bind，并给 workspace mode 一个临时 <code>/tmp</code>；Landlock 允许写 host temp 与 workspace</td></tr>
+      <tr><td>macOS</td><td>Seatbelt</td><td>声明 full</td><td>默认 allow，显式 deny file-write，再为 writable roots 放行写入</td></tr>
+      <tr><td>Windows</td><td>ACL helper</td><td>始终 partial</td><td>通过受限 SID/ACE 与临时目录物化能力，无法消除 Everyone/hard-link 等旁路</td></tr>
+    </tbody>
+  </table></div>
+  <p>Linux 多候选时会 probe 并缓存 verdict，全部失败就结构化 fail closed；单一平台候选直接选取。每种方言还有独立 denial 与 runner-failure 签名，供调用方区分“命令失败”“被沙箱拒绝”和“沙箱根本不可用”。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/sandbox/sandbox-local/src/index.ts#L150-L240" title="本地平台 runner 链与诊断方言: 源码定义 Linux bwrap→Landlock、macOS Seatbelt、Windows ACL 链，分别标注 full/partial enforcement、denial signatures 与 runner-failure rules。" aria-label="证据 SANDBOX-LOCAL-DIALECTS">SANDBOX-LOCAL-DIALECTS</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/sandbox/sandbox-local/src/profiles.ts#L11-L58" title="Bwrap、Landlock 与 Seatbelt profile: Bwrap 把根只读 bind 并在 workspace mode 使用独立 /tmp；Landlock grant host /tmp 与 workspace；Seatbelt 默认 allow、拒绝文件写后再放行共享 writable roots。" aria-label="证据 SANDBOX-PROFILES">SANDBOX-PROFILES</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/sandbox/sandbox-local/src/index.ts#L485-L539" title="Runner 选择、缓存与关闭失败: provider 生命周期内缓存一次 chain verdict；单候选不 probe，多候选按序 probe，空链或全部 unusable 返回结构化 unavailable，而不是原 argv。" aria-label="证据 SANDBOX-LOCAL-SELECT">SANDBOX-LOCAL-SELECT</a></p>
+</section>
+
+<section>
+  <h2>6. 自定义 runner 是 operator trust boundary；stderr 分类只是诊断</h2>
+  <p>配置非空 <code>runnerCommand</code> 会跳过平台探测，并把该 runner 视为 full enforcement。框架验证命令形状与 failure signatures，但无法证明外部程序真的实现了声明的 confinement；这是明确的部署信任输入。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/sandbox/sandbox-local/src/index.ts#L276-L333" title="自定义 runner 的验证与包装: 构造器验证 runnerCommand 与 failure signatures 必须成对；配置的 runner 跳过平台选择，用 bwrap-shaped profile 包装并由 operator 声明 full enforcement。" aria-label="证据 SANDBOX-LOCAL-WRAP">SANDBOX-LOCAL-WRAP</a></p>
+  <p>一次性 shell 会执行 provider 返回的精确 argv，记录 enforcement，并依据 exit code、spawn attribution 和 stderr signatures 分类 sandbox denial/runner failure。因为分类依赖带内 stderr，子进程可以输出相同文本制造错误归因；这会影响可用性与诊断，不会让它逃过已经施加的 confinement。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/shell/bash-sandbox/src/index.ts#L79-L179" title="一次性 Bash 的沙箱消费路径: Executor 将 exact [&#39;bash&#39;,&#39;-c&#39;,command] 交给 provider，并直接运行返回 argv；foreground/background 分别保留 mode、enforcement、denial 与 runner-failure 结果。" aria-label="证据 SANDBOX-BASH-CONSUMER">SANDBOX-BASH-CONSUMER</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/shell/bash-sandbox/src/helpers.ts#L25-L116" title="沙箱拒绝与 runner failure 分类器: spawn attribution 要求可用 workdir 与精确 runner path/syscall；settled runner failure 按 exit gate、信息行排除和 fatal stderr 匹配，denial 仅在非零退出时按签名匹配。" aria-label="证据 SANDBOX-RESULT-CLASSIFIER">SANDBOX-RESULT-CLASSIFIER</a></p>
+</section>
+
+<section>
+  <h2>7. Windows ACL 是诚实标注的 partial capability</h2>
+  <p>workspace root 的受限 ACE 是 standing grant；Session temp 则建立随机 SID 与随机目录，失败时回滚半物化状态。dispose 会尽力撤销临时 grant 和目录，但 workspace ACE 保留，进程崩溃也可能留下 residue。实现因此明确报告 partial，而非用“沙箱”一词掩盖 Everyone ACE、hard-link 与 cleanup 的限制。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/sandbox/sandbox-windows-acl/README.md#L73-L82" title="Windows ACL 的 partial 能力与清理边界: 官方边界记录 Everyone 与 hard-link 旁路、standing workspace ACE、可撤销的 per-Session temp capability，以及崩溃或 cleanup failure 后的惰性残留。" aria-label="证据 SANDBOX-WINDOWS-CAPS">SANDBOX-WINDOWS-CAPS</a></p>
+  <aside class="caveat"><strong>跨平台不等价：</strong>相同 <code>workspace-write</code> mode 在 bwrap 中拿到隔离的 <code>/tmp</code>，而 Landlock、Seatbelt 与进程内 fs fence 允许共享 host temp。对同一 OS 用户并行运行的 Session，这形成临时文件名冲突与相互干扰面。</aside>
+</section>
+
+<section>
+  <h2>8. Filesystem seam 把“显示路径”和“目标身份”分开</h2>
+  <p><code>FileSystem</code> 使用 opaque target、opaque version、存在/缺席 observation、guarded create/replace intent，以及结构化 <code>FsError</code>。write/edit intent 是 single-slot waterfall，observed 是同步 recorder；provider 可选暴露 <code>sandboxMode</code>，这决定工具是否能宣传 mutation escalation。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/fs/fs/src/types.ts#L11-L203" title="Filesystem 的身份、观察、guard 与错误类型: 类型定义把 target/version 设为 opaque identity，区分 present/absent observation，定义 guarded create/replace intent，并列出含 FS_SANDBOX_DENIED 的结构化 FsErrorCode。" aria-label="证据 SANDBOX-FS-TYPES">SANDBOX-FS-TYPES</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/fs/fs/src/index.ts#L44-L249" title="Filesystem provider 与事件 seam: FileSystem 声明路径、读取、列表与原子 mutation API；fs write/edit intent 是 single-slot waterfall，observed 是同步 emit，sandboxMode 可选暴露 mutation confinement。" aria-label="证据 SANDBOX-FS-SEAM">SANDBOX-FS-SEAM</a></p>
+  <p>local provider 的 <code>cwd</code> 只负责相对路径解析，绝不是 containment boundary。它把人类可读绝对路径与 canonical target key 分开：存在目标用 native realpath；不存在目标从最近存在祖先开始规范化，再拼回缺失后缀，从而让别名与多数 symlink 路径共享锁和 observation 身份。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/fs/fs-local/src/index.ts#L40-L123" title="本地 Filesystem 的 cwd 与 canonical target: LocalFileSystem 明确说明 cwd 只是相对路径默认而非 containment，provider 以 canonical targetKey 做锁与 I/O 身份，并用平台路径语义实现 contains。" aria-label="证据 SANDBOX-FS-LOCAL">SANDBOX-FS-LOCAL</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/fs/fs-local/src/fsio.ts#L105-L194" title="存在与缺失目标的 realpath 身份: 存在目标使用自身 realpath；缺失目标向上寻找最近存在祖先、规范化后拼回缺失 suffix，使 symlink alias 在创建前后保持目标身份。" aria-label="证据 SANDBOX-FS-IDENTITY">SANDBOX-FS-IDENTITY</a></p>
+</section>
+
+<section>
+  <h2>9. 读取路径分层，发布原子，但 replace guard 不是跨进程 CAS</h2>
+  <p>local read 区分 whole-file UTF-8、bounded raw bytes 与 stream；二进制探测只采样前 8192 bytes，raw-byte read 有明确上限，stream 接受取消。底层 <code>readText</code> 本身没有 <code>maxBytes</code>，因此“所有长读取都天然有界”并不是 provider 保证；模型工具会另行选择 window 或 stream 路径。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/fs/fs-local/src/fsio.ts#L17-L463" title="本地文本、字节与流式读取语义: whole text 读取完整文件并做 UTF-8/NUL 检查；raw-byte path 强制 maxBytes；stream path 跨 chunk 解码并仅在前 8192 bytes 做 NUL sample，且传播取消。" aria-label="证据 SANDBOX-FS-READ-IO">SANDBOX-FS-READ-IO</a></p>
+  <p>mutation 在每个 canonical target 的 provider 内锁中完成：先核对 create/replace guard，再在 mode 0700 的 sibling 临时目录里写 mode 0600 文件并 sync，最后通过 hard-link no-replace create、Windows ReplaceFile 或 rename 发布。取消在 commit 前再次检查；commit 后 cleanup 仅 best effort。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/fs/fs-local/src/index.ts#L70-L255" title="本地逐目标 mutation 锁与 guard: 同一 provider 以 targetKey FIFO 锁串行 mutation；write/edit 在锁内 probe、验证 create/replace/version guard，再调用 atomic writer 并返回新版本。" aria-label="证据 SANDBOX-FS-LOCAL-MUTATION">SANDBOX-FS-LOCAL-MUTATION</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/fs/fs-local/src/fsio.ts#L518-L615" title="本地原子 staging 与 publication: 写入使用 0700 sibling staging directory、0600 exclusive file 与 sync；commit 前检查取消，然后以 hard-link no-replace、Windows ReplaceFile 或 rename 发布，commit 后清理为 best effort。" aria-label="证据 SANDBOX-FS-ATOMIC">SANDBOX-FS-ATOMIC</a></p>
+  <div class="claim assessment"><div class="claim-label">保证边界</div><p><code>createIfAbsent</code> 在发布点用 no-replace 原语，保证较强；<code>replaceIfVersion</code> 的版本检查却发生在 staging/rename 之前，且锁只覆盖当前 provider 进程。另一个进程可在检查后、发布前写入并被覆盖。因此它是“同一 provider 内串行 + 发布前元数据检查”，不是跨进程线性化 CAS。官方限制也承认 metadata version 与 process-local lock 的边界。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/fs/fs-local/README.md#L40-L45" title="本地 Filesystem 的并发与清理限制: README 明确 mutation lock 仅限进程内、guarded create 才有跨进程 no-replace，replacement 仍可竞态，且 commit 后 staging 清理失败会留下 residue。" aria-label="证据 SANDBOX-FS-LOCAL-LIMITS">SANDBOX-FS-LOCAL-LIMITS</a></p></div>
+</section>
+
+<section>
+  <h2>10. fs-sandbox 是 mutation-only 路径围栏</h2>
+  <p><code>fs-sandbox</code> 继承 local filesystem：read/list 原样保留，只有 write/edit 在委托前检查 mode。只读拒绝所有 mutation；workspace mode 在调用时重新 resolve 目标，并要求目标落在 canonical writable roots 内；full 直接通过。它明确定位为 trusted in-process provider / model path 的纵深防御，而非约束任意原生代码的内核边界。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/fs/fs-sandbox/src/index.ts#L1-L149" title="仅约束 mutation 的进程内 Filesystem 围栏: SandboxedFileSystem 原样继承读取，只在 write/edit 前按每调用 policy 检查；read-only 拒绝、workspace-write fresh resolve 后校验 writable roots、full 直接通过，并明确接受剩余 TOCTOU。" aria-label="证据 SANDBOX-FS-FENCE">SANDBOX-FS-FENCE</a></p>
+  <p>containment 同时做 separator-aware lexical check 与存在 root/target 的 file identity fallback，处理 Windows alias/case。测试覆盖绝对路径、<code>..</code>、已存在 symlink escape、symlink 下新文件、stale target 与 per-call override。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/fs/fs-sandbox/src/containment.ts#L19-L76" title="Separator-aware containment 与文件身份 fallback: containment 先做 separator-aware lexical comparison；拼写不同时沿现存祖先比较 dev/inode，保守处理缺失 root，并支持 Windows case/alias 语义。" aria-label="证据 SANDBOX-CONTAINMENT">SANDBOX-CONTAINMENT</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/fs/fs-sandbox/tests/fs-sandbox.spec.ts#L59-L235" title="Filesystem 围栏 mode 与逃逸测试: 测试覆盖 read-only mutation denial/read allowance、workspace 与 temp writes、absolute/.. 与 symlink escapes、fresh target、full mode、逐调用 override 和结构化 denial。" aria-label="证据 SANDBOX-FS-FENCE-TEST">SANDBOX-FS-FENCE-TEST</a></p>
+  <aside class="caveat"><strong>已接受 TOCTOU：</strong>当允许 root 内的缺失祖先在 fresh check 之后、mkdir/open/rename 之前被另一个写入者替换为 symlink，进程内围栏仍有 reopen race。源码直接记录了这个剩余边界；需要强对抗隔离时应依赖 OS/remote sandbox，而不是把路径检查升级成内核保证。</aside>
+</section>
+
+<section>
+  <h2>11. read / write / edit 的真实控制流</h2>
+  <pre><code>read(path)
+  resolve from Session cwd → stat/read bounded window → emit present/absent observation
+
+write/edit(path, optional escalation)
+  resolve requested policy → approval if wider → resolve from policy root
+  → fs write/edit intent waterfall → provider guard + mutation
+  → map structured denial → emit new present observation</code></pre>
+  <p>Session cwd 会在解析时重新 canonicalize，以免 symlink-sensitive <code>..</code> 继承陈旧字符串；sandbox policy root 优先于普通 cwd。read 成功后记录 present，确认 ENOENT 时记录 absent。write 与 edit 都在真正 I/O 前取得 policy 并触发 intent，只有成功后才刷新 observation。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/fs/tool-fs/src/session-cwd.ts#L16-L46" title="Filesystem 工具的 Session cwd 解析: 工具从调用 Agent 的 Session header 取 cwd；遇到 parent traversal 时重新 canonicalize，并让 sandbox policy root 在 mutation resolve 时优先。" aria-label="证据 SANDBOX-SESSION-CWD">SANDBOX-SESSION-CWD</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/fs/tool-fs/src/read.ts#L134-L163" title="Read 工具的 bounded window 与 present observation: read 做一次 stat 取得类型、size 与 version，按 size 选择 whole/stream，构造 bounded window，并仅在成功后 emit present observation。" aria-label="证据 SANDBOX-READ-TOOL">SANDBOX-READ-TOOL</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/fs/tool-fs/src/read-target.ts#L12-L34" title="Read 目标解析与 absent observation: 共享 helper 从 Session cwd resolve、stat 目标；确认缺失时先 emit absent observation 再抛 FS_NOT_FOUND，并拒绝非普通文件。" aria-label="证据 SANDBOX-READ-TARGET">SANDBOX-READ-TARGET</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/fs/tool-fs/src/write.ts#L102-L128" title="Write 工具的 policy、intent 与 observation 控制流: write 在 I/O 前解析 policy 与目标，取得 single-slot intent，调用 provider mutation，映射 denial/error，并在成功后记录返回 version 的 present observation。" aria-label="证据 SANDBOX-WRITE-TOOL">SANDBOX-WRITE-TOOL</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/fs/tool-fs/src/edit.ts#L112-L146" title="Edit 工具的 policy、guard 与 observation 控制流: edit 在 I/O 前解析 policy 与目标，在 try 内取得 version intent 并调用 provider atomic edit；失败统一映射，成功后刷新 present observation。" aria-label="证据 SANDBOX-EDIT-TOOL">SANDBOX-EDIT-TOOL</a></p>
+  <p>只有 mounted fs provider 声明 <code>sandboxMode</code> 时，工具 schema 才接受升级字段；结构化 <code>FS_SANDBOX_DENIED</code> 会被映射为共享 denial marker 与提示。bare local fs 和默认 E2B fs 不伪装成可升级的本地沙箱。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/fs/tool-fs/src/sandbox.ts#L20-L130" title="Filesystem mutation 的条件升级接口: Controller 仅在 ctx.fs 暴露 sandboxMode 时发布升级字段并要求 shared policy；每次 mutation 解析 standing/approved policy，并把 FS_SANDBOX_DENIED 映射为共享 marker 与 hint。" aria-label="证据 SANDBOX-FS-ESCALATION">SANDBOX-FS-ESCALATION</a></p>
+</section>
+
+<section>
+  <h2>12. Observation policy 是按 Session 对象和 canonical target 的易失状态机</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>最近 observation</th><th>write intent</th><th>edit intent</th></tr></thead>
+    <tbody>
+      <tr><td>无</td><td>拒绝覆盖；不能证明目标缺席</td><td>拒绝</td></tr>
+      <tr><td>absent</td><td><code>createIfAbsent</code></td><td>拒绝</td></tr>
+      <tr><td>present(version)</td><td><code>replaceIfVersion(version)</code></td><td><code>replaceIfVersion(version)</code></td></tr>
+    </tbody>
+  </table></div>
+  <p>状态存于 <code>WeakMap&lt;Session object, Map&lt;targetKey, observation&gt;&gt;</code>；Session owner 被垃圾回收后，弱引用条目可随之释放。源码没有 Session-dispose hook，显式重置整张表发生在 policy plugin dispose/HMR。成功的 read/write/edit 会刷新状态；没有 Session owner 的 mutation 也不能借用别人的 observation。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/fs/fs-observation-policy/src/index.ts#L17-L130" title="按 Session owner 隔离的 observation 状态机: plugin 用 WeakMap&lt;owner,Map&lt;target,observation&gt;&gt; 保存易失状态；unseen/absent/present 决定 create 或 version guard，dispose 重置状态，三个 listener 占据 intent slots 并同步记录 observed。" aria-label="证据 SANDBOX-OBSERVATION">SANDBOX-OBSERVATION</a></p>
+  <p>write/edit intent 是 first-listener-wins 的 waterfall，注册顺序不属于稳定 contract；卸载 policy 后 mutation 会退化为 provider 的无条件调用。生产测试固定了 present/absent 决策、owner 隔离、首 listener 胜出，以及 policy plugin disposal 后状态重置。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/fs/fs-observation-policy/README.md#L30-L50" title="Observation gate 的 first-wins 与可卸载语义: README 定义三种 fs event 决策，说明 intent slot 按注册顺序 first-wins；移除 plugin 后工具会回落到 bare provider 的 unconditional write/edit。" aria-label="证据 SANDBOX-OBSERVATION-DOC">SANDBOX-OBSERVATION-DOC</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/fs/fs-observation-policy/tests/policy.spec.ts#L47-L235" title="Observation 决策、owner 隔离与 disposal 测试: 测试固定 unseen/absent/present write/edit 结果、成功 mutation 后版本刷新、无 owner、多个 owner、first-wins，以及 dispose 后状态与 listeners 清空。" aria-label="证据 SANDBOX-OBSERVATION-TEST">SANDBOX-OBSERVATION-TEST</a></p>
+</section>
+
+<section>
+  <h2>13. “Read before edit” 精确保证 freshness，不保证 completeness 或 authorization</h2>
+  <div class="claim assessment"><div class="claim-label">三个常见误读</div><p>第一，observation 不持久化，resume 后必须重新读；第二，绕过 tool 直接调用 <code>ctx.fs.read*</code> 不会自动产生 observation；第三，只读了一个 window 也足以授权同版本的 whole-file overwrite。它证明“调用者见过这个目标的某个当前版本”，不证明调用者看过全文件，更不证明其有权访问路径。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/fs/fs-observation-policy/README.md#L68-L73" title="Observation policy 的已知保证边界: 官方限制说明状态不随 resume 持久化、无 Session actor 无法满足 policy、直接 ctx.fs read 不记录，以及 window read 只授权同版本而不证明完整阅读。" aria-label="证据 SANDBOX-OBSERVATION-LIMITS">SANDBOX-OBSERVATION-LIMITS</a></p></div>
+  <p>因此正确组合顺序是：身份/部署授权决定能否拥有 capability，sandbox 决定能写哪里，observation guard 防止基于陈旧或从未见过的状态覆盖，atomic publication 决定落盘提交语义。四者不能互相代偿。</p>
+</section>
+
+<section>
+  <h2>14. Permission preset 同步三项状态，但只验证 shell confinement</h2>
+  <p>permission preset 需要 confining <code>ctx.shell</code> 与 approval service；shipped presets 对应 workspace-write + ask 与 danger-full-access + never。用户切换时会同时写 permission/preset、<code>sandbox/mode</code> 和 approval/policy，并为新 Session pin 初始状态。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/interaction/permission-presets/src/index.ts#L139-L225" title="Permission preset 的默认 bundle 与启动校验: service 默认提供 workspace-write+ask 与 danger-full-access+never，要求 shell 和 approval，并只用 ctx.shell.sandboxMode 验证存在 confining shell；新 Session 会被 pin 初始权限。" aria-label="证据 SANDBOX-PERMISSION-PRESETS">SANDBOX-PERMISSION-PRESETS</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/interaction/permission-presets/src/index.ts#L369-L430" title="Permission preset 的三事件写入路径: 切换时先按需追加 permission/preset，再通过 canonical setters 更新 sandbox/mode 与 approval/policy；新 Session 也补齐缺失的三个 durable facts。" aria-label="证据 SANDBOX-PERMISSION-WRITE">SANDBOX-PERMISSION-WRITE</a></p>
+  <div class="claim assessment"><div class="claim-label">组合缺口</div><p>preset service 只检查 shell 是否 confining，并不证明 <code>ctx.fs</code> 也由 fs-sandbox 提供、使用同一 policy。shipped base 确实同时装了 observation、tool-fs 与 fs-sandbox，所以当前基线一致；自定义 composition 却可能展示“workspace-write”权限，同时把 write/edit 接到 bare filesystem。跨 capability 的 same-policy invariant 由部署组合承担，而不是由类型或启动检查强制。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/bundle/base/cordis.patch.yml#L210-L230" title="发布基线的 Filesystem policy 与工具层: Base bundle 同时装配 tool-fs、tool-fs-search 与 fs-observation-policy，使模型 mutation 在默认组合中经过 observation gate。" aria-label="证据 SANDBOX-SHIPPED-FS">SANDBOX-SHIPPED-FS</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/bundle/base/cordis.patch.yml#L441-L445" title="发布基线的沙箱化 Filesystem provider: Base bundle 的 provider 行明确安装 @deepseek-ai/dsh-fs-sandbox，而不是 bare local filesystem。" aria-label="证据 SANDBOX-SHIPPED-FS-PROVIDER">SANDBOX-SHIPPED-FS-PROVIDER</a></p></div>
+</section>
+
+<section>
+  <h2>15. Persistent terminal 继承 confinement，却丢失部分结构化观察面</h2>
+  <p>terminal provider 在 PTY 创建/活动期间禁止更改 Session sandbox mode，避免一个长寿命 shell 跨越权限边界。创建时按 Session 解析 policy、把 shell argv 交给 sandbox provider 包装，并在 init failure 时清理。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/terminal/terminal-bash/src/index.ts#L27-L145" title="Persistent Terminal 的 mode fence 与 confined spawn: owner-scoped listener 在 PTY open/creation 期间拒绝不同 sandbox/mode；spawn 按 Session 解析 policy、包装 argv、使用 policy root，并在 initialize failure 时 await close cleanup。" aria-label="证据 SANDBOX-TERMINAL-FENCE">SANDBOX-TERMINAL-FENCE</a></p>
+  <p>但 terminal 只使用包装后的 argv，没有像 one-shot shell 那样把 enforcement、diagnostic dialect 和 runner classification 带到每次结果中。runner 拒绝仍会 fail，但 Host 对 persistent PTY 的结构化“为何失败/partial enforcement”可见性更弱。这是 observation surface 差异，不是 confinement 绕过。</p>
+</section>
+
+<section>
+  <h2>16. E2B 不是 <code>SandboxProvider</code> 的另一个 runner，而是整套执行世界替换</h2>
+  <p>E2B owner 在一个 Context 内持有一个 remote sandbox handle，验证 API key 与 absolute Linux cwd，创建 mode 0700 的 runtime root，并在 bootstrap 失败时 kill 回滚。SDK 不可避免的 login shell 被赋予随机 HOME 以降低启动文件副作用。这个 ownership scope 意味着：同一 Context 下多个 Session 若共用该 owner，也共用远端 filesystem/process 世界；Session 本身不是 VM 隔离单位。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/e2b/e2b/src/index.ts#L22-L179" title="单 Context 的 E2B execution-world owner: E2BRuntime 创建并共享一个 sandbox handle，校验 API key、absolute Linux cwd 与 timeout，准备 0700 runtime root，用随机 HOME 隔离 SDK login shell，并在 bootstrap failure/dispose 时 kill。" aria-label="证据 SANDBOX-E2B-OWNER">SANDBOX-E2B-OWNER</a></p>
+  <p>remote fs 在远端用 GNU <code>realpath</code> 建立 canonical identity，提供 bounded raw-byte read、process-local target locks、guard check 和原子 staging/publish；<code>readText</code> 则调用 SDK 的整文件读取。publication 开始后不再把取消 signal 传入 link/rename，刻意避免“调用方收到 canceled，却不知道提交是否发生”的模糊状态。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/e2b/fs-e2b/src/index.ts#L170-L454" title="E2B Filesystem 的远端 identity、读取与 mutation: E2B provider 以 POSIX cwd 与远端 GNU realpath 建立 target identity，提供 whole/stream/bounded byte reads，并以 canonical target 的 host-process lock 包裹 guarded write/edit。" aria-label="证据 SANDBOX-E2B-FS">SANDBOX-E2B-FS</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/e2b/fs-e2b/src/index.ts#L510-L579" title="E2B 原子 publication 与取消 commit point: 远端写入创建随机 0700 sibling staging、上传带 version metadata 的文件并保留 mode；commit 用无 signal 的 ln -T 或 rename，之后 best-effort 清理。" aria-label="证据 SANDBOX-E2B-PUBLICATION">SANDBOX-E2B-PUBLICATION</a></p>
+  <p>remote subprocess 也在同一个 sandbox 中解析 executable、管理进程组与 terminal；group signaling 仍有 numeric PGID reuse 的已知竞态。官方限制还明确：没有 host 文件同步、路径 reopen 有竞态、锁只在当前进程。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/e2b/subprocess-e2b/src/index.ts#L103-L204" title="E2B 远端 executable、进程与 Terminal seam: provider 在 shared sandbox 内解析 absolute/bare executable，spawn 受管 process handle，并以 owner runtimeRoot 分配 process/terminal state；terminal setup 有取消与 disposal publication fence。" aria-label="证据 SANDBOX-E2B-SUBPROCESS">SANDBOX-E2B-SUBPROCESS</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/e2b/subprocess-e2b/src/process.ts#L93-L665" title="E2B 进程组身份、TERM→KILL 与静止探测: 远端 wrapper 用 setsid 并发布实际 PGID；termination 对负 PGID 发 TERM、超时后 KILL 与 SDK kill，再以 ps 排除 zombie/dead entries 后确认 group quiescence。" aria-label="证据 SANDBOX-E2B-PGID">SANDBOX-E2B-PGID</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/e2b/fs-e2b/README.md#L26-L32" title="E2B Filesystem 的同步、锁与 reopen 限制: README 明确没有 host 同步，mutation coordination 仅限 host process，replacement 可与外部写入竞态，且 canonical path 到 stream open 之间仍有 reopen race。" aria-label="证据 SANDBOX-E2B-LIMITS">SANDBOX-E2B-LIMITS</a></p>
+</section>
+
+<section>
+  <h2>17. Remote composition 的核心不变量是“能力同世界”</h2>
+  <p>headless E2B 示例明确禁用 local fs 与 local subprocess，再同时装 E2B owner、remote fs 和 remote subprocess；内层 sandbox policy 设为 full，因为真正边界是远端机器，而不是 host 上的本地 runner。相同路径字符串不会上传 host 文件，所有输入必须经显式 API/文件写入进入远端。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/examples/headless-agent/e2b.cordis.yml#L1-L41" title="Headless E2B 的 same-world 组合: 示例禁用 local subprocess/fs，同时插入 E2B owner、remote subprocess/fs 与 full sandbox policy，并注释要求 cwd、policy root 与 Bash/PTY workdir 指向同一远端目录。" aria-label="证据 SANDBOX-E2B-COMPOSITION">SANDBOX-E2B-COMPOSITION</a></p>
+  <p>还有一个容易漏掉的 seam：<code>glob</code>/<code>grep</code> 不经 <code>ctx.fs</code>，而是用 <code>ctx.subprocess</code> 执行 host package 解析出的 ripgrep 绝对路径，并假设 workdir 与可读路径处于同一世界。自定义 remote adapter 若看不见该 host binary，搜索就不能仅靠替换 fs provider 工作；composition 必须同时解决 executable 与 filesystem 共址。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/fs/tool-fs-search/src/index.ts#L1-L24" title="Glob 与 Grep 的 subprocess execution-world 假设: 搜索工具通过 ctx.subprocess 运行 packaged ripgrep，刻意不注入 ctx.fs；返回路径只有在 subprocess workdir 与 filesystem root 共址时才能被 follow-up read，且运行时不验证这一点。" aria-label="证据 SANDBOX-SEARCH-WORLD">SANDBOX-SEARCH-WORLD</a></p>
+</section>
+
+<section>
+  <h2>18. 取消、失败与 cleanup：不同 commit point 有不同答案</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>路径</th><th>取消边界</th><th>失败语义</th><th>残留风险</th></tr></thead>
+    <tbody>
+      <tr><td>Approval</td><td>执行前，可直接取消</td><td>未获批绝不执行</td><td>无 mutation</td></tr>
+      <tr><td>Local shell</td><td>传给 runner/subprocess</td><td>spawn、denial、runner failure 分型</td><td>子进程自己的外部副作用取决于终止时点</td></tr>
+      <tr><td>Local fs</td><td>commit 前最后检查</td><td>commit 后 cleanup failure 不回滚已发布文件</td><td>sibling staging residue 可 best-effort 清理</td></tr>
+      <tr><td>E2B fs</td><td>publication 前可取消；commit 原语不取消</td><td>避免 ambiguous canceled commit</td><td>远端 staging cleanup 仍是 best effort</td></tr>
+      <tr><td>Windows ACL</td><td>grant/revoke 各自有回滚路径</td><td>半物化失败尽力撤销</td><td>崩溃可留下 SID/ACE/temp residue</td></tr>
+      <tr><td>E2B process group</td><td>signal/kill ladder</td><td>远端 numeric identity 驱动</td><td>PGID reuse 小窗口</td></tr>
+    </tbody>
+  </table></div>
+  <p>Filesystem API 没有通用超时参数；bounded raw-byte reads、streaming 与 AbortSignal 是主要资源控制。这里的设计优先保证 commit point 可解释，而不是承诺任何时刻的“瞬间取消”。</p>
+</section>
+
+<section>
+  <h2>19. 静态安全审计：已确认的边界与风险</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>级别</th><th>发现</th><th>影响 / 正确处理</th></tr></thead>
+    <tbody>
+      <tr><td>边界</td><td>三种 mode 只约束文件写副作用</td><td>不能据此声称网络、读取、进程、设备或凭据隔离</td></tr>
+      <tr><td>中</td><td>Landlock/Seatbelt/fs fence 共享 host temp</td><td>同 OS 用户的 Session 可发生临时名冲突和相互干扰；敏感并行任务应使用隔离执行世界</td></tr>
+      <tr><td>中</td><td>fs fence 明确接受 missing-ancestor symlink TOCTOU</td><td>trusted/model path 的纵深防御，不应用作强对抗边界</td></tr>
+      <tr><td>中</td><td>permission preset 不验证 fs/shell same-policy</td><td>shipped 组合无此错配；自定义组合需额外启动审计</td></tr>
+      <tr><td>中</td><td>replace version guard 非跨进程 CAS</td><td>外部写入者可在检查和 publish 之间被覆盖</td></tr>
+      <tr><td>低</td><td>observation first-wins、可卸载、window read 可授权 whole-file write</td><td>它是 freshness guard，不是授权链或内容完整性证明</td></tr>
+      <tr><td>低</td><td>runner/denial 依赖 stderr signatures</td><td>可伪造诊断归因，不能由此逃逸 confinement</td></tr>
+      <tr><td>部署信任</td><td>custom runner 不 probe 即声明 full</td><td>operator 必须独立验证 runner，不能把配置值当证明</td></tr>
+      <tr><td>低</td><td>Windows cleanup residue 与 E2B PGID reuse</td><td>隔离是 partial / best effort，监控和生命周期回收仍需要部署兜底</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>20. 文档漂移：两个具体、可修复的不一致</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>文档</th><th>当前说法</th><th>源码事实</th></tr></thead>
+    <tbody>
+      <tr><td><code>packages/fs/fs/README.md</code></td><td>列举 FsErrorCode 时遗漏 sandbox denial</td><td>类型表已包含 <code>FS_SANDBOX_DENIED</code></td></tr>
+      <tr><td><code>packages/sandbox/sandbox/README.md</code></td><td>实现只概括 Linux/macOS，consumer 只提 bash</td><td>生产实现已有 Windows ACL、PowerShell 路径和 filesystem sandbox consumer</td></tr>
+    </tbody>
+  </table></div>
+  <p>第一处会让 provider/consumer 作者漏掉结构化错误分支；第二处会让架构读者低估当前平台面与 fs policy 的存在。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/fs/fs/README.md#L49-L51" title="Filesystem README 的错误码遗漏: README 的 stable FsErrorCode 枚举列出多种错误但遗漏源码类型已定义的 FS_SANDBOX_DENIED，形成具体文档漂移。" aria-label="证据 SANDBOX-DOC-ERROR-CODE">SANDBOX-DOC-ERROR-CODE</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/sandbox/sandbox/README.md#L11-L13" title="Sandbox README 的 backend 与 consumer 漂移: README 的实现摘要只列 Linux/macOS local backends，consumer 只列 Bash；当前生产代码还包含 Windows ACL 与 filesystem sandbox consumer。" aria-label="证据 SANDBOX-DOC-BACKENDS">SANDBOX-DOC-BACKENDS</a></p>
+</section>
+
+<section>
+  <h2>21. 验证覆盖与本章边界</h2>
+  <p>生产测试已覆盖 local runner profiles、custom runner、候选 fallback/fail-closed；fs fence 的三种 mode、<code>..</code> 与 symlink escape；observation 的 absent/present、Session owner 隔离、first-wins 和 disposal。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/sandbox/sandbox-local/tests/local.spec.ts#L64-L453" title="本地沙箱 profile、选择与 fail-closed 测试: 测试覆盖三种 profile 方言、custom runner、Linux fallback、单候选与多候选 probe、verdict cache、unavailable、partial Landlock、Seatbelt 与 Windows ACL chain。" aria-label="证据 SANDBOX-LOCAL-TEST">SANDBOX-LOCAL-TEST</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/fs/fs-sandbox/tests/fs-sandbox.spec.ts#L59-L235" title="Filesystem 围栏 mode 与逃逸测试: 测试覆盖 read-only mutation denial/read allowance、workspace 与 temp writes、absolute/.. 与 symlink escapes、fresh target、full mode、逐调用 override 和结构化 denial。" aria-label="证据 SANDBOX-FS-FENCE-TEST">SANDBOX-FS-FENCE-TEST</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/fs/fs-observation-policy/tests/policy.spec.ts#L47-L235" title="Observation 决策、owner 隔离与 disposal 测试: 测试固定 unseen/absent/present write/edit 结果、成功 mutation 后版本刷新、无 owner、多个 owner、first-wins，以及 dispose 后状态与 listeners 清空。" aria-label="证据 SANDBOX-OBSERVATION-TEST">SANDBOX-OBSERVATION-TEST</a></p>
+  <div class="claim fact"><div class="claim-label">本章验证状态</div><p>本章基于固定 commit 的生产源码、shipped composition、README 与现有测试做静态控制流核对，并逐项区分源码保证、官方限制与本章 assessment。本次交付运行了覆盖审批、preset、扩权、文件、进程、Job 与 Terminal 的 15 个 targeted Vitest 文件：508 项通过，1 项跳过；这验证现有行为测试保持绿色，但不把静态安全审计升级为动态穿透测试结论。</p></div>
+  <div class="claim assessment"><div class="claim-label">最终评价</div><p>最值得保留的是“能力 seam + 单次 policy + guarded mutation + durable Session mode”的分层；最需要补强的是跨 capability composition invariant、跨进程 replace CAS，以及对共享 temp/partial enforcement 的产品级可见性。这个系统的真实安全性来自各层同时成立，而不是来自 <code>sandbox</code> 这个名字。</p></div>
+</section>
+<section class="learning-notes" aria-labelledby="learning-notes-title"><h2 id="learning-notes-title">我的学习体会</h2>
     <p class="privacy">内容仅自动保存到当前浏览器，不上传、不进入仓库。你可以导出 Markdown 自行归档。</p><textarea data-learning-notes aria-label="我的学习体会" placeholder="记录你的理解、疑问、反例和可迁移原则……"></textarea>
     <div class="note-footer"><span data-note-saved>本地草稿</span><button type="button" data-note-export>导出 Markdown</button>
     <button type="button" class="danger" data-note-clear>清空</button><span data-note-count>0 字符</span></div></section><nav class="pagination" aria-label="章节翻页"><a href="../pages/permission-approval.html"><small>← 上一章 · 19</small><strong>权限分析、审批与单调 Guard</strong></a><a class="next" href="../pages/shell-terminal-jobs.html"><small>下一章 · 21 →</small><strong>Shell、PTY、Terminal 与后台作业</strong></a></nav></article>

@@ -6,7 +6,7 @@
 <body data-page="tool-parallelism" data-baseline="47f943859bef60e4160492346772ded9b24f765a" data-lang="zh">
   <header class="topbar"><button class="icon-button nav-toggle" type="button" data-nav-toggle aria-label="打开章节目录" aria-expanded="false">☰</button>
     <a class="brand" href="../index.html"><span class="brand-mark">DS</span><span>Harness 系统拆解</span></a>
-    <span class="topbar-meta">固定基线 47f943859b · 17 已复核 / 1 撰写中 / 36 章</span>
+    <span class="topbar-meta">固定基线 47f943859b · 21 已复核 / 1 撰写中 / 36 章</span>
     <div class="topbar-actions"><a class="language-switch" href="../../pages/tool-parallelism.html" lang="en" aria-label="阅读本章英文版">English</a><button class="icon-button" type="button" data-theme-toggle aria-label="切换明暗主题">◐</button></div></header>
   <div class="layout"><aside class="sidebar" data-sidebar aria-label="章节目录"><input class="filter" data-chapter-filter type="search" placeholder="筛选章节……" aria-label="筛选章节"><section class="nav-part" data-part><h2 class="part-title">导论</h2>
     <a class="chapter-link" data-chapter-item href="../pages/reading-guide.html">
@@ -33,11 +33,11 @@
     <a class="chapter-link" data-chapter-item href="../pages/tool-primitives.html">
       <span class="chapter-number">16</span><span>工具定义原语与执行管线</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link" data-chapter-item href="../pages/tool-catalog.html">
       <span class="chapter-number">17</span><span>工具全集与能力分类</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link current" data-chapter-item href="../pages/tool-parallelism.html">
-      <span class="chapter-number">18</span><span>工具并行器与结果顺序</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/permission-approval.html">
-      <span class="chapter-number">19</span><span>权限分析、审批与单调 Guard</span><span class="status-dot queued" title="待研究"></span></a></section><section class="nav-part" data-part><h2 class="part-title">执行环境</h2>
+      <span class="chapter-number">18</span><span>工具并行器与结果顺序</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link" data-chapter-item href="../pages/permission-approval.html">
+      <span class="chapter-number">19</span><span>权限分析、审批与单调 Guard</span><span class="status-dot verified" title="已复核"></span></a></section><section class="nav-part" data-part><h2 class="part-title">执行环境</h2>
     <a class="chapter-link" data-chapter-item href="../pages/sandbox-filesystem.html">
-      <span class="chapter-number">20</span><span>Sandbox、Filesystem 与观察策略</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/shell-terminal-jobs.html">
-      <span class="chapter-number">21</span><span>Shell、PTY、Terminal 与后台作业</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/web-lsp-mcp-skill.html">
+      <span class="chapter-number">20</span><span>Sandbox、Filesystem 与观察策略</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link" data-chapter-item href="../pages/shell-terminal-jobs.html">
+      <span class="chapter-number">21</span><span>Shell、PTY、Terminal 与后台作业</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link" data-chapter-item href="../pages/web-lsp-mcp-skill.html">
       <span class="chapter-number">22</span><span>Web、LSP、MCP 与 Skill</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/code-mode-self-modification.html">
       <span class="chapter-number">23</span><span>Code Mode、自修改与动态插件</span><span class="status-dot queued" title="待研究"></span></a></section><section class="nav-part" data-part><h2 class="part-title">编排</h2>
     <a class="chapter-link" data-chapter-item href="../pages/multi-agent.html">
@@ -56,10 +56,224 @@
       <span class="chapter-number">34</span><span>缺口、限制与待验证问题</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/glossary-evidence.html">
       <span class="chapter-number">35</span><span>术语、证据目录与源码索引</span><span class="status-dot queued" title="待研究"></span></a></section></aside>
     <main class="main"><div class="page-shell"><article class="article" data-article><header><div class="page-kicker"><span>工具系统</span><span>·</span><span>第 18 章</span></div>
-      <h1>工具并行器与结果顺序</h1><p class="subtitle">barrier、滚动窗口、重分类与模型顺序提交</p><div class="page-meta"><span class="status queued">待研究</span><span>上游 47f943859b</span><span>范围: 追踪 executionMode 分类、并发池、屏障、开跑前重分类、settlement 和 additional context 顺序。</span></div></header>
-      <section class="placeholder"><p class="eyebrow">研究队列</p><h2>本章尚未进入结论状态</h2>
-    <p><strong>当前范围:</strong> 追踪 executionMode 分类、并发池、屏障、开跑前重分类、settlement 和 additional context 顺序。</p><p>页面已经纳入全量研究地图，但尚未完成源码控制流复核。以下是升级为“已复核”之前必须覆盖的检查面：</p>
-    <ul class="placeholder-checks"><li>实际 bundle / profile 装配入口</li><li>公开类型、事件与配置 schema</li><li>正常控制流与状态突变时机</li><li>并发、scope、所有权与 cleanup</li><li>错误、取消、重试和降级分支</li><li>持久化、projection 与 replay 语义</li><li>生产路径测试与运行时不变量</li><li>优势、代价、限制与待验证问题</li></ul></section><section class="learning-notes" aria-labelledby="learning-notes-title"><h2 id="learning-notes-title">我的学习体会</h2>
+      <h1>工具并行器与结果顺序</h1><p class="subtitle">barrier、滚动窗口、重分类与模型顺序提交</p><div class="page-meta"><span class="status verified">已复核</span><span>上游 47f943859b</span><span>范围: 追踪 executionMode 分类、并发池、屏障、开跑前重分类、settlement 和 additional context 顺序。</span></div></header>
+      <section>
+  <h2>结论：调度器控制的 dispatch/body 可以重叠；Native 权威提交保持有序</h2>
+  <div class="thesis"><p>DeepSeek Harness 的并行工具调用不是把模型给出的数组直接交给 <code>Promise.all</code>。每个调用先由可见工具定义做 fail-closed 分类；Agent Loop 再按模型顺序建立有界滚动窗口，把独占调用变成屏障。pre-policy、审批与 guard 有序运行；around-dispatch/body 可以重叠；Native 顶层的 post/finalize、<code>tool/result</code> 与 additional context 按模型顺序提交。异步 <code>tools/result</code> observer 的续体与 Code Mode nested dispatch-log side work 不在这条提交保证内。默认窗口是 10，设为 1 可恢复 scheduler-controlled dispatch 的全串行。</p></div>
+  <div class="claim fact"><div class="claim-label">一句话状态机</div><p><code>classify → ordered prepare → concurrent dispatch → model-order finalize → durable result → next-step context</code>。Assistant message 必须先完整落盘，Loop 才抽取其中全部 tool-call blocks 并进入这一状态机。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/agent.ts#L373-L399" title="Assistant message 提交后的工具调度入口: Loop 先追加完整 assistant/message，再抽取其中全部 tool-call blocks 并调用 executeToolCalls；没有调用时直接完成该 Step。" aria-label="证据 PARALLEL-LOOP-ENTRY">PARALLEL-LOOP-ENTRY</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/tool-calls.ts#L82-L100" title="按实时分类逐组推进: 调度器按模型顺序读取下一调用的实时 execution mode：parallel 取得剩余 suffix，exclusive 只形成 singleton；每组完成后才推进 consumed 游标。" aria-label="证据 PARALLEL-GROUPING">PARALLEL-GROUPING</a></p></div>
+  <p>这套设计优先保护 replay、policy 顺序和父 Session 状态，而不是追求最大吞吐。代价也清楚：快结果会被慢的早序 sibling 阻塞；分类器无法表达“两个不同路径的写可以并发”；每 Agent/每 Step 的上限也不是进程级资源预算。</p>
+</section>
+
+<section>
+  <h2>1. 先分清四种顺序</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>顺序</th><th>保证</th><th>可以乱序的部分</th></tr></thead>
+    <tbody>
+      <tr><td>模型顺序</td><td>Assistant content 中 tool-call block 的顺序，是所有索引与提交的基准</td><td>无</td></tr>
+      <tr><td>启动顺序</td><td>调用按模型顺序进入 prepare/dispatch；后序不会抢先启动</td><td>body 完成顺序</td></tr>
+      <tr><td>完成顺序</td><td>并行 body 可任意完成</td><td>这是实际并发所在</td></tr>
+      <tr><td>提交顺序</td><td>post-policy、<code>tool/result</code>、contexts 与 concludes-turn 按模型顺序</td><td>异步只读 observer 自己的完成时间不在该保证内</td></tr>
+    </tbody>
+  </table></div>
+  <p>源码把完成的 dispatch 放入按模型索引编号的 slots；<code>committed</code> 游标只能跨过连续 ready slots。因此后序调用即使先返回，也不能先进入 post、Session history 或下一步上下文。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/tool-calls.ts#L121-L245" title="有界 rolling pool 与有序提交游标: runGroup 只并发 dispatch，按 maxParallelToolCalls 补位；settled slot 只能由连续 committed 游标按模型顺序 finalize、追加结果与接受 context。" aria-label="证据 PARALLEL-ROLLING-POOL">PARALLEL-ROLLING-POOL</a></p>
+</section>
+
+<section>
+  <h2>2. <code>executionMode()</code> 是严格 opt-in、按调用参数求值的分类器</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>输入状态</th><th>分类</th><th>原因</th></tr></thead>
+    <tbody>
+      <tr><td>可见定义的 <code>isConcurrencySafe(args)</code> 恰好返回 <code>true</code></td><td><code>parallel</code></td><td>唯一 opt-in 路径</td></tr>
+      <tr><td>无 classifier、返回 false 或 truthy 非 boolean</td><td><code>exclusive</code></td><td>默认拒绝重叠</td></tr>
+      <tr><td>未知、被 scope 隐藏、code-only direct collapse</td><td><code>exclusive</code></td><td>解析不到可执行定义</td></tr>
+      <tr><td>Classifier 抛出</td><td><code>exclusive</code></td><td>分类失败不升级权限</td></tr>
+      <tr><td><code>defineTool</code> 参数无效</td><td><code>exclusive</code></td><td>helper 在调用 typed classifier 前 soft-validate</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">不进入模型 contract</div><p><code>ToolExecutionMode</code> 只有 <code>parallel</code>/<code>exclusive</code> 两个 tagged arms；<code>isConcurrencySafe</code> 是 host metadata，schema projection 只发送 name、description 与 parameters。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L257-L269" title="并发安全是不可见于模型的严格 opt-in 元数据: ToolDefinition 的 isConcurrencySafe 是纯同步分类器；仅 true opt in，且该 metadata 不发送给模型。声明者负责不修改 parent-owned state 并使共享状态竞态可交换或 fail closed。" aria-label="证据 PARALLEL-MODE-CONTRACT">PARALLEL-MODE-CONTRACT</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L1269-L1285" title="实时 definition 上的 fail-closed 分类: executionMode 从调用者可见的当前 tool definition 分类；缺失、未知、隐藏、抛错或非严格 true 都返回 exclusive。" aria-label="证据 PARALLEL-CLASSIFIER">PARALLEL-CLASSIFIER</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/schema.ts#L545-L615" title="defineTool 的参数验证分类包装: defineTool 先用同一参数 schema 验证调用；只有合法参数才进入 typed isConcurrencySafe，非法参数直接分类为 false。" aria-label="证据 PARALLEL-TYPED-CLASSIFIER">PARALLEL-TYPED-CLASSIFIER</a></p></div>
+</section>
+
+<section>
+  <h2>3. 这是 unary promise，不是资源冲突图</h2>
+  <p>Classifier contract 只给函数当前调用的 parsed arguments，并要求它作为同步 unary judgment 使用；它没有 siblings 或当前 pool 参数。JavaScript 并不从运行时阻止 closure 访问其他状态或触发 I/O，但那会违反该分类合同并引入调度器无法观察的依赖。返回 true 的含义非常强：该调用承诺可与任何另一个也返回 true 的 sibling 重叠。它可以表达“同一个工具的 read mode 可并行、write mode 独占”，却不能表达“只有两个写目标不同时才安全”。</p>
+  <div class="claim assessment"><div class="claim-label">作者责任</div><p>并行 body 不得修改 parent-owned state；共享 recorder/provider/cache 的竞态必须可交换、内部串行化或 fail closed。Scheduler 不验证这一承诺。声明过宽会把潜在竞态直接提升为生产行为；声明过窄只损失延迟。上游设计说明也明确选择了这一保守权衡。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/.agents/notes/implemented/feature/2026-07-10-parallel-tool-call-execution.md#L17-L25" title="Unary classifier 的保守安全约定: 设计只允许分类器查看当前调用参数；scheduler 不比较 sibling 或证明资源兼容性，依赖关系型安全条件的调用必须保持 exclusive。" aria-label="证据 PARALLEL-SAFETY-NOTE">PARALLEL-SAFETY-NOTE</a></p></div>
+</section>
+
+<section>
+  <h2>4. Group 不是预先切好的数组，而是逐步发现的屏障序列</h2>
+  <pre><code>model calls: P1  P2  X3  P4
+
+classify P1 → open a candidate parallel suffix
+start P1, reclassify/start P2
+reclassify X3 → stop replenishing, drain P1/P2
+run X3 alone through post/commit
+classify/start P4</code></pre>
+  <p>外层 loop 每轮只分类当前 first：如果它独占，就把 singleton group 完整 await；如果它并行，就把剩余 suffix 交给 <code>runGroup</code>，由 pool 在每个后序调用真正开始前再次分类。遇到 exclusive 时，当前 group 返回实际 <code>consumed</code> 数，屏障留给下一轮。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/tool-calls.ts#L82-L100" title="按实时分类逐组推进: 调度器按模型顺序读取下一调用的实时 execution mode：parallel 取得剩余 suffix，exclusive 只形成 singleton；每组完成后才推进 consumed 游标。" aria-label="证据 PARALLEL-GROUPING">PARALLEL-GROUPING</a></p>
+  <div class="claim fact"><div class="claim-label">屏障覆盖完整提交</div><p>独占不只是“body 同时只能有一个”。整个 singleton group 要完成 prepare、body、post、finalizer、result append 与 context acceptance，下一组才会开始。测试覆盖 parallel → exclusive → parallel 三组与 registry replacement 后的重分类。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/tests/tool-calls.spec.ts#L99-L218" title="并行 group、exclusive barrier 与实时替换测试: 测试覆盖并行 siblings、parallel-exclusive-parallel 三组、barrier 后 definition 替换，以及 result observer 将待启动调用重分类为 exclusive。" aria-label="证据 PARALLEL-GROUP-TESTS">PARALLEL-GROUP-TESTS</a></p></div>
+</section>
+
+<section>
+  <h2>5. Rolling pool 如何保持上限又避免固定窗口空转</h2>
+  <p><code>inFlight</code> 保存已经启动、尚未被 driver reap 的 dispatch Promise；Promise settle 到 driver 删除之间，已完成项可能短暂仍在 Map 中。Pool 先按序填到 <code>maxParallelToolCalls</code>；任意 Promise settle 后由 <code>Promise.race</code> 唤醒 driver，移除该 slot、尝试提交连续 ready results，再补一个新调用。它不会等待整批窗口都完成，因此一个慢调用旁边的空位仍能持续处理后序安全调用。</p>
+  <pre><code>cap = 2
+start C1, C2
+C2 settles first  → slot[1] ready, cannot commit, one capacity opens
+start C3
+C1 settles        → commit C1, C2; continue rolling
+C3 settles        → commit C3</code></pre>
+  <div class="claim fact"><div class="claim-label">上限语义</div><p>Cap 限制的是同一 Agent Step 中同时未 settle 的 parallel dispatches，不限制已经完成但等待前序提交的 slots，也不限制别的 Agent。测试证明 cap=2 的补位顺序以及 cap=1 的全串行行为。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/tool-calls.ts#L121-L245" title="有界 rolling pool 与有序提交游标: runGroup 只并发 dispatch，按 maxParallelToolCalls 补位；settled slot 只能由连续 committed 游标按模型顺序 finalize、追加结果与接受 context。" aria-label="证据 PARALLEL-ROLLING-POOL">PARALLEL-ROLLING-POOL</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/tests/tool-calls.spec.ts#L264-L365" title="Native rolling-pool cap 测试: 测试验证非法 cap 拒绝、默认值、cap=2 动态补位、cap=1 全串行，以及 factory-created Agents 共用配置上限。" aria-label="证据 PARALLEL-CAP-TESTS">PARALLEL-CAP-TESTS</a></p></div>
+</section>
+
+<section>
+  <h2>6. 为什么只把 pipeline 中段并发化</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>阶段</th><th>并发性</th><th>理由</th></tr></thead>
+    <tbody>
+      <tr><td>append <code>tool/call</code></td><td>有序</td><td>先建立 durable identity 与原始参数事实</td></tr>
+      <tr><td>create execution、pre-execute、approval、guards</td><td>有序</td><td>Policy 可能维护顺序敏感状态</td></tr>
+      <tr><td><code>tools/execute</code> wrappers + body</td><td>允许重叠</td><td>真正的外部 I/O/计算延迟所在；wrapper 必须 reentrant</td></tr>
+      <tr><td>post-execute、render/finalizer、result notification</td><td>有序调用</td><td>observer 返回的 Promise 不会被 await，其异步续体可重叠</td></tr>
+      <tr><td>append <code>tool/result</code>、accept context</td><td>有序</td><td>模型历史与下一 Step 的权威顺序</td></tr>
+    </tbody>
+  </table></div>
+  <p>ToolRuntime 暴露给 scheduler 的 symbol-keyed 私有视图把同一条执行管线拆为 <code>prepare</code>、<code>dispatch</code>、<code>finalize</code>/<code>finish</code>。普通调用仍可用完整的 <code>execute()</code>。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L426-L466" title="Scheduler-only staged ToolRuntime view: 私有 symbol-keyed scheduler view 将完整工具管线拆为 prepare、dispatch、finalize 与 finish，使 policy 保持有序而仅重叠 body；普通调用仍使用 execute。" aria-label="证据 PARALLEL-PIPELINE-SPLIT">PARALLEL-PIPELINE-SPLIT</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L1453-L1507" title="有序 prepare、approval 与 guards: prepare 创建 execution，处理 pre-dispatch cancel，依次等待 pre-execute、approval 与 monotonic guards，再返回 dispatch、post-result 或 final-result。" aria-label="证据 PARALLEL-PREPARE">PARALLEL-PREPARE</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L1527-L1599" title="可并发的 around-dispatch 与 tool body: dispatch 融合 caller/wrapper signals，等待已启动 body 静止，通过 tools/execute wrapper 调用 body，并把 deferred contexts 合入规范化结果。" aria-label="证据 PARALLEL-DISPATCH">PARALLEL-DISPATCH</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L1601-L1675" title="有序 post、finalization 与 result notification: finalize 等待 post-execute，再执行 definition-owned content finalization、物化最终快照并同步分派 tools/result；observer 返回的 Promise 只被观察错误而不被等待。" aria-label="证据 PARALLEL-FINALIZE">PARALLEL-FINALIZE</a></p>
+</section>
+
+<section>
+  <h2>7. “结果有序”具体是怎样落进 Session 的</h2>
+  <p>每个 started call 先 append <code>tool/call</code>，保存 provider 给出的原始 argument string，并记住 seq。提交时 Loop 用最终 content/isError/error info/meta 创建 <code>tool/result</code>，通过 <code>sourceEventSeqs:[callSeq]</code> 精确指回该 call。随后才逐条接受该结果的 <code>additionalContexts</code>。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/tool-calls.ts#L164-L288" title="Tool call/result 的 durable seq 配对: 每个 started call 在 prepare 前先追加原始 argument string 的 tool/call 并保存 seq；tool/result 通过 sourceEventSeqs 精确引用该 call。" aria-label="证据 PARALLEL-DURABLE-PAIRING">PARALLEL-DURABLE-PAIRING</a></p>
+  <aside class="caveat"><strong>不是 call/result 紧邻：</strong>滚动窗口允许日志出现 <code>call C1, call C2, result C1, call C3, result C2...</code>。真正不变的是 call 的模型顺序、result 的模型顺序和显式 seq 关联，而不是邻接。</aside>
+  <p>生产测试让 C2 先 settle，并确认在 C1 释放前没有任何 result；最终 <code>deriveMessages()</code> 仍得到 C1、C2 顺序。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/tests/tool-calls.spec.ts#L220-L262" title="乱序 settle 下的模型顺序结果测试: 测试先释放第二个并行调用，确认第一个完成前没有任何 result；最终 durable results 与 deriveMessages 仍按 C1、C2 排列。" aria-label="证据 PARALLEL-ORDER-TESTS">PARALLEL-ORDER-TESTS</a></p>
+</section>
+
+<section>
+  <h2>8. Head-of-line blocking 是有意购买的一致性</h2>
+  <div class="claim assessment"><div class="claim-label">收益</div><p>Provider 看见的下一请求、Session replay、post hooks 和 next-step contexts 都与模型原始调用顺序一致，不需要让每个 adapter 理解完成时序。后序结果不会因为网络更快而改变策略状态。</p></div>
+  <div class="claim assessment"><div class="claim-label">成本</div><p>一个慢的早序调用会阻挡所有已完成后序结果的 post/finalization 和模型可见性；其 slots 仍驻留内存。Rolling pool 可继续启动安全后序调用，但无法让模型提前消费它们。这是延迟与确定性之间的明确取舍，而不是 scheduler 漏掉一次唤醒。</p></div>
+</section>
+
+<section>
+  <h2>9. Live reclassification 关闭了大部分排队期漂移，但不是 definition snapshot</h2>
+  <p>Scheduler 在 barrier 后重新分类 first，并在 parallel pool 每次补位前重新读取后序调用的当前可见定义。同步的 result observer 若替换一个工具，尚未开始的调用会看到新 classifier；测试证明当前 pool 会先排空，再把新 exclusive 定义作为屏障运行。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/tests/tool-calls.spec.ts#L144-L217" title="Queued call 的实时重分类测试: 测试证明 exclusive barrier 内的 registry replacement 和同步 result observer replacement 都会影响未启动调用；当前 pool 先排空，再运行新的 exclusive definition。" aria-label="证据 PARALLEL-RECLASS-TESTS">PARALLEL-RECLASS-TESTS</a></p>
+  <div class="claim assessment"><div class="claim-label">静态发现：classify-to-body-resolution 窗口</div><p>分类并没有把 ToolDefinition 固定进 execution。<code>startCall</code> 在分类后 await 有序 <code>prepare</code>，dispatch 还会 await <code>tools/execute</code> waterfall，真正 body 最后才按名称解析 live definition。期间若定义从 parallel 替换成 mutating exclusive，新 body 仍可能占用旧 parallel slot；execution 甚至已捕获旧 definition 的 finalizer，形成“旧 finalizer + 新 body”。完整修复需要把同一 ToolDefinition snapshot/bind 到分类与执行，或用 registry generation 在实际 body resolution 点做原子校验与调度；prepare 后重分类只缩窄其中一个窗口。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/tool-calls.ts#L82-L100" title="按实时分类逐组推进: 调度器按模型顺序读取下一调用的实时 execution mode：parallel 取得剩余 suffix，exclusive 只形成 singleton；每组完成后才推进 consumed 游标。" aria-label="证据 PARALLEL-GROUPING">PARALLEL-GROUPING</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L1453-L1507" title="有序 prepare、approval 与 guards: prepare 创建 execution，处理 pre-dispatch cancel，依次等待 pre-execute、approval 与 monotonic guards，再返回 dispatch、post-result 或 final-result。" aria-label="证据 PARALLEL-PREPARE">PARALLEL-PREPARE</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L1527-L1599" title="可并发的 around-dispatch 与 tool body: dispatch 融合 caller/wrapper signals，等待已启动 body 静止，通过 tools/execute wrapper 调用 body，并把 deferred contexts 合入规范化结果。" aria-label="证据 PARALLEL-DISPATCH">PARALLEL-DISPATCH</a></p></div>
+</section>
+
+<section>
+  <h2>10. Result observer 被有序调用，但不是可 await 的调度门</h2>
+  <p><code>finishScheduledExecution</code> 同步发布 frozen result；<code>notifyResult</code> 依次调用 callbacks，但把 callback 返回的 Promise 交给独立 catch，不等待它们完成。因此 observer 在第一个 <code>await</code> 之前的 registry change 能影响下一次分类，await 之后的 change 则可能晚于补位。</p>
+  <div class="claim assessment"><div class="claim-label">扩展边界</div><p>需要阻挡后序调用的策略必须放在 awaited pre/post waterfall 或同步完成；异步 <code>tools/result</code> 适合 telemetry，不是 barrier。现有“result observer makes next call exclusive”测试使用同步 callback，只证明同步 mutation。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L1656-L1675" title="非 await 的 tools/result observer: 结果 observer 在 final snapshot 后同步被调用；其返回 Promise 仅附加 rejection logger，不成为 scheduler 可等待的 barrier。" aria-label="证据 PARALLEL-RESULT-OBSERVER">PARALLEL-RESULT-OBSERVER</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/tests/tool-calls.spec.ts#L144-L217" title="Queued call 的实时重分类测试: 测试证明 exclusive barrier 内的 registry replacement 和同步 result observer replacement 都会影响未启动调用；当前 pool 先排空，再运行新的 exclusive definition。" aria-label="证据 PARALLEL-RECLASS-TESTS">PARALLEL-RECLASS-TESTS</a></p></div>
+</section>
+
+<section>
+  <h2>11. 取消：停止补位、排空已启动调用、为未启动调用补合成结果</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>取消落点</th><th>Body</th><th>耐久结果</th><th>后序行为</th></tr></thead>
+    <tbody>
+      <tr><td>Group 开始前</td><td>全部不启动</td><td>每个模型调用写 synthetic call/result，码为 <code>ABORTED_BEFORE_DISPATCH</code></td><td>不发下一次 LLM 请求</td></tr>
+      <tr><td>pre/approval 中</td><td>当前 body 不启动；不再准备 siblings</td><td>当前与未启动 siblings 获得 before-dispatch error</td><td>结束本 Step</td></tr>
+      <tr><td>parallel body 运行中</td><td>signal 传播；Scheduler 等所有 started Promise 静止</td><td>成功通常转成 <code>ABORTED</code>；tool-owned error 可保留；全部按模型顺序提交</td><td>不补位、不跨过后续 exclusive barrier</td></tr>
+      <tr><td>result/post commit 中</td><td>已启动工作仍被排空</td><td>最终取消检查可替换尚为 success 的结果</td><td>contexts 保留到 inbox</td></tr>
+    </tbody>
+  </table></div>
+  <p>Loop 的 synthetic pair 保证这条 Assistant message 中每个 tool-call 都能在 replay 中闭合；这正是当前实现相对早期设计说明的重要变化。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/tool-calls.ts#L198-L245" title="取消后的 stop-replenish 与 started-call drain: pool 在补位与有序 commit 间反复检查 abort；取消后停止启动新调用、等待 in-flight settlement、提交已启动 calls，并为 group 内未启动 calls 追加合成结果。" aria-label="证据 PARALLEL-ABORT">PARALLEL-ABORT</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/tool-calls.ts#L248-L259" title="未启动调用的合成 call/result 对: 取消跳过的模型调用仍追加 tool/call 与带 ABORTED_BEFORE_DISPATCH 结构化错误的 tool/result，保持 replay 配对闭合。" aria-label="证据 PARALLEL-ABORT-RESULT">PARALLEL-ABORT-RESULT</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/tests/tool-calls.spec.ts#L459-L631" title="Native scheduler 取消语义测试: 测试覆盖 group 前取消、prepare 中取消、运行中停止补位并合成未启动结果，以及取消后不跨入后续 exclusive barrier。" aria-label="证据 PARALLEL-ABORT-TESTS">PARALLEL-ABORT-TESTS</a></p>
+</section>
+
+<section>
+  <h2>12. 取消不会丢掉已接受的 additional context</h2>
+  <p>Started calls 的 post-policy 仍按序运行；其 <code>additionalContexts</code> 在对应 result 提交后送入 Agent 的 next-step inbox。若 Turn 因取消结束，这些消息暂不写为 <code>user/message</code>，而是在下一次 wake 时进入新 Step。测试明确验证 contexts 的 C1、C2 顺序以及取消后 inbox 停驻。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/tests/tool-calls.spec.ts#L523-L589" title="取消后保留有序 additional contexts 的测试: 测试证明已启动调用的 contexts 按 C1、C2 停驻 next-step inbox，取消结束时不写 user/message，并在下一次 wake 后按序进入日志。" aria-label="证据 PARALLEL-CONTEXT-TEST">PARALLEL-CONTEXT-TEST</a></p>
+  <p><code>concludesTurn</code> 同样只在成功结果按序提交时聚合。它不会取消同一 Assistant message 已提交的 siblings；Scheduler 完成整个批次后，Agent 才把该 Step 判为 completed。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/agent.ts#L393-L399" title="批次完成后的 Agent Step 决策: Agent 等待整个 executeToolCalls 批次后才依据聚合的 concluded 决定 Step completed；否则继续下一 Step。" aria-label="证据 PARALLEL-AGENT-STEP">PARALLEL-AGENT-STEP</a></p>
+</section>
+
+<section>
+  <h2>13. 普通工具失败与 scheduler invariant failure 走不同通道</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>失败类型</th><th>承载形式</th><th>是否继续本组</th></tr></thead>
+    <tbody>
+      <tr><td>参数、policy denial、approval、guard、body、output、post/finalizer 失败</td><td>ToolRuntime 规范化为 <code>ToolExecutionResult.isError</code></td><td>是；仍按模型顺序提交，模型可在下一 Step 自修正</td></tr>
+      <tr><td>内部 staged scheduler Promise 意外 reject</td><td>抛到 Agent Turn error boundary</td><td>停止新 dispatch，<code>allSettled</code> 排空已启动工作</td></tr>
+    </tbody>
+  </table></div>
+  <p>第二类不是正常 extension result。Native scheduler 保留已经写下的 <code>tool/call</code>，不伪造它无法归因的 tool results，因此失败 Step 可能留下无结果 call；Turn 最终以 error reason 关闭。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/tool-calls.ts#L215-L245" title="内部 scheduler failure 的 quiescence 边界: 内部失败停止新 dispatch，Promise.allSettled 等待所有已启动 dispatch 后抛出首个 scheduler error；该路径不伪造无法归因的 tool results。" aria-label="证据 PARALLEL-SCHEDULER-FAILURE">PARALLEL-SCHEDULER-FAILURE</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/tests/tool-calls.spec.ts#L633-L690" title="Scheduler invariant failure drain 测试: 测试注入 scheduler 内部 rejection，确认不再启动第三个 body、Turn 不会提前结束、已启动 sibling 被排空，最终以首个 error 关闭。" aria-label="证据 PARALLEL-FAILURE-TEST">PARALLEL-FAILURE-TEST</a></p>
+</section>
+
+<section>
+  <h2>14. 两个独立的“10”：Native Step 与 Code Mode run 各有自己的池</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>配置</th><th>默认</th><th>作用域</th><th>动态性</th></tr></thead>
+    <tbody>
+      <tr><td><code>agent-loop.maxParallelToolCalls</code></td><td>10</td><td>每个 Agent 的每个顶层 Step</td><td>Settings 可更新；每个 group 开始读取一次，不扰动 in-flight group</td></tr>
+      <tr><td><code>tools.maxParallelSubCalls</code></td><td>10</td><td>每次 <code>run_code</code> 的 nested binding pool</td><td>ToolRuntime 构造时固定</td></tr>
+    </tbody>
+  </table></div>
+  <p>两者都要求正整数，1 表示串行；它们不是同一个共享 semaphore。多个 Agent、多个并发 run 或 provider 自身的并发仍可相乘，外部 API quota、process pool 和连接池必须在各自 provider 层继续限流。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/index.ts#L300-L345" title="Native parallel cap 的动态配置边界: AgentLoop 在配置 schema 中以共享默认值 10 解析 maxParallelToolCalls，并通过 Settings getter 让已提交变更从下一 group 生效。" aria-label="证据 PARALLEL-CAP-CONFIG">PARALLEL-CAP-CONFIG</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/code-mode.ts#L328-L457" title="Code Mode 的独立 per-run scheduler: 每个 run_code 创建自己的 abort controller、pending/commit queues、in-flight set 与单一 driver lane；只有 dispatch/body 并行，exclusive barrier 持续到 ordered commit，settle/log work 在 run 结束前 drain。" aria-label="证据 PARALLEL-CODE-DRIVER">PARALLEL-CODE-DRIVER</a></p>
+</section>
+
+<section>
+  <h2>15. Code Mode 复制同一原则，但不是复用同一个 loop</h2>
+  <p><code>run_code</code> 对模型是一个顶层 exclusive tool；程序内部每次 <code>tools.name(args)</code> 进入另一个 per-run driver。该 driver 有 pending queue、in-flight set、commit queue 和 <code>exclusiveActive</code>，用单一 ordered lane 执行 start/prepare 与 commit/finalize，仅让 nested dispatch body 重叠。</p>
+  <pre><code>program submissions
+→ normalize lossless JSON + assign &lt;outer&gt;:code:N
+→ pendingQueue (submission order)
+→ classify at start
+→ bounded inFlight bodies / exclusive barrier
+→ commitQueue head cursor
+→ program promise value or ToolCallError
+→ defer contexts onto outer run_code result</code></pre>
+  <div class="claim fact"><div class="claim-label">两层历史</div><p>Nested call 不生成顶层 <code>tool/call/result</code>；它写 <code>tool/code-dispatch-start</code> 与 <code>tool/code-dispatch</code> 供 UI/trajectory 重建。只有 outer <code>run_code</code> 的 curated logs/result 进入模型历史。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/code-mode.ts#L328-L457" title="Code Mode 的独立 per-run scheduler: 每个 run_code 创建自己的 abort controller、pending/commit queues、in-flight set 与单一 driver lane；只有 dispatch/body 并行，exclusive barrier 持续到 ordered commit，settle/log work 在 run 结束前 drain。" aria-label="证据 PARALLEL-CODE-DRIVER">PARALLEL-CODE-DRIVER</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/code-mode.ts#L464-L594" title="Code binding 的 staged dispatch 与 durable events: 每个 nested binding 生成确定性 subCallId，通过同一 staged ToolRuntime 运行，先追加 code-dispatch-start；有序 commit 后 defer contexts、返回程序值，并异步塑形和追加 code-dispatch。" aria-label="证据 PARALLEL-CODE-BINDING">PARALLEL-CODE-BINDING</a></p></div>
+</section>
+
+<section>
+  <h2>16. Code Mode 的 barrier、context 与 settlement</h2>
+  <p>Driver 总是先尝试提交 ready 的 <code>commitQueue[0]</code>，再考虑启动 pending head。Exclusive 必须等 <code>inFlight.size===0</code>，并保持 <code>exclusiveActive</code> 直到自己的 post/commit 完成。已经启动的 binding 只在有序 commit 的 <code>settle()</code> 中按 tool outcome resolve/reject，因此程序观察到的是 policy 后 canonical value 或一条 ToolCallError message，而不是 body 的裸完成时刻；尚未启动就被取消的 queued binding 则由 <code>abandon()</code> reject。</p>
+  <p>Nested contexts 在 commit 时依次 <code>exec.deferContext</code> 到 outer execution；即使程序之后失败，它们仍可随 outer error result 返回。外层 run 一旦 settle，run-scoped controller 会取消 in-flight calls、拒绝 queued-unstarted calls，并在 outer tool 返回前 drain driver 与 durable log work。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/code-mode.ts#L464-L594" title="Code binding 的 staged dispatch 与 durable events: 每个 nested binding 生成确定性 subCallId，通过同一 staged ToolRuntime 运行，先追加 code-dispatch-start；有序 commit 后 defer contexts、返回程序值，并异步塑形和追加 code-dispatch。" aria-label="证据 PARALLEL-CODE-BINDING">PARALLEL-CODE-BINDING</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/code-mode.ts#L448-L629" title="Code Mode 的取消、commit 与 log drain: outer run settle 后先 abort；run-scoped drain 放弃 queued-unstarted entries、等待 live pool 和有序 commit lane，并排空 logWork；commit 按 submission order finalize、转发 contexts，再启动非阻塞 settle-log side work。" aria-label="证据 PARALLEL-CODE-DRAIN">PARALLEL-CODE-DRAIN</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/tests/code-mode.spec.ts#L509-L730" title="Code Mode pool、barrier 与 drain 测试: 测试覆盖并行 overlap、exclusive barrier、maxParallelSubCalls cap、有序 prepare、barrier-through-post 以及 run settlement 等待进行中的 commit。" aria-label="证据 PARALLEL-CODE-TESTS">PARALLEL-CODE-TESTS</a></p>
+</section>
+
+<section>
+  <h2>17. Code Mode 的 durable nested event 顺序比 binding 顺序更弱</h2>
+  <div class="claim assessment"><div class="claim-label">静态发现：日志 side work 可重排</div><p><code>settle()</code> 在 ordered commit lane 中先把结果交给程序，再异步启动 <code>shapeDispatchLog → session.append(tool/code-dispatch)</code>；这项 log work 不阻塞 binding，最终只在 run 结束时整体 drain。若前一个 log-content listener 比后一个慢，settle event 的 append 顺序可以与 submission 顺序不同。Start events 仍有序，UI 也按 <code>subCallId</code> 关联，所以这不是 call pairing 错误，但 event seq/time 不应被解释为 canonical completion order。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/code-mode.ts#L464-L594" title="Code binding 的 staged dispatch 与 durable events: 每个 nested binding 生成确定性 subCallId，通过同一 staged ToolRuntime 运行，先追加 code-dispatch-start；有序 commit 后 defer contexts、返回程序值，并异步塑形和追加 code-dispatch。" aria-label="证据 PARALLEL-CODE-BINDING">PARALLEL-CODE-BINDING</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/code-mode.ts#L448-L629" title="Code Mode 的取消、commit 与 log drain: outer run settle 后先 abort；run-scoped drain 放弃 queued-unstarted entries、等待 live pool 和有序 commit lane，并排空 logWork；commit 按 submission order finalize、转发 contexts，再启动非阻塞 settle-log side work。" aria-label="证据 PARALLEL-CODE-DRAIN">PARALLEL-CODE-DRAIN</a></p></div>
+  <p>现有并发测试只比较 settle id 的集合；没有对异步 log shaping 下的 settle event 顺序作断言。这与 Native 顶层 <code>tool/result</code> 的严格 append 顺序必须分开陈述。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/tests/code-mode.spec.ts#L509-L730" title="Code Mode pool、barrier 与 drain 测试: 测试覆盖并行 overlap、exclusive barrier、maxParallelSubCalls cap、有序 prepare、barrier-through-post 以及 run settlement 等待进行中的 commit。" aria-label="证据 PARALLEL-CODE-TESTS">PARALLEL-CODE-TESTS</a></p>
+</section>
+
+<section>
+  <h2>18. 测试覆盖很强，但仍有几类精确时序缺口</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>已证明</th><th>证据</th></tr></thead>
+    <tbody>
+      <tr><td>Native parallel overlap、三组 barrier、动态 replacement、rolling cap、cap=1</td><td>确定性 gated tools</td></tr>
+      <tr><td>Native body 乱序但 result/history/context 有序</td><td>先释放 C2、确认结果为空，再释放 C1</td></tr>
+      <tr><td>取消前、pre 中、body 中、barrier 前的 synthetic pairing 与 quiescence</td><td>Session event 与 inbox assertions</td></tr>
+      <tr><td>Native internal scheduler failure 排空且 Turn error</td><td>私有 scheduler rejection 注入</td></tr>
+      <tr><td>Code Mode overlap、cap、exclusive barrier through post、run settlement drain</td><td>per-run gated tools</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">覆盖缺口 1</div><p>Code Mode 名为“out-of-order completion”的 post/context test 实际使用 FIFO <code>release()</code>，源码注释也承认不能反向释放；它随后 <code>releaseAll()</code>，没有制造 B 先于 A 完成。Commit cursor 本身清晰，但这个测试名声称的 interleave 尚未被该 fixture 证明。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/tests/code-mode.spec.ts#L731-L765" title="名为 out-of-order 的 Code Mode 顺序测试 fixture: 测试断言 post 与 contexts 依 submission order，但 gate.release() 明确按 FIFO 释放 A，随后 releaseAll；因此 fixture 实际没有制造 B 先于 A 完成。" aria-label="证据 PARALLEL-CODE-ORDER-TEST">PARALLEL-CODE-ORDER-TEST</a></p></div>
+  <div class="claim assessment"><div class="claim-label">其余覆盖缺口</div><p>Native 与 Code Mode 都没有直接测试“classifier 返回 parallel 后、实际 body resolution 前替换同名 definition”的窗口；也没有异步 result observer 或异步 dispatch-log 重排的 characterization test。它们是彼此独立的 case，不应压成一个固定测试数量。</p></div>
+</section>
+
+<section>
+  <h2>19. 文档审计：两个 README 当前一致，所链接的 implemented note 已过时</h2>
+  <p><code>packages/core/agent-loop/README</code> 与 <code>packages/core/tools/README</code> 已准确描述 rolling pool、exclusive barrier、ordered policy/results/context、默认 cap 10，以及 Code Mode 的独立并行 bridge。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/README.md#L68-L74" title="Agent-loop README 的当前并发语义: README 准确说明 exclusive barriers、bounded rolling pool、仅 body overlap、有序 policy/results/context，以及取消和 scheduler failure 的 drain。" aria-label="证据 PARALLEL-AGENT-README">PARALLEL-AGENT-README</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/README.md#L119-L130" title="Tools README 的 Native 与 Code Mode 并发说明: README 描述 Code Mode 独立 per-run pool、默认 cap 10、exclusive barrier、有序 contexts 与 settlement drain，并与 Native scheduler 的相同分类原则区分。" aria-label="证据 PARALLEL-README">PARALLEL-README</a></p>
+  <div class="claim assessment"><div class="claim-label">明确漂移</div><p>它们链接的 2026-07-10 implemented Agent Note 仍说：取消时未启动调用“没有 audit event”；Code Mode 内部队列“保持串行且不在 scheduler 内”；验证仍只覆盖 Code Mode serial boundary。当前源码与测试已经分别改为 synthetic call/result 和 parallel per-run pool。该 note 不应继续被当作“完整安全约定”的现行真相，应更新或标记被后续实现取代。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/.agents/notes/implemented/feature/2026-07-10-parallel-tool-call-execution.md#L43-L51" title="Implemented note 中已过时的取消与 Code Mode 描述: 旧 note 仍称未启动调用没有 audit event、Code Mode queue 保持串行；当前源码已经使用 synthetic call/result 与 parallel per-run scheduler。" aria-label="证据 PARALLEL-NOTE-DRIFT">PARALLEL-NOTE-DRIFT</a></p></div>
+</section>
+
+<section>
+  <h2>20. 静态 findings 与最终评价</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Finding</th><th>分类</th><th>影响 / 建议</th></tr></thead>
+    <tbody>
+      <tr><td>分类后、实际 body resolution 前可替换 live definition</td><td>条件性并发安全风险</td><td>补测试；绑定 definition 或在 body resolution 点校验 registry generation</td></tr>
+      <tr><td>Async result observer 不被 scheduler await</td><td>扩展时序边界</td><td>需要 gate 的逻辑放 awaited waterfall</td></tr>
+      <tr><td>Code nested settle append 可受异步 log shaping 重排</td><td>可观测性边界</td><td>按 subCallId 配对，不以 event seq 推断 body 完成顺序</td></tr>
+      <tr><td>Code “out-of-order” test 没有实际反转完成顺序</td><td>回归覆盖缺口</td><td>使用 per-id gates 明确先释放第二个</td></tr>
+      <tr><td>Implemented design note 与现行取消/Code scheduler 冲突</td><td>文档漂移</td><td>更新 note 与 verification 声明</td></tr>
+      <tr><td>两个 cap 都是局部窗口，不是全局 admission control</td><td>运维容量边界</td><td>Provider/host 继续实施全局 quota</td></tr>
+      <tr><td>Unary classifier 看不到资源关系</td><td>刻意保守</td><td>关系型安全一律 exclusive</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">总体判断</div><p>核心算法小而严谨：scheduler-controlled 并发集中在 dispatch/body，中间结果用 slot 保存，Native 顶层 post/result/context 回到单 lane；取消和正常工具错误也有明确收敛路径。异步 observer 与 Code nested-log 是显式例外。最需要优先修复的不是算法重写，而是关闭 live-definition 的 classify/body-resolution TOCTOU，分别补上 definition replacement、observer continuation、nested-log reorder 与真正反序完成的测试，并让设计文档重新追上代码。</p></div>
+  <div class="claim fact"><div class="claim-label">验证状态</div><p>本章在固定 commit 上逐行追踪 ToolRuntime classifier/staged pipeline、Agent Loop scheduler/Session append、Code Mode bridge、配置、README、implemented note 与对应单元测试；并执行 targeted Vitest：3 个文件、120 项测试全部通过。运行结果证明现有测试保持绿色；上表标出的未覆盖时序仍是静态 findings，不冒充已有回归证明。</p></div>
+</section>
+<section class="learning-notes" aria-labelledby="learning-notes-title"><h2 id="learning-notes-title">我的学习体会</h2>
     <p class="privacy">内容仅自动保存到当前浏览器，不上传、不进入仓库。你可以导出 Markdown 自行归档。</p><textarea data-learning-notes aria-label="我的学习体会" placeholder="记录你的理解、疑问、反例和可迁移原则……"></textarea>
     <div class="note-footer"><span data-note-saved>本地草稿</span><button type="button" data-note-export>导出 Markdown</button>
     <button type="button" class="danger" data-note-clear>清空</button><span data-note-count>0 字符</span></div></section><nav class="pagination" aria-label="章节翻页"><a href="../pages/tool-catalog.html"><small>← 上一章 · 17</small><strong>工具全集与能力分类</strong></a><a class="next" href="../pages/permission-approval.html"><small>下一章 · 19 →</small><strong>权限分析、审批与单调 Guard</strong></a></nav></article>
