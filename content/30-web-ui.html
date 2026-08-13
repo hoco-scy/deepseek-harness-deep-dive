@@ -1,0 +1,224 @@
+<section>
+  <h2>结论：Web UI 是第二棵受治理的插件树，React 只是最后一公里</h2>
+  <div class="thesis"><p>DeepSeek Harness 的浏览器端不是一组被 Host 直接打包进页面的 React 组件。Host Cordis 树先从当前 Loader 组合计算客户端插件图、提供带内容 revision 的 bundle，并把 manifest 写进 HTML；页面再创建一棵独立的浏览器 Cordis 树，用同一份图装载插件。业务状态停在 React-free 的 ConnectionController、SessionManager、Session、SlotRegistry 与 ConversationNodeAssembler 中，web-react 把裸 observable 绑定成 hooks、合成终端 props，最终由一个 <code>root</code> Slot 进入 React。</p></div>
+  <p>这套架构把“代码怎样到达浏览器”“插件何时有权贡献界面”“断线后什么需要重取”“一个会话的视图状态何时死亡”分成不同协议。其价值不只是可插拔：动态包可以在不让 Shell 知道业务清单的前提下声明位置、状态和能力；代价则是启动、授权、scope 与重放边界都必须保持一致，否则系统会选择显式失败，而不是悄悄渲染一棵半有效的树。</p>
+</section>
+
+<section>
+  <h2>1. 两棵 Cordis 树：Host 决定可到达代码，Browser 决定活的对象</h2>
+  <p>Web bundle 的 Host 配置同时列出普通 Host 服务（API proxy、runner、webserver）和带 <code>dsh.client</code> 的浏览器插件 roster；其中 modules 是明确的双面包：Node half 扫描 Host Loader 树并发布图，browser half 则成为页面内模块表。connection、runtime、theme、locale、layout、conversation 与 tool 都是图中的独立客户端 entry。<evidence id="WEBUI-DUAL-ROSTER"></evidence></p>
+  <pre><code>Host Cordis tree
+  Loader entries ──scan dsh.client──► manifest + /plugins bundles
+          │                                  │
+          └── webserver / API / SSE          ▼
+                                      window.__DSH_BOOT__
+                                               │
+Browser Cordis tree                            ▼
+  Context + Loader ◄── ClientModuleSystem ◄── manifest
+          │
+          └── connection → runtime → UI plugins → root Slot → React</code></pre>
+  <p><code>ClientModuleRegistry</code> 在 Host 上订阅 Loader fiber 变化，初次激活与增量变动走同一条扫描路径；它只接纳仍有 fiber、未 disabled 且声明 web client 的 entry，注册 <code>/plugins</code> 路由，并用 index tap 注入当前 graph。<evidence id="WEBUI-HOST-GRAPH"></evidence>页面端则解析该 graph、构造自己的 <code>Context</code>，再启动浏览器 Loader；这不是把 Host context 序列化到页面，而是 Host 交付组成事实、Browser 重建生命周期。<evidence id="WEBUI-BROWSER-CONTEXT"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">推论</div><p>信任边界因此是双层的：Host 决定哪些包可被页面取到，Browser 的 Cordis fiber 再决定它们是否满足依赖、是否激活、何时卸载。manifest 是组成协议，不是运行中 service container 的远程镜像。</p></div>
+</section>
+
+<section>
+  <h2>2. Manifest 与两阶段启动：代码到达不等于插件激活</h2>
+  <p>每个 graph row 带 <code>id</code>、bundle <code>url</code>、内容 <code>rev</code>、信息性 <code>inject</code> 边以及可选 <code>immediately</code>。entry 顺序明确不承载激活语义；真正的依赖顺序由 Cordis fiber 的 inject waiting 决定。wire 在浏览器边界完成行字段形状校验后，拆成 module view 与 plugin view。<evidence id="WEBUI-MANIFEST-CONTRACT"></evidence></p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>阶段</th><th>动作</th><th>提交条件</th></tr></thead>
+    <tbody>
+      <tr><td>Module face</td><td>并行 prefetch <code>immediately</code> rows；执行脚本只注册 factory</td><td>所有 prefetch 尝试已结算；失败留给 entry import 显式报告</td></tr>
+      <tr><td>Plugin face</td><td>先挂 Loader 并注入 module system，再并发创建 entries</td><td>Loader quiesced</td></tr>
+      <tr><td>UI gate</td><td>扫描每个 entry 的 root fiber</td><td>全部 ACTIVE 才从 loading 一次切换到完整 UI</td></tr>
+    </tbody>
+  </table></div>
+  <p>启动实现先等待立即层 barrier，再创建 modules entry、manifest entries 和 shell-own app-shell entry；单项 prefetch 失败只在优化层被吞下，随后由 entry import 重试并显式呈现结果。<code>loader.await()</code> 之后还会完整扫描 fiber：无 fiber 表示 import 失败，PENDING 会列出缺失 service，FAILED 则保留失败状态；任何一个 entry 未激活都会让 loading 页面继续承载错误报告，不提供部分 UI。<evidence id="WEBUI-BOOT-SETTLE"></evidence></p>
+  <aside class="caveat"><strong>边界：</strong><code>immediately</code> 只是“提前让 factory 到达”的性能层级，不是更高权限，也不改变插件依赖图。</aside>
+</section>
+
+<section>
+  <h2>3. 动态模块表与 HMR：先替换代码，再替换 fiber</h2>
+  <p><code>ClientModuleSystem</code> 使用惰性 CJS 表：外部 classic script 调用 <code>window.__ModuleLoader__.load</code> 只登记 factory；第一次 <code>import</code> 或同步 require 才执行 factory，并缓存 exports、依赖边与它注入的样式。同步 require 只能命中平台 seed、shell static、cache 或已登记 factory，不能临时发起网络请求；循环依赖和未知模块都会显式报错。<evidence id="WEBUI-LAZY-MODULES"></evidence></p>
+  <p>Host HMR 端以默认 500ms stat poll 观察 graph 中每个 bundle，内容 hash 真正变化后更新 graph revision，并通过 <code>/plugins/events</code> SSE 广播 <code>rebuilt</code>；连接时还发送 graph snapshot。<evidence id="WEBUI-HMR-HOST"></evidence>Browser 端把 reload 串行化：<code>invalidate → prefetch</code> 在旧 fiber 仍服务时取得新 factory，然后先删 registry runtime、排空旧 fiber、移除 owned styles、清除 <code>entry.fiber</code>，最后 <code>entry.refresh()</code> 重新 materialize 与 apply。失败不回滚旧 bundle；prefetch 早期失败时旧 fiber 还在，apply 失败则留下 FAILED fiber。<evidence id="WEBUI-HMR-SWAP"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">取舍</div><p>HMR 的一致性单位是插件 fiber，不是 React component。这样 service provider 替换会通过 Cordis activation epoch 自然级联到依赖者，避免 HMR 自己维护第二张依赖图；相应地，重载插件内部的 React local state 不被保留。</p></div>
+</section>
+
+<section>
+  <h2>4. Shell 极薄：只安装 renderer，并渲染一个 <code>root</code></h2>
+  <p>app-shell entry 等待 <code>slots</code>、<code>sessions</code>、<code>layout</code>，安装由 web-react 提供的 Slot renderer，并暴露 identity-stable 的 <code>renderApp</code> closure。<evidence id="WEBUI-SHELL-INSTALL"></evidence>真实 assembly 除了会话标题投影，只做一次 <code>ctx.slots.renderSlot('root', {})</code>；AppFrame、sidebar、conversation、details 与 overlay 均由后续注册形成。<evidence id="WEBUI-SHELL-ROOT"></evidence></p>
+  <div class="claim fact"><div class="claim-label">事实</div><p>Shell 不枚举业务页面，也不 import 每个 UI package。它知道的是启动状态、renderer contract 和根 Slot；具体 surface roster 来自 Host graph，具体树形来自 Slot declarations。</p></div>
+</section>
+
+<section>
+  <h2>5. React-free 对象层：连接、会话与投影先成立，组件随后订阅</h2>
+  <p>runtime 插件先创建 SlotRegistry、Conversation event/view registries、SessionRuntime 和 WorkspaceRuntime，再由唯一消费者启动 connection streams。Mux 帧进入 sessions，Host 帧同时进入 sessions/workspaces，通用 remote event 则转交 remote dispatch；连接建立和死亡只调用对象层方法。<evidence id="WEBUI-RUNTIME-WIRING"></evidence></p>
+  <pre><code>WebSocket / HTTP
+      │
+ConnectionController       物理连接代际、backoff、frame pump
+      │
+SessionManager             实例目录、冷会话缓冲、列表与投影
+      │
+Session                    连续 seq window、pending、Conversation snapshots
+      │
+bare getSnapshot/subscribe sources
+      │
+web-react                  useSyncExternalStore selector hooks
+      │
+components</code></pre>
+  <p>runtime 明确拥有 snapshot-store engine 并导出裸 observable；React binding 不反向进入 object layer。<evidence id="WEBUI-RUNTIME-STORE-OWNER"></evidence>这使同一 Session 可以被非 React 观察者、Slot renderer 和测试消费，也把 connection generation、history repair 等业务状态排除在组件 mount/unmount 之外。</p>
+</section>
+
+<section>
+  <h2>6. WebSocket 重连：重建代际，不假装续接旧流</h2>
+  <p>每个 ConnectionController generation 同时打开 mux 与 host 两条 downlink，并并发执行 <code>host.describe</code>。describe 必须成功；stream readiness 通常等待两条 <code>onOpen</code>，但 3s carrier-open 防楔死 guard 超时后也会放行。readiness 收敛后，stream 结束或 <code>stream/error</code> 会 abort 整代，进入带 jitter 的指数退避，随后创建新 generation。业务 sink 抛错被隔离，不能拖垮 pump。但 <code>host.describe</code> 自身没有 generation signal 或 timeout：若它永久挂起，即使 stream 已结束，控制流仍卡在 handshake 的 <code>Promise.all</code>，不能进入共享重连路径。<evidence id="WEBUI-CONNECTION-GENERATION"></evidence></p>
+  <p>runtime 在 generation 死亡时先清除仅对旧连接有效的 pending interactions；新代 ready 后刷新 Session 与 Workspace baseline、发出 <code>connection/reset</code>。<evidence id="WEBUI-RUNTIME-RECONNECT"></evidence>SessionManager 还会重新拉会话列表与已打开的 subagent catalogs，并对所有 resident Session 调用 <code>resync()</code>。<evidence id="WEBUI-MANAGER-RECONNECT"></evidence>从未 open 的 cold resident 在此路径 no-op。<evidence id="WEBUI-SESSION-RESYNC"></evidence></p>
+  <div class="claim fact"><div class="claim-label">事实</div><p><code>refreshList()</code> 是 single-flight；请求开始后到达的 live mutations 会重放在响应 baseline 之上。因此“重取”不是用一个较旧列表覆盖重连期间已经观察到的状态。<evidence id="WEBUI-LIST-REFETCH"></evidence></p></div>
+</section>
+
+<section>
+  <h2>7. 冷会话、refetch 与 seq gap repair 是三种不同路径</h2>
+  <p>SessionManager 不会因为任意 mux frame 就创建 Session。未实例化会话的普通 event 被丢弃，日后 <code>open()</code> 由 history 回填；需要随 Session 重放的 pending buffer 只保留 history 不能恢复的 approval、question 和最新 queue snapshot。projection 与 jobs 则落在 manager 级镜像，不触发 Session 创建。<evidence id="WEBUI-COLD-SESSION-DISPATCH"></evidence>Session 实例在真正解析 scope 时才惰性创建并重放 pending buffer。<evidence id="WEBUI-LAZY-SESSION"></evidence></p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>情况</th><th>权威来源</th><th>处理</th></tr></thead>
+    <tbody>
+      <tr><td>从未打开的冷会话</td><td>history + list baseline</td><td>不维护 live window；打开时整页回填</td></tr>
+      <tr><td>重连后、此前已打开的 resident 会话</td><td>新 generation baseline</td><td>清空旧 window，generation-guarded <code>resync()</code></td></tr>
+      <tr><td>已打开 window 中出现 <code>seq &gt; tail + 1</code></td><td>history tail</td><td>缓冲新帧并 repull；UI 保留旧 window，不闪 loading</td></tr>
+    </tbody>
+  </table></div>
+  <p>Session 的首次 open 拉 history tail；若 <code>session/subscribed.lastSeq</code> 已超过 tail 且 live buffer 没覆盖缺口，会再拉一次。安装 window 后只按 <code>seq</code> 去重并 stitch buffer。运行中发现 hole 时进入 <code>repairGap()</code>：暂存后续帧、重拉 tail，再走同一安装路径；失败时不把有洞的序列直接追加到 UI。<evidence id="WEBUI-SESSION-GAP-REPAIR"></evidence></p>
+</section>
+
+<section>
+  <h2>8. SlotRegistry：children 声明同时是结构、规格与渲染授权</h2>
+  <p><code>SlotMap</code> 给每个位置定义 kind、scope 与 owner props；一个 registration 的 <code>children</code> 表不仅记录子 Slot 的 runtime spec，还声明“此 entry 是唯一可渲染这些 key 的主体”。<evidence id="WEBUI-SLOT-TYPE-CONTRACT"></evidence>SlotCore 只先验声明 <code>root</code>。注册未声明目标、重复声明 child、kind 参数缺失或同一 shared store handle 跨 scope 都在 load time 抛错。<evidence id="WEBUI-SLOT-CORE-COMMIT"></evidence>成功提交后，entry disposer 会递归坍缩它声明的整棵子树。<evidence id="WEBUI-SLOT-CASCADE"></evidence></p>
+  <p><code>ctx.slots.inject(key, callback)</code> 让独立激活的贡献者等待声明出现：声明已经存在就同步运行；声明坍缩就逆向处置；之后重新声明则按新的 epoch 再运行。controller 与 callback effect 都归调用方 fiber，因此卸载贡献插件既能取消等待，也能移除已激活注册。<evidence id="WEBUI-SLOT-DECL-INJECT"></evidence></p>
+  <p>ui-layout 对 <code>root</code> 的一次注册同时声明 <code>sidebar</code>、<code>conversation</code>、<code>details</code> 与 <code>shell.overlay</code>，并挂入 layout store 与 business inject。<evidence id="WEBUI-ROOT-DECLARATION"></evidence>这说明 layout 不是硬编码 import 树，而是第一位拥有子位置授权的 registrant。</p>
+</section>
+
+<section>
+  <h2>9. 四份 props share：所有权信息只在一个来源出现</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Share</th><th>来源</th><th>组件获得什么</th></tr></thead>
+    <tbody>
+      <tr><td><code>PropsRuntime</code></td><td><code>SlotMap</code> 的 owner/key/scope/inject，以及父 registration 的 child spec</td><td>父级 owner props、slot-level inject、global kit、按 scope 的 session kit</td></tr>
+      <tr><td><code>PropsRenderSlots</code></td><td>本次注册的 <code>children</code></td><td>只允许渲染已声明 key 的 <code>renderSlot</code>；需要时附带 <code>SessionProvider</code></td></tr>
+      <tr><td><code>PropsStore</code></td><td>注册声明的 store handle</td><td><code>useStore</code> selector 与去掉 draft 参数的完整 actions</td></tr>
+      <tr><td><code>InjectFace</code></td><td>registrant 的 <code>inject</code> 返回值</td><td>业务 callbacks；<code>hooks</code> compartment 被转成 <code>useXxx</code></td></tr>
+    </tbody>
+  </table></div>
+  <p>runtime share 的 scope 与 owner 类型来自 SlotMap；child-render、business inject 与最终 <code>ComposedProps</code> 在类型层汇合。<evidence id="WEBUI-FOUR-SHARES"></evidence>store contract 把 actions 定义为唯一写集合，组件看不到实例级 <code>set/update</code>，只能通过 <code>useStore</code> 读取、通过 baked actions 写入。<evidence id="WEBUI-STORE-CONTRACT"></evidence></p>
+  <aside class="caveat"><strong>术语边界：</strong>四份 share 是核心组合轴。当前 <code>ComposedProps</code> 还可按 registration 加入 chain 的 <code>matched</code> 与 locale 的 <code>t</code> 席位；它们不构成第五份业务所有权来源。</aside>
+</section>
+
+<section>
+  <h2>10. web-react 是 binding terminal，不是业务 runtime</h2>
+  <p><code>bindSnapshotSelector()</code> 是客户端栈统一的通用 selector-hook constructor：把任何 <code>getSnapshot/subscribe</code> source 绑定成 <code>useSyncExternalStoreWithSelector</code> hook，并稳定捕获 source methods。<evidence id="WEBUI-REACT-BINDING"></evidence>renderer 在 entry 渲染时合成 global/session hooks、projection hook、store pair、授权后的 <code>renderSlot</code>、<code>SessionProvider</code> 与 locale <code>t</code>；runtime 交到这条组合边界的仍是裸 source。<evidence id="WEBUI-RENDER-KIT"></evidence></p>
+  <p>保留的 <code>renderSlot</code> closure 还会在每次调用时检查 entry 是否仍在 ledger、目标 key 是否由其 children 声明；卸载后的旧 closure 或越权 key 都会抛出专用错误。<evidence id="WEBUI-STALE-AUTHORIZATION"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">推论</div><p>React 负责订阅一致性与组件隔离，SlotCore 负责组合事实，Session/Store 负责状态事实。把 hooks 限制在 terminal 层，使 HMR、测试和非 React 消费者不需要模拟组件生命周期才能保持业务对象正确。</p></div>
+</section>
+
+<section>
+  <h2>11. UI state 与业务 state 的所有权不是按文件夹，而是按生命周期</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>状态类别</th><th>真实 owner</th><th>例子</th><th>重置 / 存续边界</th></tr></thead>
+    <tbody>
+      <tr><td>连接/业务事实</td><td>ConnectionController、SessionManager、Session</td><td>generation、list、pending、event window、projections</td><td>连接代际、Session scope 或 runtime fiber 结束</td></tr>
+      <tr><td>跨组件会话 UI</td><td>声明式 Slot store</td><td>选中 call、draft、active view、inspect target</td><td>对应 session scope 被 prune</td></tr>
+      <tr><td>瞬时局部 UI</td><td>组件</td><td>一条 Tool row 是否展开</td><td>该 component unmount/HMR</td></tr>
+      <tr><td>父级已知的渲染输入</td><td>owner props</td><td>冻结 Tool block、cwd、openFile/inspect callback</td><td>父级下一次投影替换</td></tr>
+      <tr><td>持久用户偏好</td><td>domain service + SettingsScope</td><td>locale、theme、busy-enter 等</td><td>Host mode 跟随文档 revision；memory mode 只活到页面/runtime 结束</td></tr>
+    </tbody>
+  </table></div>
+  <p>conversation 的 chat store 在 apply 时创建 handle，初始状态包含 selection、draft、view 与 inspect，并声明唯一 actions 与持久化 key。<evidence id="WEBUI-CHAT-STORE"></evidence>相反，ToolRow 的 <code>expanded</code> 明确是 component-local <code>useState</code>，不污染 Session snapshot 或 slot store。<evidence id="WEBUI-TOOL-LOCAL-STATE"></evidence></p>
+</section>
+
+<section>
+  <h2>12. Session scope：选择负责 staging，解析负责惰性对象，prune 统一回收</h2>
+  <p>SessionRuntime 同时拥有列表投影、持久 selection、SessionManager、scope map 与当前 provide bundle；provider roster 改变时，即使 id 不变也会重建 provide bundle。<evidence id="WEBUI-SESSION-RUNTIME"></evidence><code>dsh.sessions.current</code> 只在启动时恢复候选选择，运行中的 selected 由 manager 保留；只有仍出现在 list items、或仍有 retained subagent address 的 selected id 才投影为 current。<evidence id="WEBUI-SELECTION-ADDRESSABILITY"></evidence>masked gap 会清除持久 cell，让 reload 留在空态，但同一进程里的选择在条目返回后仍可重新出现。<evidence id="WEBUI-SESSION-SELECTION"></evidence></p>
+  <p><code>followCurrent()</code> 把 stage 移到 current 并触发 idempotent history open；<code>resolve()</code> 才惰性创建 Cordis Agent scope、Session 对象、binding 与裸 provide sources。会话不再 eligible 且已离开 stage 时，统一 disposal scope fiber、解绑 Session、清除 session-keyed Slot stores，并从 manager 删除内存实例；若它在 staged 状态被移除，teardown 会延迟到 stage 移走，期间保留冻结 scope。Host Session log 始终是之后重新 open 回填的权威事实源。<evidence id="WEBUI-SESSION-SCOPE-LIFECYCLE"></evidence></p>
+  <p>Slot store instance 以 <code>handle × scope key</code> 缓存；root 用固定 key，session 用 session id。scope prune 还会清除对应 persisted value，防止已死亡会话留下孤儿 UI 状态。<evidence id="WEBUI-STORE-SCOPE-LIFECYCLE"></evidence>web-react 的根 provider 跟随 current；严格 <code>SessionProvider</code> 以 <code>key={sessionId}</code> 重挂整个 session subtree，确保跨会话 local component state 不串线。<evidence id="WEBUI-SESSION-PROVIDER"></evidence></p>
+</section>
+
+<section>
+  <h2>13. Conversation Node：把日志折叠成业务 Context，再投影到多个视图</h2>
+  <p>Conversation Definition 的 <code>match(event)</code> 只能看当前 event，返回稳定业务 id 与 start/update 角色；<code>start</code>/<code>update</code> 折叠 State，<code>buildLocationData</code> 可向 Turn/Step 发布自有数据，<code>buildViewNode</code> 则为一个 target 生成最终 Node。<evidence id="WEBUI-CONVERSATION-DEFINITION"></evidence></p>
+  <pre><code>contiguous SessionEvent window
+        │ match(event) → {kind, id, role}
+        ▼
+Context(kind:id): start + ordered updates + State
+        │                  │
+        │                  └── Location index: Session / Turn / Step
+        ▼
+target-specific stable Node ──► chat / trajectory / other view builders</code></pre>
+  <p><code>replaceWindow</code> 留给完整 open/resync/gap repair 与低频 registry rebuild。普通 append 不扫描旧 Context：只更新 location boundary、匹配这一个 input，并重放真正受依赖变化影响的 Context；prepend 只收集新旧页中的 fresh events，刷新改变 location 的 matches，再重放 affected closure。<evidence id="WEBUI-CONVERSATION-INCREMENTAL"></evidence>同一个 event 可被多个 Definition 接纳；fallback 仅在没有普通 Definition 匹配并认领同一 target 时运行。Context key 是 <code>kind + id</code>；重复 start，或在日志顺序中位于 start 之前的 update，都会失败。<evidence id="WEBUI-CONVERSATION-FOLD"></evidence>Definition 返回不稳定 view key 或错误 target 同样会失败。<evidence id="WEBUI-CONVERSATION-VIEW-VALIDATION"></evidence></p>
+  <p>Location index 重建时保留未变化 Turn/Step 对象的引用，并返回 location 改变的 seq 集合；live 非边界 append 只记录当前坐标，边界 append 只重访所属 Turn 的 seq。<evidence id="WEBUI-LOCATION-INDEX"></evidence>因此历史分页可以补齐更早的 start 或 predecessor，又不必让所有可见 Node 更换 identity。</p>
+</section>
+
+<section>
+  <h2>14. Tool 呈现：递归拓扑归 runtime，原子外观按 wire name 分派</h2>
+  <p>ui-tool 先以 <code>tool-call</code> key 占据 <code>conversation.chat.node</code>，并在同一次注册中声明 session-scoped keyed child <code>tool.call.toolview</code>；随后 shell、read、mutation、search、web、todo、question 等视图各自注册。<evidence id="WEBUI-TOOL-REGISTRATION"></evidence>原子视图的 owner payload 只包含 call id、wire tool name、冻结的 running/settled block、cwd，以及 Host-bound <code>openFile</code> 与 local <code>inspect</code> callback；框架仍按 session scope 注入 standard kit，registrant 也可加入自己的 inject share。<evidence id="WEBUI-TOOLVIEW-CONTRACT"></evidence><evidence id="WEBUI-FOUR-SHARES"></evidence>它不负责遍历 root/subcall 拓扑，也不重新配对事件。</p>
+  <p><code>ToolCallTree</code> 对根 call 与每层 <code>subCalls</code> 走同一 keyed dispatch，<code>entryKey</code> 就是 wire tool name；无注册者时回退 <code>GenericToolCard</code>。<evidence id="WEBUI-TOOL-DISPATCH"></evidence>generic renderer 选择 terminal/read/diff/search/web card。<evidence id="WEBUI-GENERIC-TOOLVIEW"></evidence>其纯模型从冻结 slice 派生 variant、lifecycle、summary、path 与 input/output；专用 keyed registrant 命中时直接替换这一 fallback，而不是在通用卡片外再叠一层。<evidence id="WEBUI-TOOL-MODEL"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">推论</div><p>扩展一个新 Tool UI 的最小面是“注册 wire name 对应的原子 renderer”。Session 事件配对、Code Mode 子调用树与 ChatFlow 位置仍由上游投影拥有，避免每个业务插件各自实现一套 transcript parser。</p></div>
+</section>
+
+<section>
+  <h2>15. Locale、Theme 与 Settings：功能拥有偏好，Shell 只提供容器</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>域</th><th>状态 owner</th><th>呈现 owner</th><th>同步方式</th></tr></thead>
+    <tbody>
+      <tr><td>Settings transport</td><td>每个 namespace 的 SettingsScope</td><td>功能自己的 setting row</td><td>后台 read；带 <code>expectedRevision</code> 的串行单字段 write；reset/event refetch</td></tr>
+      <tr><td>Locale</td><td>LocaleRuntime 的 active locale 与 dictionary registry</td><td>Slot renderer 合成 <code>t</code></td><td>snapshot revision；active namespace → zh namespace → active common → zh common → key</td></tr>
+      <tr><td>Theme</td><td>ThemeRuntime 的 preference、system resolution 与 token layers</td><td>ui-layout ThemePresenter</td><td><code>theme/change</code>；纯 DOM projection，不经 React</td></tr>
+      <tr><td>Settings shell</td><td>Slot ledgers 与 shell-local navigation projection</td><td>ui-settings-general</td><td>同时订阅 Slot version 与 locale revision</td></tr>
+    </tbody>
+  </table></div>
+  <p>SettingsScope 以 namespace 串行读写，write 携带最近 revision；拒绝或 transport 失败时只让最新 write 触发回读。旧 read 仍可推进 revision/base/user metadata，但不会发布 decoded value 或 ready status。Binder 在调用方 context 上先订阅 invalidation，再非阻塞启动首读；非 loopback browser 被放入 memory mode，不调用 privileged settings RPC。<evidence id="WEBUI-SETTINGS-SCOPE"></evidence></p>
+  <p>LocaleRuntime 从浏览器语言得到 provisional 值，再接纳 Host selection；typed registration 要求同一 namespace 同时提供 zh/en。<evidence id="WEBUI-LOCALE-OWNER"></evidence>服务自身作为 LocaleFace 安装到 SlotRegistry，并把 Language row 注册进 General section。<evidence id="WEBUI-LOCALE-INSTALL"></evidence>ThemeRuntime 拥有 light/dark/system、OS media query 与 token override layers，但不写 DOM。<evidence id="WEBUI-THEME-OWNER"></evidence>ui-layout 从 getter 取初值并监听 <code>theme/change</code>。<evidence id="WEBUI-THEME-PRESENTER"></evidence>ThemePresenter 只写 <code>color-scheme</code>、dark attribute、owned CSS vars 与自有 meta。<evidence id="WEBUI-THEME-DOM"></evidence></p>
+  <p>ui-settings-general 占据 <code>sidebar.settings</code>，再声明 trigger、header、action、close、section 与 onboarding children；导航 rows 从 Slot ledger 派生，文案刷新同时跟随 locale revision。各功能只把自己的 row 或 section 注册到这些位置。<evidence id="WEBUI-SETTINGS-SHELL"></evidence></p>
+</section>
+
+<section>
+  <h2>16. 已知缺口：Developer Preview 的架构边界仍在移动</h2>
+  <div class="claim fact"><div class="claim-label">公开状态</div><p>项目根 README 将当前版本标为 Developer Preview，并明确提示会有破坏兼容的变更。<evidence id="WEBUI-DEVELOPER-PREVIEW"></evidence></p></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>缺口</th><th>当前行为</th><th>实际影响</th></tr></thead>
+    <tbody>
+      <tr><td>Hung <code>host.describe</code> 可楔住重连</td><td>stream-open wait 有界，但并发 unary describe 没有 generation timeout 或 signal</td><td>describe 结算前，已死亡的 stream 也不能推进到 backoff</td></tr>
+      <tr><td>启动没有 progressive rendering</td><td>任一 entry 未 ACTIVE，页面停在 loading/error</td><td>一致性强，但单插件失败会阻止整页可用</td></tr>
+      <tr><td>HMR 没有 rollback</td><td>import/apply 失败留下 fiberless 或 FAILED entry</td><td>需要下一次 rebuild 修复；插件内 React local state 会丢失</td></tr>
+      <tr><td>通用客户端 unload chain 仍是 stub</td><td><code>loader.unload</code> 未实现；HMR 走专用 registry-first swap</td><td>不能把开发期热替换外推成任意插件的通用卸载能力<evidence id="WEBUI-UNLOAD-LIMIT"></evidence></td></tr>
+      <tr><td>远端 browser settings 不持久</td><td>non-loopback SettingsScope 为 memory mode</td><td>locale/theme 可改本地 runtime，但刷新后丢失；依赖 Host scope 的设置面保持 unavailable</td></tr>
+      <tr><td>Session scope 是单舞台模型</td><td>一个 <code>list.current</code> 驱动单一 staged occupant；masked／cleared gap 保留上一 occupant，直到下一次 open 移动 stage</td><td>多 pane/并发观察者需要把 teardown 从单 occupant 扩展为真实 observer ownership<evidence id="WEBUI-SINGLE-STAGE-LIMIT"></evidence></td></tr>
+      <tr><td>Tool details 入口未闭合</td><td><code>openDetails</code> 已实现但 assembled UI 没有调用点</td><td>selected-call 原始详情在当前产品组合中不可达<evidence id="WEBUI-DETAILS-LIMIT"></evidence></td></tr>
+    </tbody>
+  </table></div>
+  <aside class="caveat"><strong>评价边界：</strong>这些是固定提交上的公开限制，不应外推为未来承诺。尤其不能从现有 Slot 类型与多目标 Conversation API 推断多窗格已经实现。</aside>
+</section>
+
+<section>
+  <h2>17. 本章验证范围</h2>
+  <p>所有仓库事实固定在 commit <code>47f943859bef60e4160492346772ded9b24f765a</code>。本次只运行与本章控制流直接相关的 15 个现有测试文件，321 个用例全部通过；没有运行全量构建、全量 GUI、E2E、性能或压力测试。</p>
+  <pre><code>pnpm exec vitest run \
+  packages/client/modules/tests/loader.client.spec.ts \
+  packages/client/hmr/tests/node-half.client.spec.ts \
+  packages/client/connection/tests/connection.client.spec.ts \
+  packages/client/runtime/tests/manager.client.spec.ts \
+  packages/client/runtime/tests/session.client.spec.ts \
+  packages/client/runtime/tests/sessions-service.client.spec.ts \
+  packages/client/runtime/tests/conversation-assembler.client.spec.ts \
+  packages/client/ui-slots/tests/core.client.spec.ts \
+  packages/client/web-react/tests/scoped-slots-real-core.client.spec.tsx \
+  packages/client/web-react/tests/session-provider.client.spec.tsx \
+  packages/client/ui-tool/tests/toolview-slot.client.spec.tsx \
+  packages/client/ui-settings/tests/settings-scope.client.spec.ts \
+  packages/client/locale/tests/locale.client.spec.ts \
+  packages/client/ui-theme/tests/theme.client.spec.ts \
+  packages/client/ui-layout/tests/theme-presenter.client.spec.ts
+
+Test Files  15 passed (15)
+Tests      321 passed (321)
+Duration   9.03s</code></pre>
+  <p>其中 SessionProvider 的 fail-loud 用例在断言异常边界时按预期输出了一段 stderr stack；命令退出码仍为 0，未出现失败用例。</p>
+  <p>其中 loader/HMR tests 固定 factory arrival、materialization、invalidate、graph watch 与 disposal。<evidence id="WEBUI-MODULE-TESTS"></evidence><evidence id="WEBUI-HMR-TESTS"></evidence>connection tests 固定 generation；manager/Session tests 固定 refetch、stitch 与 gap repair，sessions-service tests 固定 scope 惰性创建与 staged teardown 延迟。<evidence id="WEBUI-CONNECTION-TESTS"></evidence><evidence id="WEBUI-MANAGER-TESTS"></evidence><evidence id="WEBUI-SESSION-TESTS"></evidence><evidence id="WEBUI-SESSION-SCOPE-TESTS"></evidence>Slot/web-react tests 固定 declaration gate、lifecycle cascade、真实 uSES binding 与 keyed remount。<evidence id="WEBUI-SLOT-TESTS"></evidence><evidence id="WEBUI-REACT-BINDING-TESTS"></evidence><evidence id="WEBUI-WEB-REACT-TESTS"></evidence>Conversation tests 固定 append/prepend 与 location replay。<evidence id="WEBUI-CONVERSATION-TESTS"></evidence><evidence id="WEBUI-LOCATION-TESTS"></evidence>Tool、Settings、Locale 与 Theme tests 固定 keyed fallback、偏好所有权和 DOM 投影边界。<evidence id="WEBUI-TOOL-TESTS"></evidence><evidence id="WEBUI-SETTINGS-TESTS"></evidence><evidence id="WEBUI-PREFERENCE-TESTS"></evidence><evidence id="WEBUI-THEME-TESTS"></evidence><evidence id="WEBUI-THEME-PRESENTER-TESTS"></evidence></p>
+</section>
