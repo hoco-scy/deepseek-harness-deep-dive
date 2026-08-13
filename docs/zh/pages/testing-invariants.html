@@ -6,7 +6,7 @@
 <body data-page="testing-invariants" data-baseline="47f943859bef60e4160492346772ded9b24f765a" data-lang="zh">
   <header class="topbar"><button class="icon-button nav-toggle" type="button" data-nav-toggle aria-label="打开章节目录" aria-expanded="false">☰</button>
     <a class="brand" href="../index.html"><span class="brand-mark">DS</span><span>Harness 系统拆解</span></a>
-    <span class="topbar-meta">固定基线 47f943859b · 31 已复核 / 1 撰写中 / 36 章</span>
+    <span class="topbar-meta">固定基线 47f943859b · 32 已复核 / 1 撰写中 / 36 章</span>
     <div class="topbar-actions"><a class="language-switch" href="../../pages/testing-invariants.html" lang="en" aria-label="阅读本章英文版">English</a><button class="icon-button" type="button" data-theme-toggle aria-label="切换明暗主题">◐</button></div></header>
   <div class="layout"><aside class="sidebar" data-sidebar aria-label="章节目录"><input class="filter" data-chapter-filter type="search" placeholder="筛选章节……" aria-label="筛选章节"><section class="nav-part" data-part><h2 class="part-title">导论</h2>
     <a class="chapter-link" data-chapter-item href="../pages/reading-guide.html">
@@ -50,16 +50,198 @@
       <span class="chapter-number">29</span><span>API、SDK、JSON-RPC 与 ACP</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link" data-chapter-item href="../pages/web-ui.html">
       <span class="chapter-number">30</span><span>Web UI 插件架构</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link" data-chapter-item href="../pages/security-trust.html">
       <span class="chapter-number">31</span><span>安全模型与信任边界</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link current" data-chapter-item href="../pages/testing-invariants.html">
-      <span class="chapter-number">32</span><span>测试、快照与运行时不变量</span><span class="status-dot queued" title="待研究"></span></a></section><section class="nav-part" data-part><h2 class="part-title">综合结论</h2>
+      <span class="chapter-number">32</span><span>测试、快照与运行时不变量</span><span class="status-dot verified" title="已复核"></span></a></section><section class="nav-part" data-part><h2 class="part-title">综合结论</h2>
     <a class="chapter-link" data-chapter-item href="../pages/tradeoffs.html">
       <span class="chapter-number">33</span><span>优势、代价与设计取舍</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/open-questions.html">
       <span class="chapter-number">34</span><span>缺口、限制与待验证问题</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/glossary-evidence.html">
       <span class="chapter-number">35</span><span>术语、证据目录与源码索引</span><span class="status-dot queued" title="待研究"></span></a></section></aside>
     <main class="main"><div class="page-shell"><article class="article" data-article><header><div class="page-kicker"><span>可靠性与产品面</span><span>·</span><span>第 32 章</span></div>
-      <h1>测试、快照与运行时不变量</h1><p class="subtitle">它怎样证明插件组合之后仍然满足系统语义</p><div class="page-meta"><span class="status queued">待研究</span><span>上游 47f943859b</span><span>范围: 分析 100% per-file gate、keyless snapshot、invariant registry、生成文档校验、配置闭包与平台矩阵。</span></div></header>
-      <section class="placeholder"><p class="eyebrow">研究队列</p><h2>本章尚未进入结论状态</h2>
-    <p><strong>当前范围:</strong> 分析 100% per-file gate、keyless snapshot、invariant registry、生成文档校验、配置闭包与平台矩阵。</p><p>页面已经纳入全量研究地图，但尚未完成源码控制流复核。以下是升级为“已复核”之前必须覆盖的检查面：</p>
-    <ul class="placeholder-checks"><li>实际 bundle / profile 装配入口</li><li>公开类型、事件与配置 schema</li><li>正常控制流与状态突变时机</li><li>并发、scope、所有权与 cleanup</li><li>错误、取消、重试和降级分支</li><li>持久化、projection 与 replay 语义</li><li>生产路径测试与运行时不变量</li><li>优势、代价、限制与待验证问题</li></ul></section><section class="learning-notes" aria-labelledby="learning-notes-title"><h2 id="learning-notes-title">我的学习体会</h2>
+      <h1>测试、快照与运行时不变量</h1><p class="subtitle">它怎样证明插件组合之后仍然满足系统语义</p><div class="page-meta"><span class="status verified">已复核</span><span>上游 47f943859b</span><span>范围: 分析 100% per-file gate、keyless snapshot、invariant registry、生成文档校验、配置闭包与平台矩阵。</span></div></header>
+      <section>
+  <h2>结论：系统不是靠一次“全绿”证明正确，而是靠互不替代的证据层</h2>
+  <div class="thesis"><p>DeepSeek Harness 把插件组合后的正确性拆成六类可失败的主张：逐文件覆盖率证明被 coverage 计量且未 inline-ignore 的 statement/branch path 确实执行过；无密钥快照证明真实组装入口能够重放并复现外部 transcript 与持久日志；runtime invariant 在运行时检查跨事件、跨服务的关系；配置闭包在启动前证明插件说明符和 peer 依赖可达；生成文档门禁从源码重新计算公开契约；平台矩阵则把 Node 版本、Linux、Wine 与真实 Windows kernel 的不同信号分开。</p></div>
+  <p>这不是一条由弱到强、最后由某个总分取代前面层级的流水线。仓库自己的测试策略明确指出，行覆盖率只证明代码执行过，不证明交付功能有效；快照、真实入口、平台专属检查与运行时不变量因此承担不同的反例空间。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/docs/testing.md#L7-L15" title="分层测试策略: 定义单元、逐文件覆盖、真实 API、无密钥快照与浏览器快照各自的证明边界。" aria-label="证据 TINV-POLICY">TINV-POLICY</a></p>
+</section>
+
+<section>
+  <h2>1. 证据栈：每一层回答一个不同问题</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>层</th><th>失败时说明什么</th><th>单独不能证明什么</th></tr></thead>
+    <tbody>
+      <tr><td>单元 + 逐文件覆盖</td><td>被 coverage 计量且未 inline-ignore 的 statement/branch path 未执行，或断言观察到局部契约回归</td><td>Loader、发布产物和整棵组合正常</td></tr>
+      <tr><td>无密钥快照</td><td>真实进程入口的协议输出或重新持久化日志漂移</td><td>在线模型质量、所有未录制调用顺序</td></tr>
+      <tr><td>Runtime invariant</td><td>活的组合产生了违反跨事件关系的状态</td><td>未装载 companion 的部署也受保护</td></tr>
+      <tr><td>配置闭包</td><td>YAML 中的插件、source-plane 映射或部署 peer 不可达</td><td>插件启动后的业务语义正确</td></tr>
+      <tr><td>生成文档检查</td><td>公开目录、类型粘贴或源码投影已陈旧</td><td>自然语言中的所有解释都正确</td></tr>
+      <tr><td>平台 / 版本矩阵</td><td>某个运行时或 kernel 特有入口不成立</td><td>未列入矩阵的平台与外部环境</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">核心判断</div><p>“组合后仍满足语义”不是一个可由单一指标观测的命题。这里真正有效的设计是让每一种绿色结果都保持窄含义，再用 CI 的依赖图要求必需结果同时成立。</p></div>
+</section>
+
+<section>
+  <h2>2. 逐文件 100%：防止大文件替小文件“补贴”覆盖率</h2>
+  <p>V8 coverage 的纳入面是 <code>packages/*/*/src/**/*.{ts,tsx}</code>，不是整个仓库；examples 与 vendor 位于该 include glob 之外，glob 内的 type-only files、自执行 bin/worker 以及一批明确记录的 GUI 或组合债务则被排除。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/vitest.config.ts#L160-L268" title="覆盖率纳入与排除面: 把 coverage include 限定到 package src glob；examples/vendor 位于 glob 外，并在 glob 内显式排除类型、自执行入口和记录在案的 GUI/组合等特殊路径。" aria-label="证据 TINV-COVERAGE-SCOPE">TINV-COVERAGE-SCOPE</a>在 file exclusions 与源码 inline ignore 生效后，对纳入且仍被计量的每个文件，statements、branches、functions、lines 四项都必须分别达到 100%。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/vitest.config.ts#L264-L283" title="逐文件满覆盖门槛: 启用 per-file 阈值，并把 statements、branches、functions 与 lines 全部设为 100%。" aria-label="证据 TINV-COVERAGE-BAR">TINV-COVERAGE-BAR</a></p>
+  <pre><code>included production file
+        │
+        ├── statements 100%
+        ├── branches   100%
+        ├── functions  100%
+        └── lines      100%
+
+aggregate average cannot compensate for one file</code></pre>
+  <p>它对组合型仓库尤其有价值：新建一个小 companion 或 adapter，不能因为同包另一个大文件覆盖很好而隐身。但这个数字的准确读法是“file exclusions 与 inline ignores 之后的计量集合内逐文件 100%”，不是“仓库所有生产路径 100%”，更不是“语义 100%”。</p>
+</section>
+
+<section>
+  <h2>3. 豁免不是删除测试：instrumentation 与 correctness 被拆成并行 gate</h2>
+  <p>编译器分析和真实子进程 fixture 等重型 suite 可以从 instrumented run 排除，但同一 coverage aggregate 会在旁边以普通 Vitest 再运行这些 suite；清单的准入原则是它们执行的 coverage-measured 文件已由其他 suite 完全覆盖。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/scripts/coverage-exempt.ts#L1-L41" title="重型测试并行清单: 说明哪些 suite 从 instrumentation 排除、为何仍以普通 Vitest 运行，以及清单项的维护前提。" aria-label="证据 TINV-COVERAGE-EXEMPT">TINV-COVERAGE-EXEMPT</a>机械测试进一步要求每个 CLI filter 与 exclude glob 选择相同且非空的文件集，并禁止清单项重叠。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/scripts/coverage-exempt.spec.ts#L13-L54" title="豁免清单闭包测试: 验证 filter 与 exclude glob 的非空等价选择，并禁止 suite 在清单中重叠。" aria-label="证据 TINV-COVERAGE-EXEMPT-TEST">TINV-COVERAGE-EXEMPT-TEST</a></p>
+  <aside class="caveat"><strong>边界：</strong>清单测试证明“没有 suite 因 filter/glob 漂移而消失”，但不会动态证明“这个 suite 对阈值确实没有新增贡献”；后者仍是清单维护者必须审查的前提。</aside>
+  <p>平台条件也改变实际纳入面：Windows 排除依赖 POSIX shell 的 suites，所有非 Windows host 都排除只在 Windows 执行的 ACL source；缺少真实 <code>pwsh</code> 时，相关源码随 suite 的自跳过而豁免。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/vitest.config.ts#L21-L84" title="平台条件覆盖面: 按 Windows、POSIX 与 pwsh 可用性调整 suite 和 source exclusion，使报告的实际范围具有平台语义。" aria-label="证据 TINV-PLATFORM-COVERAGE">TINV-PLATFORM-COVERAGE</a>因此 coverage 报告必须连同运行平台和工具可用性解释，不能把一台机器的 100% 外推成所有平台路径均已执行。</p>
+</section>
+
+<section>
+  <h2>4. Keyless snapshot：把非确定模型边界替换为已提交脚本</h2>
+  <p><code>replay</code> 是默认模式：不加载 <code>.env</code>，从已提交模型响应启动真实子进程并比较组装请求、归一化协议或 transcript、以及持久日志。<code>record</code> 才读取凭据并调用真实 API；<code>refresh</code> 仍然无密钥，只用现有脚本重写当前预期输出。只有 replay 会在配置上限允许时并行运行 snapshot files；record/refresh files 保持串行，避免真实配额竞争或并发写坏 golden。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/vitest.snapshot.config.ts#L19-L67" title="无密钥快照模式: 将 replay 设为默认无凭据模式，record 才加载环境，refresh 复用脚本，并区分并发与串行执行。" aria-label="证据 TINV-SNAPSHOT-MODE">TINV-SNAPSHOT-MODE</a>在 ACP suite 内部，scenario tests 也只在 replay mode 使用 concurrent suite。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/test-support/acp-snapshot/src/suite.ts#L1080-L1098" title="ACP scenario 的 mode-aware 并发: ACP snapshot suite 只在 replay mode 使用 describe.concurrent；record 与 refresh 使用串行 describe。" aria-label="证据 TINV-SNAPSHOT-SCENARIO-MODE">TINV-SNAPSHOT-SCENARIO-MODE</a></p>
+  <p>CI 的 snapshot gate 依赖 build，并设置 <code>DSH_EXAMPLE_MODE=lib</code>：示例和包快照从构建后的产物通过普通 Node 启动，脚本快照才运行真实 source entry。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/scripts/run-gates.ts#L497-L527" title="快照门禁组装: 定义默认依赖 build 且固定 DSH_EXAMPLE_MODE=lib 的 snapshot gate；示例与 package 快照用构建产物，script 快照用真实 source entry。" aria-label="证据 TINV-SNAPSHOT-GATE">TINV-SNAPSHOT-GATE</a>这使“源码测试通过”与“发布形状可加载”之间保留了独立证据。</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>模式</th><th>模型来源</th><th>是否写 fixture</th><th>主要用途</th></tr></thead>
+    <tbody>
+      <tr><td><code>replay</code></td><td>已提交 JSONL / override</td><td>否</td><td>默认 CI、确定性回归</td></tr>
+      <tr><td><code>record</code></td><td>真实 API</td><td>是</td><td>模型 transcript 改变时重新采集</td></tr>
+      <tr><td><code>refresh</code></td><td>已提交 JSONL / override</td><td>是</td><td>输入仍有效、下游输出格式变化时刷新</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>5. 回放从 durable log 派生调用，并同时比较 wire 与 log</h2>
+  <p><code>deriveReplayScript()</code> 按 <code>assistant/chunk</code> 的终止 <code>finish</code> 分割模型调用；turn/step 变化前若上一调用未终止就 fail loud。显式标记为本地 LLM 调用的 compaction summary 会在其日志位置重建 block、usage 与终止 chunk。抛出和挂起无法仅由普通日志无损推导，必须使用 override。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/test-support/llm-replay/src/index.ts#L1-L263" title="从持久日志派生回放脚本: 按终止 chunk 划分调用，重建已标记的本地压缩调用，并要求 throw 或 hang 使用显式 override。" aria-label="证据 TINV-REPLAY-DERIVE">TINV-REPLAY-DERIVE</a></p>
+  <pre><code>recorded session JSONL
+        │
+        ├── assistant/chunk + finish ──► positional replay entries
+        ├── marked compaction summary ─► reconstructed local call
+        └── throw / hang gap ──────────► explicit override required
+                                             │
+real assembled subprocess ◄─────────────────┘
+        │
+        ├── normalized stdout vs committed wire snapshot
+        └── normalized harvested JSONL vs committed session fixtures</code></pre>
+  <p>ACP suite 对当前 mode、platform 或 PowerShell availability 没有跳过的每个场景运行真实组装入口，先拒绝 <code>UNKNOWN_TOOL</code> 被当作成功行为，再归一化会话 id、cwd 等波动值。最终 stdout 逐文件匹配，主/子会话的 harvested logs 与 fixture 进行一一归一化比较；record 与 refresh 的写权限由模式显式控制。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/test-support/acp-snapshot/src/suite.ts#L1167-L1342" title="ACP 进程与双通道快照比较: 运行真实组装入口，归一化可变值，并分别比较 stdout 与收集到的主、子会话日志。" aria-label="证据 TINV-SNAPSHOT-COMPARE">TINV-SNAPSHOT-COMPARE</a>场景目录还有闭包守卫：孤儿目录、缺失 input/stdout/session、错误的 override 或 header sidecar ownership 都会失败。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/test-support/acp-snapshot/src/suite.ts#L1440-L1480" title="场景 fixture 闭包: 拒绝孤儿目录、缺失输入或预期输出、错误 override 和不合法的 header sidecar ownership。" aria-label="证据 TINV-SNAPSHOT-FIXTURES">TINV-SNAPSHOT-FIXTURES</a></p>
+  <aside class="caveat"><strong>边界：</strong>回放是 positional contract。它很擅长发现调用数量、顺序、外部呈现和 durable structure 的漂移，但不会探索 fixture 没有表达的新调用交错，也不证明真实模型此刻仍会生成同样内容。</aside>
+</section>
+
+<section>
+  <h2>6. Runtime invariant registry：把失败归属和生命周期统一，把规则留给 owner</h2>
+  <p><code>InvariantRegistry</code> 提供全局 enable、package allowlist 与 blocklist；即使 filter 禁用某个 installer，package name 仍被保留，避免两个 companion 静默声明同一 owner。启用的 installer 运行在独立 child fiber 中，收到绑定 package name 的 <code>fail()</code>；失败抛出带稳定 <code>INVARIANT</code> code 和 <code>packageName</code> 的错误。启动失败会 dispose child 并释放 reservation，正常 disposer 则先完成 child teardown 再释放。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/runtime-diagnostics/invariants/src/index.ts#L49-L197" title="运行时不变量注册表: 实现过滤前名称保留、每 installer 的 child fiber、包归属错误、原子回滚与有序释放。" aria-label="证据 TINV-REGISTRY">TINV-REGISTRY</a></p>
+  <p>注册表本身不 import 产品包，也不集中维护一张巨型规则表。仓库约定要求每个包的 <code>./invariant</code> companion 检查它拥有的 event 或 mutable-data relationship；类型、方法存在性、固定纯函数结果仍交给 type/load/unit tests。Gate 可以验证注册的 npm owner 和 no-runtime-rule marker 是否存在，但规则是否真的属于该包、解释是否充分仍需人工评审。</p>
+</section>
+
+<section>
+  <h2>7. “每个包都有 companion”由源码门禁、测试拓扑和构建消费分别证明</h2>
+  <p>源码门禁扫描每个 <code>packages/*/*/package.json</code>，检查 <code>./invariant</code> export、发布文件、peer/dev dependency 与 TypeScript reference；随后解析 companion AST，要求恰好注册自己的 npm name、具名导出 <code>name/inject/apply</code>、禁止 default export，并要求非空 installer 实际使用 failure reporter。空 installer 必须包含 <code>No runtime invariant:</code> marker；gate 不判断解释是否具体或充分。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/scripts/package-invariants.ts#L11-L286" title="源码 companion 门禁: 扫描包拓扑并检查 companion 的导出、依赖、AST 形状、owner 名称、reporter 使用与显式无运行时规则说明。" aria-label="证据 TINV-COMPANION-GATE">TINV-COMPANION-GATE</a></p>
+  <p>普通 Vitest root 会先装启用的 registry，再按测试路径只装当前包的 companion，并用 readiness dependency 阻止目标插件抢先启动。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/scripts/test-invariants.ts#L67-L272" title="全量不变量测试宿主: 按 test path 选择 owner companion；专门 topology 路径选择全部 companion，并用 readiness barrier 让目标插件等待 companion 激活。" aria-label="证据 TINV-TEST-HOST">TINV-TEST-HOST</a>专门的拓扑测试则装载全部 companion，逐个经真实 Loader <code>unwrapExports</code> 并验证每个 package name 已被保留。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/scripts/test-invariants.spec.ts#L97-L152" title="不变量拓扑回归测试: 把全部 companion 经真实 Loader unwrap 后注册，并断言 package reservation 与按测试路径选择的 companion 一致。" aria-label="证据 TINV-INVARIANT-TOPOLOGY-TEST">TINV-INVARIANT-TOPOLOGY-TEST</a></p>
+  <div class="claim fact"><div class="claim-label">三个不同问题</div><p>源码门禁回答“声明是否完整”；全量 topology 回答“所有 source companion 能否真实装载和注册”；built-package gate 与 lib-mode snapshot 回答“编译后的发布形状是否仍可被普通 Node 消费”。built-package gate 会暂存 manifest 声明的 <code>lib</code> 视图，再用普通 Node 通过包导出导入 companion，并检查 Loader 不会折叠 namespace。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/scripts/verify-built-package-invariants.mjs#L31-L82" title="构建产物 companion 验证: 暂存 manifest 声明的 lib 文件，通过包导出用普通 Node 导入 companion，并检查 Loader 可消费的 namespace 形状。" aria-label="证据 TINV-BUILT-COMPANIONS">TINV-BUILT-COMPANIONS</a>前两者不能替代第三者。</p></div>
+</section>
+
+<section>
+  <h2>8. 具体不变量检查关系，不复述实现</h2>
+  <p>Session companion 为每个 Session 保存 <code>lastSeq/openTurn/openStep/nextTurn/nextStep/pendingCalls</code> trace。候选 core-execution event 必须保持 seq 单调及各自要求的 Turn/Step enclosure。Append-mode tool result 必须引用同一 Step 内先前的 call，synthetic <code>TOOL_NOT_STARTED</code> result 除外；Step 结束时会清除尚未匹配的 pending call。Merge-extensible event 的关系则留给其 owner，而不是由 Session 猜测。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/session/src/invariant.ts#L22-L165" title="Session 预提交规则: 要求 precommit 保持纯净、core execution event 的阶段合法，并验证 append-mode tool result 的 prior-call 关系及 TOOL_NOT_STARTED exception。" aria-label="证据 TINV-SESSION-RULES">TINV-SESSION-RULES</a></p>
+  <p>更关键的是 mutation timing：<code>internal/dispatch</code> 上只做纯验证并暂存 transition；只有 <code>session/event</code> 真正发布后才提交 trace。若后续 pre-commit listener veto，暂存 transition 被放弃，不会让诊断状态超前于真实日志；companion reload 时则从现有 durable events 重建基线。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/session/src/invariant.ts#L189-L242" title="Session 提交后守卫: 从现有 durable events seed 验证基线，并且只在 session/event 成功发布后应用预先 staged 的 transition。" aria-label="证据 TINV-SESSION-COMMIT">TINV-SESSION-COMMIT</a></p>
+  <p>Agent-loop companion 在 <code>llm/stream</code> 最前端检查 loop-built request：请求和 messages 必须冻结、session id 必须指向 live Session，messages 必须等于 durable log 的即时派生，model/system/temperature/maxTokens/stop/tools 必须等于折叠后的 request header。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/invariant.ts#L18-L55" title="Agent-loop 请求不变量: 把即将发送的冻结请求、消息和头部与 Session durable log 派生的预期输入逐项比较。" aria-label="证据 TINV-LOOP-REQUEST">TINV-LOOP-REQUEST</a>这类断言正是 runtime invariant 的独特价值：每个对象单独看都合法，只有把“将发送的请求”与“已提交的日志事实”比较才能发现组合失同步。</p>
+</section>
+
+<section>
+  <h2>9. 配置闭包：在 Loader 启动前证明两张可达图</h2>
+  <p><code>verify-runtime-closure</code> 从 executable deploy manifest 的 workspace dependencies 做 BFS，沿普通和 optional dependencies 扩展，并要求遍历到的每个非 optional workspace peer 都由根 runtime manifest 显式供应；失败信息保留从 runtime 到缺失 peer 的完整链。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/scripts/verify-runtime-closure.ts#L24-L73" title="运行时依赖闭包: 从部署 manifest 的根开始遍历可达的 workspace 普通与 optional dependencies，并拒绝根 manifest 未显式供应的必需 workspace peer。" aria-label="证据 TINV-RUNTIME-CLOSURE">TINV-RUNTIME-CLOSURE</a></p>
+  <p><code>verify-cordis-config</code> 扫描所有 Loader YAML，递归验证 entries/patches，并把 example、app 与 bundle 中出现的插件说明符反查到各自 manifest dependency。对本地包，它还要求 source launch 经 <code>tsconfig.base.json</code> paths 解析到 <code>.ts/.tsx</code>，阻止一个已有旧 <code>lib/</code> 的开发机掩盖 clean checkout 缺映射的问题。运行时字符串选择的 directory-picker backends 也被显式加入闭包。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/scripts/verify-cordis-config.ts#L72-L364" title="Cordis 配置闭包: 扫描 Loader YAML，递归遍历 entries、insert 与 include patches，并校验 example/app/bundle dependency、source-plane 映射和字符串选择的 backend 闭包。" aria-label="证据 TINV-CONFIG-CLOSURE">TINV-CONFIG-CLOSURE</a></p>
+  <p>配置 AST 还有语义边界：只有 Loader 真正插值的 <code>config</code> 与 entry-level <code>disabled</code> 可以动态；<code>id/name/group/inject/intercept/isolate</code> 中的 <code>!!js</code> 会成为 truthy data 而非表达式，因此门禁拒绝它们，并预解析 <code>disabled</code> 语法。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/scripts/verify-cordis-config.ts#L1-L471" title="动态配置元数据校验: 拒绝不会被 Loader 插值的 metadata 字段中的 !!js，并对允许的 entry-level disabled 表达式做只解析语法校验。" aria-label="证据 TINV-CONFIG-METADATA">TINV-CONFIG-METADATA</a></p>
+  <aside class="caveat"><strong>边界：</strong>闭包证明“引用可解析、必需 provider 在图中、静态 metadata 没有伪动态值”，不证明这些插件激活后会产生正确业务结果；后者仍由启动测试、snapshot 与 invariant 负责。</aside>
+</section>
+
+<section>
+  <h2>10. 生成文档不是手工副本，而是可重算的源码投影</h2>
+  <p><code>doc-sync</code> 不是一个 Markdown linter：它并行组合 code-fence typecheck、Cordis/client/tool/config/persistence catalogs、文档图、scoped events、链接、source ownership、type equivalence、翻译配对、站点投影与文档站生产构建。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/scripts/run-gates.ts#L571-L615" title="文档同步聚合门禁: 把多项源码投影、目录、示例、类型和生成文档检查组合为 doc-sync 叶子门禁。" aria-label="证据 TINV-DOC-SYNC">TINV-DOC-SYNC</a></p>
+  <p>Config catalog 会从 package entry、config type、JSDoc 与静态 Schemastery schema 重建目录；每个包必须分类，类型引用必须无冲突，并且可枚举的 schema path 必须能在声明类型中定位。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/scripts/gen-config-catalog.ts#L1-L7" title="配置目录生成契约: 声明目录从入口、配置类型、JSDoc 与静态 schema 生成，并要求 schema 路径存在于声明类型。" aria-label="证据 TINV-CONFIG-CATALOG">TINV-CONFIG-CATALOG</a>交叉 schema 会先递归合并 key，再检查缺失成员；<code>--check</code> 逐字节比较计算结果与已提交文档。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/scripts/gen-config-catalog.ts#L719-L875" title="配置目录路径与新鲜度检查: 折叠组合 schema、逐路径核对配置类型、确定性渲染，并在 --check 下逐字节验证已提交目录。" aria-label="证据 TINV-CONFIG-CATALOG-CHECK">TINV-CONFIG-CATALOG-CHECK</a></p>
+  <p>Cordis catalog 则扫描 Context merges 与 Events members，要求每个 service/event scope 能映射到页面、exemption 不陈旧、双语页面都有生成区标记，再把完整输出与已提交文件比较。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/scripts/gen-cordis-catalog.ts#L701-L918" title="Cordis API 投影与新鲜度: 从发现的 service/event 生成运行时 API 与双语文档区域，执行分区闭包，并逐输出检查提交内容。" aria-label="证据 TINV-CORDIS-CATALOG">TINV-CORDIS-CATALOG</a><code>verify-type-equiv</code> 会先把 byte-identical 的 paired-language copy 分为 derivatives，再要求每个 primary <code>ts type-equiv</code>/<code>ts public-api</code> block 与 manifest 一一对应，并把 primary block 与 source structure/JSDoc 比较。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/scripts/verify-type-equiv.ts#L199-L300" title="文档类型等价检查: 扫描全部文档块，把 paired-language copy 分为 derivatives，并要求 primary block 与 manifest 一一对应、与源码声明结构和 JSDoc 一致。" aria-label="证据 TINV-TYPE-EQUIV">TINV-TYPE-EQUIV</a></p>
+  <div class="claim assessment"><div class="claim-label">实际效果</div><p>公开契约的机械部分与源码共用一个事实来源；生成器会发现“新服务没有文档归属”和“schema 接受了类型目录没有展示的 key”这类普通拼写检查看不到的漂移。自然语言解释仍需评审，因此 freshness 不是完整的文档真实性证明。</p></div>
+</section>
+
+<section>
+  <h2>11. 平台矩阵不是复制同一套命令，而是分配不同证据责任</h2>
+  <p>Linux PR workflow 把 Node 24 static、coverage 与 consumer 分成独立 jobs。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/.github/workflows/ci.yml#L63-L257" title="Linux 静态、覆盖与消费者门禁: 定义 Linux 上相互独立的静态检查、覆盖率与消费方验证作业及其依赖。" aria-label="证据 TINV-CI-LINUX">TINV-CI-LINUX</a>Consumer gate graph 拥有 build、package-consumption checks、assembled snapshots、browser snapshot 与 built-bin smoke。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/scripts/run-gates.ts#L374-L419" title="Consumer job 的实际 gate 闭包: Consumer graph 组装 build、publint、built companion、snapshot、browser snapshot、docs typecheck、Node-next types 与 built-bin smoke，并编码依赖顺序。" aria-label="证据 TINV-CI-CONSUMERS">TINV-CI-CONSUMERS</a>另一个矩阵在 Node 22.19 与 26 上运行 compatibility contracts，避免主版本的绿色掩盖支持边界。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/.github/workflows/ci.yml#L260-L296" title="Node 版本矩阵: 在 Node 22.19 与 26 的独立 matrix jobs 中安装依赖并运行同一个 check:node-compat compatibility-smoke 命令。" aria-label="证据 TINV-NODE-MATRIX">TINV-NODE-MATRIX</a></p>
+  <p>Windows 有两条不同信号：必需的 Wine workflow job 委托 runner provision checksum-verified Windows Node，确认它报告 <code>win32 x64</code>，并且只运行 workspace build 与文档站 production build 两个 surface。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/.github/workflows/ci.yml#L328-L489" title="Wine 与原生 Windows 作业: 分别定义必需的 Wine build/site 信号和使用真实 Windows kernel 的完整但非阻塞作业。" aria-label="证据 TINV-WINDOWS">TINV-WINDOWS</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/scripts/wine-windows-gates.sh#L31-L282" title="Wine Windows runner 的实质检查: Runner 校验 Windows Node archive checksum 和 win32 x64 身份，并并行执行 Host/Client build 与 VitePress production-site build 两个 blocking surface。" aria-label="证据 TINV-WINE-RUNNER">TINV-WINE-RUNNER</a>真实 Windows kernel 的 <code>windows-native</code> 跑 complete inventory，但结果独立且不进入 required verdict。最终 <code>all checks passed</code> 使用 <code>if: always()</code> 聚合列明的 blocking jobs，并把 failed、cancelled、skipped 都视为失败；native Windows 明确不在 <code>needs</code> 中。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/.github/workflows/ci.yml#L904-L935" title="必需结果汇总: 列出 required job，排除原生 Windows，并把跳过、取消或失败都判为总门禁失败。" aria-label="证据 TINV-REQUIRED-VERDICT">TINV-REQUIRED-VERDICT</a></p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>信号</th><th>拥有的结论</th><th>不拥有的结论</th></tr></thead>
+    <tbody>
+      <tr><td>Linux Node 24</td><td>主静态、覆盖率、组装 snapshot 与产物消费</td><td>Windows kernel 行为</td></tr>
+      <tr><td>Node 22.19 / 26</td><td>显式 compatibility smokes</td><td>完整主 gate inventory</td></tr>
+      <tr><td>Wine Windows</td><td>必需的 win32 build/site 可执行性</td><td>真实 kernel、ACL、native process 语义</td></tr>
+      <tr><td>Native Windows</td><td>真实 kernel 上的完整观察性 inventory</td><td>当前 branch protection verdict</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>12. 绿色结果的精确含义与剩余盲区</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>可以得出的结论</th><th>不能外推的结论</th></tr></thead>
+    <tbody>
+      <tr><td>排除 file exclusions 与 inline ignores 后，被 coverage 计量的每个文件四项指标均为 100%</td><td>显式排除面、child-process instrumentation 与所有平台路径也被覆盖</td></tr>
+      <tr><td>已记录场景的 wire/log 归一化后稳定</td><td>真实模型质量、未记录调用交错、OS confinement</td></tr>
+      <tr><td>已装载 companion 能在运行中拒绝已编码的关系违规</td><td>未装 companion 的 custom composition 自动获得同样保护</td></tr>
+      <tr><td>当前 runtime/config 引用闭合</td><td>外部系统、凭据、网络和业务行为都可用</td></tr>
+      <tr><td>机械生成区和类型粘贴与源码一致</td><td>所有手写 prose 的因果解释都准确</td></tr>
+      <tr><td>required jobs 同时成功</td><td>observational lane 或独立 workflow 也属于同一 blocking verdict</td></tr>
+    </tbody>
+  </table></div>
+  <p>最重要的工程纪律不是继续增加一个更大的“总测试”标签，而是在改动计划里先写出需要哪一种反例：局部分支、真实 Loader 组合、durable transcript、跨事件关系、部署闭包、生成契约还是特定 kernel。只有这样，新增测试才会落在能让真实回归变红的层级。</p>
+</section>
+
+<section>
+  <h2>13. 本章验证范围</h2>
+  <p>所有仓库事实固定在 commit <code>47f943859bef60e4160492346772ded9b24f765a</code>。本次没有运行全量 build、全量 coverage、全量 snapshot、浏览器 suite、真实 API、Windows/Wine、性能或压力测试。</p>
+  <p>第一组聚焦 Vitest 覆盖 coverage-exempt roster、全量 companion topology、registry 生命周期、Session invariant、LLM replay、snapshot harness/normalizer 与 Cordis config helpers：9 个测试文件、256 个用例全部通过。代表性断言包括全量 companion 经 Loader 注册、registry 失败归属和原子回滚、Session veto 不推进 trace，以及 positional replay 的 throw/hang/exhaustion/underrun 失败语义。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/scripts/test-invariants.spec.ts#L97-L152" title="不变量拓扑回归测试: 把全部 companion 经真实 Loader unwrap 后注册，并断言 package reservation 与按测试路径选择的 companion 一致。" aria-label="证据 TINV-INVARIANT-TOPOLOGY-TEST">TINV-INVARIANT-TOPOLOGY-TEST</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/runtime-diagnostics/invariants/tests/service.spec.ts#L189-L302" title="注册表生命周期测试: 覆盖包归属错误、child fiber 释放、重复名和启动失败时的原子回滚。" aria-label="证据 TINV-REGISTRY-TEST">TINV-REGISTRY-TEST</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/session/tests/invariant.spec.ts#L34-L116" title="Session 不变量回归测试: 验证成功提交推进轨迹，而被 veto 的发布不推进或污染后续期望。" aria-label="证据 TINV-SESSION-TEST">TINV-SESSION-TEST</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/test-support/llm-replay/tests/llm-replay.spec.ts#L671-L917" title="位置回放失败语义测试: 覆盖 positional order、throw、hang、脚本耗尽、abort 与调用不足的失败语义。" aria-label="证据 TINV-REPLAY-TEST">TINV-REPLAY-TEST</a></p>
+  <pre><code>pnpm exec vitest run \
+  scripts/coverage-exempt.spec.ts \
+  scripts/test-invariants.spec.ts \
+  packages/runtime-diagnostics/invariants/tests/service.spec.ts \
+  packages/core/session/tests/invariant.spec.ts \
+  packages/test-support/llm-replay/tests/llm-replay.spec.ts \
+  packages/test-support/acp-snapshot/tests/harness.spec.ts \
+  packages/test-support/acp-snapshot/tests/normalize.spec.ts \
+  scripts/cordis-config-files.spec.ts \
+  scripts/verify-cordis-config.spec.ts
+
+Test Files  9 passed (9)
+Tests      256 passed (256)
+Duration   22.17s</code></pre>
+  <p>第二组运行时两个环境变量均未设置，使用 replay/source 默认值；下面的复现命令会显式固定二者。该组以 snapshot config 只读运行 canonical session-fixture layout 与 translation prompt snapshot：2 个文件、2 个用例通过。布局守卫会扫描所有 session-format JSONL 并拒绝非 canonical packed representation。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/scripts/session-fixture-layout.snapshot.ts#L1-L16" title="会话 fixture 布局守卫: 扫描快照会话 JSONL，并拒绝非规范的 packed 事件表示。" aria-label="证据 TINV-FIXTURE-LAYOUT-TEST">TINV-FIXTURE-LAYOUT-TEST</a></p>
+  <pre><code>DSH_SNAPSHOT=replay DSH_EXAMPLE_MODE=src \
+pnpm exec vitest run --config vitest.snapshot.config.ts \
+  scripts/session-fixture-layout.snapshot.ts \
+  scripts/translation-prompt.snapshot.ts
+
+Test Files  2 passed (2)
+Tests      2 passed (2)
+Duration   1.98s</code></pre>
+  <p>第三组同样在两个环境变量未设置时使用 replay/source 默认值；下面的复现命令会显式固定二者。该组只选择 ACP <code>handshake</code> 场景，真实 source-mode 组装进程通过：1 个用例运行并通过，85 个同文件用例因 <code>-t handshake</code> 过滤而跳过；这不是全量 ACP snapshot 结果。</p>
+  <pre><code>DSH_SNAPSHOT=replay DSH_EXAMPLE_MODE=src \
+pnpm exec vitest run --config vitest.snapshot.config.ts \
+  examples/acp-agent/tests/acp.snapshot.ts -t handshake
+
+Test Files  1 passed (1)
+Tests      1 passed | 85 skipped (86)
+Duration   14.70s</code></pre>
+  <p>最后运行六项只读结构门禁，均以退出码 0 完成：<code>verify-package-invariants</code> 报告 219 个 hand-owned companions；<code>verify-runtime-closure</code> 报告 109 个 workspace packages；<code>verify-cordis-config</code> 报告 120 个 config files；config catalog 已是最新；Cordis catalog 的 93 个 generated files/regions 已是最新；<code>verify-type-equiv</code> 报告 384 个 blocks 与源码/JSDoc 一致，并识别 384 个 paired derivatives。Cordis metadata 的聚焦测试也覆盖了允许的 <code>disabled</code> 表达式与三类拒绝路径。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/scripts/verify-cordis-config.spec.ts#L1-L38" title="Cordis 元数据聚焦测试: 验证允许的 entry-level disabled 表达式，并覆盖静态 metadata 中 !!js、disabled 下嵌套 !!js 及 disabled 语法错误三类拒绝路径。" aria-label="证据 TINV-CONFIG-TEST">TINV-CONFIG-TEST</a></p>
+  <pre><code>pnpm run verify-package-invariants
+pnpm run verify-runtime-closure
+pnpm run verify-cordis-config
+pnpm run verify-config-catalog
+pnpm run verify-cordis-catalog
+pnpm run verify-type-equiv</code></pre>
+</section>
+<section class="learning-notes" aria-labelledby="learning-notes-title"><h2 id="learning-notes-title">我的学习体会</h2>
     <p class="privacy">内容仅自动保存到当前浏览器，不上传、不进入仓库。你可以导出 Markdown 自行归档。</p><textarea data-learning-notes aria-label="我的学习体会" placeholder="记录你的理解、疑问、反例和可迁移原则……"></textarea>
     <div class="note-footer"><span data-note-saved>本地草稿</span><button type="button" data-note-export>导出 Markdown</button>
     <button type="button" class="danger" data-note-clear>清空</button><span data-note-count>0 字符</span></div></section><nav class="pagination" aria-label="章节翻页"><a href="../pages/security-trust.html"><small>← 上一章 · 31</small><strong>安全模型与信任边界</strong></a><a class="next" href="../pages/tradeoffs.html"><small>下一章 · 33 →</small><strong>优势、代价与设计取舍</strong></a></nav></article>

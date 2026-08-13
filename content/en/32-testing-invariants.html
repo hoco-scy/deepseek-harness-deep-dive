@@ -1,0 +1,184 @@
+<section>
+  <h2>Conclusion: correctness is not proved by one green run, but by evidence layers that cannot replace one another</h2>
+  <div class="thesis"><p>DeepSeek Harness decomposes correctness after plugin composition into six falsifiable claims: per-file coverage proves that coverage-measured, non-inline-ignored statement and branch paths executed; keyless snapshots prove that real assembled entry paths can replay and reproduce external transcripts and durable logs; runtime invariants check cross-event and cross-service relationships while the system is live; configuration closure proves plugin specifiers and peer dependencies are reachable before startup; generated-document gates recompute public contracts from source; and the platform matrix keeps Node-version, Linux, Wine, and real Windows-kernel signals distinct.</p></div>
+  <p>This is not a weak-to-strong pipeline whose final aggregate score supersedes the earlier tiers. The repository's own testing policy states that line coverage proves execution, not that the shipped feature works; snapshots, real entry paths, platform-specific checks, and runtime invariants therefore own different counterexample spaces.<evidence id="TINV-POLICY"></evidence></p>
+</section>
+
+<section>
+  <h2>1. The evidence stack: each layer answers a different question</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Layer</th><th>What a failure means</th><th>What it cannot prove alone</th></tr></thead>
+    <tbody>
+      <tr><td>Unit + per-file coverage</td><td>A coverage-measured, non-inline-ignored statement or branch path did not execute, or an assertion observed a local contract regression</td><td>Loader, published artifacts, and the complete composition work</td></tr>
+      <tr><td>Keyless snapshots</td><td>A real process entry changed protocol output or a re-persisted log</td><td>Live-model quality or every unrecorded call order</td></tr>
+      <tr><td>Runtime invariants</td><td>A live composition produced state that violates a cross-event relationship</td><td>A deployment that did not mount the companion is protected</td></tr>
+      <tr><td>Configuration closure</td><td>A YAML plugin, source-plane mapping, or deployment peer is unreachable</td><td>Business semantics are correct after plugin startup</td></tr>
+      <tr><td>Generated-document checks</td><td>A public catalog, pasted type, or source projection is stale</td><td>Every natural-language explanation is correct</td></tr>
+      <tr><td>Platform / version matrix</td><td>A runtime- or kernel-specific entry path does not hold</td><td>Unlisted platforms and external environments</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">Core assessment</div><p>“Composition still satisfies its semantics” is not observable through one metric. The effective design keeps every green result narrow, then uses the CI dependency graph to require the mandatory results together.</p></div>
+</section>
+
+<section>
+  <h2>2. Per-file 100%: large files cannot subsidize small ones</h2>
+  <p>The V8 coverage include surface is <code>packages/*/*/src/**/*.{ts,tsx}</code>, not the whole repository. Examples and vendor code lie outside that include glob; within it, type-only files, self-executing bins and workers, and an explicit set of GUI or composition debt are excluded.<evidence id="TINV-COVERAGE-SCOPE"></evidence>After file exclusions and source inline ignores take effect, statements, branches, functions, and lines must each reach 100% for every included file that remains measured.<evidence id="TINV-COVERAGE-BAR"></evidence></p>
+  <pre><code>included production file
+        │
+        ├── statements 100%
+        ├── branches   100%
+        ├── functions  100%
+        └── lines      100%
+
+aggregate average cannot compensate for one file</code></pre>
+  <p>This matters in a composition-heavy repository: a new small companion or adapter cannot disappear behind strong coverage in another large file. But the precise reading is “100% per file within the measured set after file exclusions and inline ignores,” not “100% of all production paths in the repository,” and certainly not “100% of semantics.”</p>
+</section>
+
+<section>
+  <h2>3. Exemption does not delete a test: instrumentation and correctness become parallel gates</h2>
+  <p>Compiler-analysis and real-subprocess fixtures may be excluded from the instrumented run, but the same coverage aggregate runs those suites beside it under plain Vitest. The admission rule says that every coverage-measured file they execute must already be fully covered by other suites.<evidence id="TINV-COVERAGE-EXEMPT"></evidence>A mechanical test further requires each CLI filter and exclude glob to select the same non-empty file set and forbids overlapping roster entries.<evidence id="TINV-COVERAGE-EXEMPT-TEST"></evidence></p>
+  <aside class="caveat"><strong>Boundary:</strong> the roster test proves that no suite vanishes because its filter and glob drifted; it does not dynamically prove that the suite contributes no new threshold coverage. That premise still requires maintainer review.</aside>
+  <p>Platform conditions also change the effective include surface: Windows excludes suites that require a POSIX shell, every non-Windows host excludes ACL source that executes only on Windows, and hosts without real <code>pwsh</code> exempt the related source in step with suites that self-skip.<evidence id="TINV-PLATFORM-COVERAGE"></evidence>A coverage report therefore has to be interpreted with its platform and tool availability; one machine's 100% cannot be generalized to execution of every platform path.</p>
+</section>
+
+<section>
+  <h2>4. Keyless snapshots replace the nondeterministic model boundary with committed scripts</h2>
+  <p><code>replay</code> is the default mode: it does not load <code>.env</code>, starts real subprocess paths from committed model responses, and compares assembled requests, normalized protocol or transcript output, and durable logs. Only <code>record</code> reads credentials and calls the real API; <code>refresh</code> remains keyless and uses existing scripts to rewrite current expected outputs. Snapshot files run concurrently only in replay when the configured bound permits it; record and refresh files remain serial to avoid quota contention or concurrent corruption of goldens.<evidence id="TINV-SNAPSHOT-MODE"></evidence> Inside the ACP suite, scenario tests likewise use a concurrent suite only in replay.<evidence id="TINV-SNAPSHOT-SCENARIO-MODE"></evidence></p>
+  <p>The CI snapshot gate depends on a build and sets <code>DSH_EXAMPLE_MODE=lib</code>: example and package snapshots start built artifacts under plain Node, while script snapshots run their real source entry paths.<evidence id="TINV-SNAPSHOT-GATE"></evidence>This preserves independent evidence between “source tests pass” and “the published shape loads.”</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Mode</th><th>Model source</th><th>Writes fixtures</th><th>Primary purpose</th></tr></thead>
+    <tbody>
+      <tr><td><code>replay</code></td><td>Committed JSONL / override</td><td>No</td><td>Default CI and deterministic regression</td></tr>
+      <tr><td><code>record</code></td><td>Real API</td><td>Yes</td><td>Recapture when the model transcript changes</td></tr>
+      <tr><td><code>refresh</code></td><td>Committed JSONL / override</td><td>Yes</td><td>Refresh downstream output when replay input remains valid</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>5. Replay derives calls from the durable log and compares both wire and log</h2>
+  <p><code>deriveReplayScript()</code> splits model calls at terminating <code>finish</code> chunks in <code>assistant/chunk</code> events; if turn or step changes before the previous call terminates, it fails loudly. A compaction summary explicitly marked as a local LLM call reconstructs blocks, usage, and a terminal chunk at its log position. Throws and hangs cannot be losslessly derived from an ordinary log alone and require an override.<evidence id="TINV-REPLAY-DERIVE"></evidence></p>
+  <pre><code>recorded session JSONL
+        │
+        ├── assistant/chunk + finish ──► positional replay entries
+        ├── marked compaction summary ─► reconstructed local call
+        └── throw / hang gap ──────────► explicit override required
+                                             │
+real assembled subprocess ◄─────────────────┘
+        │
+        ├── normalized stdout vs committed wire snapshot
+        └── normalized harvested JSONL vs committed session fixtures</code></pre>
+  <p>For each scenario not skipped by the current mode, platform, or PowerShell availability, the ACP suite runs the real assembled entry, first rejects acceptance of <code>UNKNOWN_TOOL</code> as successful behavior, then normalizes session IDs, cwd, and other volatile values. It finally performs per-file stdout matching and one-to-one normalized comparison of harvested parent and child logs with fixtures; mode explicitly controls record and refresh writes.<evidence id="TINV-SNAPSHOT-COMPARE"></evidence>The scenario directories also have closure guards: orphan directories, missing input/stdout/session files, incorrect override presence, or wrong header-sidecar ownership fail.<evidence id="TINV-SNAPSHOT-FIXTURES"></evidence></p>
+  <aside class="caveat"><strong>Boundary:</strong> replay is a positional contract. It is strong at detecting drift in call count, order, external presentation, and durable structure, but it does not explore new call interleavings absent from the fixture or prove that a live model would produce the same content today.</aside>
+</section>
+
+<section>
+  <h2>6. The runtime invariant registry centralizes attribution and lifecycle, while owners retain rules</h2>
+  <p><code>InvariantRegistry</code> provides global enablement plus package allowlists and blocklists. Even when a filter disables an installer, its package name remains reserved, preventing two companions from silently claiming one owner. An enabled installer runs in a dedicated child fiber and receives <code>fail()</code> bound to its package name; a failure throws an error with stable <code>INVARIANT</code> code and <code>packageName</code>. Startup failure disposes the child and releases the reservation, while the normal disposer completes child teardown before release.<evidence id="TINV-REGISTRY"></evidence></p>
+  <p>The registry imports no product packages and does not centralize a giant rule table. The repository convention asks each package's <code>./invariant</code> companion to check event or mutable-data relationships that package owns, while type existence, method presence, and fixed pure-function results remain type, load, or unit-test concerns. The gate can verify the registered npm owner and the presence of a no-runtime-rule marker; whether a rule is semantically owned by that package and whether an explanation is adequate still require review.</p>
+</section>
+
+<section>
+  <h2>7. “Every package has a companion” is proved separately by a source gate, test topology, and artifact consumption</h2>
+  <p>The source gate scans every <code>packages/*/*/package.json</code>, checking the <code>./invariant</code> export, published files, peer and development dependencies, and TypeScript references. It then parses each companion AST, requiring registration of exactly its own npm name, named <code>name/inject/apply</code> exports, no default export, and actual use of the failure reporter by a non-empty installer. An empty installer must contain the <code>No runtime invariant:</code> marker; the gate does not judge the explanation's specificity or quality.<evidence id="TINV-COMPANION-GATE"></evidence></p>
+  <p>An ordinary Vitest root first mounts an enabled registry, then selects only the current package's companion from the test path, and uses a readiness dependency to prevent the target plugin from starting early.<evidence id="TINV-TEST-HOST"></evidence> A dedicated topology test mounts every companion, passes each through real Loader <code>unwrapExports</code>, and verifies that every package name is reserved.<evidence id="TINV-INVARIANT-TOPOLOGY-TEST"></evidence></p>
+  <div class="claim fact"><div class="claim-label">Three distinct questions</div><p>The source gate asks whether declarations are complete; the exhaustive topology asks whether every source companion can really load and register; the built-package gate and lib-mode snapshots ask whether compiled publication shapes remain consumable by plain Node. The built-package gate stages the manifest-declared <code>lib</code> view, imports each companion through its package export with plain Node, and verifies that Loader does not collapse the namespace.<evidence id="TINV-BUILT-COMPANIONS"></evidence> The first two cannot replace the third.</p></div>
+</section>
+
+<section>
+  <h2>8. Concrete invariants check relationships instead of restating implementation</h2>
+  <p>The Session companion keeps a <code>lastSeq/openTurn/openStep/nextTurn/nextStep/pendingCalls</code> trace for each Session. Candidate core-execution events must preserve monotonic sequence numbers and their required Turn/Step enclosure. An append-mode tool result must cite a prior call in the same Step unless it is the synthetic <code>TOOL_NOT_STARTED</code> result; ending the Step clears any unmatched pending calls. Relationships for merge-extensible events remain with their owners rather than being guessed by Session.<evidence id="TINV-SESSION-RULES"></evidence></p>
+  <p>The mutation timing is more important: <code>internal/dispatch</code> performs pure validation and stages a transition, while the trace commits only after <code>session/event</code> is actually published. If a later pre-commit listener vetoes, the staged transition is abandoned and diagnostic state never advances ahead of the real log; on companion reload, the baseline is rebuilt from existing durable events.<evidence id="TINV-SESSION-COMMIT"></evidence></p>
+  <p>The Agent-loop companion checks loop-built requests at the front of <code>llm/stream</code>: request and messages must be frozen, the session ID must identify a live Session, messages must equal the immediate durable-log derivation, and model/system/temperature/maxTokens/stop/tools must equal the folded request header.<evidence id="TINV-LOOP-REQUEST"></evidence>This is the distinctive value of a runtime invariant: each object can be locally valid, while only comparison of the outgoing request with committed log facts exposes composition desynchronization.</p>
+</section>
+
+<section>
+  <h2>9. Configuration closure proves two reachability graphs before Loader startup</h2>
+  <p><code>verify-runtime-closure</code> performs BFS from workspace dependencies in the executable deploy manifest, expanding ordinary and optional dependencies, and requires every encountered non-optional workspace peer to be supplied explicitly by the root runtime manifest. Failure output retains the full chain from runtime to missing peer.<evidence id="TINV-RUNTIME-CLOSURE"></evidence></p>
+  <p><code>verify-cordis-config</code> scans all Loader YAML, recursively validates entries and patches, and resolves plugin specifiers from examples, apps, and bundles back to the appropriate manifest dependencies. For local packages it also requires source launch to resolve through <code>tsconfig.base.json</code> paths to <code>.ts/.tsx</code>, preventing a development machine with stale <code>lib/</code> from masking a missing mapping in a clean checkout. Directory-picker backends selected by runtime strings are added to the closure explicitly.<evidence id="TINV-CONFIG-CLOSURE"></evidence></p>
+  <p>The configuration AST has a semantic boundary too: only fields the Loader really interpolates, <code>config</code> and entry-level <code>disabled</code>, may be dynamic. A <code>!!js</code> value in <code>id/name/group/inject/intercept/isolate</code> becomes truthy data rather than an expression, so the gate rejects it and pre-parses <code>disabled</code> syntax.<evidence id="TINV-CONFIG-METADATA"></evidence></p>
+  <aside class="caveat"><strong>Boundary:</strong> closure proves that references resolve, required providers are in the graph, and static metadata contains no fake dynamic values. It does not prove correct business behavior after activation; startup tests, snapshots, and invariants retain that responsibility.</aside>
+</section>
+
+<section>
+  <h2>10. Generated documents are recomputable source projections, not hand-maintained copies</h2>
+  <p><code>doc-sync</code> is not one Markdown linter. It composes code-fence typechecking, Cordis/client/tool/config/persistence catalogs, document graphs, scoped events, links, source ownership, type equivalence, translation pairing, site projection, and a documentation-site production build.<evidence id="TINV-DOC-SYNC"></evidence></p>
+  <p>The config catalog rebuilds from package entries, config types, JSDoc, and static Schemastery schemas. Every package must classify, type references must be collision-free, and every enumerable schema path must be locatable in the declared type.<evidence id="TINV-CONFIG-CATALOG"></evidence>It first folds keys from intersected schemas recursively, then rejects missing members; <code>--check</code> compares the computed result byte-for-byte with the committed document.<evidence id="TINV-CONFIG-CATALOG-CHECK"></evidence></p>
+  <p>The Cordis catalog scans Context merges and Events members, requires every service or event scope to map to a page, rejects stale exemptions, requires generated-region markers on both language pages, and compares complete outputs with committed files.<evidence id="TINV-CORDIS-CATALOG"></evidence><code>verify-type-equiv</code> separately partitions byte-identical paired-language copies as derivatives, then requires one-to-one correspondence between every primary <code>ts type-equiv</code> or <code>ts public-api</code> block and its manifest entry and compares that primary block with source structure and JSDoc.<evidence id="TINV-TYPE-EQUIV"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Practical effect</div><p>The mechanical part of the public contract shares a source of truth with code. Generators can detect drift such as a new service with no documentation owner or a schema-accepted key hidden from the type catalog, which ordinary spelling checks cannot see. Natural-language explanation still requires review, so freshness is not a complete proof of documentary truth.</p></div>
+</section>
+
+<section>
+  <h2>11. The platform matrix assigns different evidence responsibilities instead of copying one command</h2>
+  <p>The Linux pull-request workflow separates Node 24 static, coverage, and consumer jobs.<evidence id="TINV-CI-LINUX"></evidence>The consumer gate graph owns the build, package-consumption checks, assembled snapshots, a browser snapshot, and built-bin smoke.<evidence id="TINV-CI-CONSUMERS"></evidence>A separate matrix runs compatibility contracts on Node 22.19 and 26 so the primary version's green result cannot hide support-boundary regressions.<evidence id="TINV-NODE-MATRIX"></evidence></p>
+  <p>Windows has two distinct signals. The required Wine workflow job delegates to a runner that provisions checksum-verified Windows Node, checks that it reports <code>win32 x64</code>, and runs only workspace build and documentation-site production build surfaces.<evidence id="TINV-WINDOWS"></evidence><evidence id="TINV-WINE-RUNNER"></evidence> <code>windows-native</code> runs the complete inventory on a real Windows kernel, but reports independently and does not enter the required verdict. The final <code>all checks passed</code> job uses <code>if: always()</code> to aggregate named blocking jobs and treats failed, cancelled, and skipped as failure; native Windows is explicitly absent from <code>needs</code>.<evidence id="TINV-REQUIRED-VERDICT"></evidence></p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Signal</th><th>Conclusion it owns</th><th>Conclusion it does not own</th></tr></thead>
+    <tbody>
+      <tr><td>Linux Node 24</td><td>Primary static, coverage, assembled snapshot, and artifact consumption</td><td>Windows-kernel behavior</td></tr>
+      <tr><td>Node 22.19 / 26</td><td>Explicit compatibility smokes</td><td>The complete primary gate inventory</td></tr>
+      <tr><td>Wine Windows</td><td>Required win32 build and site executability</td><td>Real kernel, ACL, and native-process semantics</td></tr>
+      <tr><td>Native Windows</td><td>Complete observational inventory on a real kernel</td><td>The current branch-protection verdict</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>12. The exact meaning of green and the remaining blind spots</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Conclusion supported</th><th>Conclusion that cannot be extrapolated</th></tr></thead>
+    <tbody>
+      <tr><td>After file exclusions and inline ignores, every coverage-measured file reaches 100% on all four metrics</td><td>Explicit exclusions, child-process instrumentation, and every platform path are covered too</td></tr>
+      <tr><td>Recorded scenarios have stable normalized wire and log output</td><td>Live-model quality, unrecorded call interleavings, or OS confinement</td></tr>
+      <tr><td>Mounted companions reject encoded relational violations at runtime</td><td>A custom composition without those companions receives the same protection automatically</td></tr>
+      <tr><td>Current runtime and configuration references are closed</td><td>External systems, credentials, networking, and business behavior are available</td></tr>
+      <tr><td>Mechanical generated regions and pasted types match source</td><td>Every causal explanation in hand-written prose is accurate</td></tr>
+      <tr><td>Required jobs succeeded together</td><td>Observational lanes or independent workflows belong to the same blocking verdict</td></tr>
+    </tbody>
+  </table></div>
+  <p>The essential engineering discipline is not to add a larger “total test” label, but to name the needed counterexample during planning: local branch, real Loader composition, durable transcript, cross-event relationship, deployment closure, generated contract, or specific kernel. Only then does a new test land in the tier that would actually turn red for the real regression.</p>
+</section>
+
+<section>
+  <h2>13. Verification scope for this chapter</h2>
+  <p>All repository facts are pinned to commit <code>47f943859bef60e4160492346772ded9b24f765a</code>. This work did not run the full build, full coverage, full snapshot suite, browser suite, real-API tests, Windows or Wine checks, performance tests, or stress tests.</p>
+  <p>The first focused Vitest run covered the coverage-exempt roster, exhaustive companion topology, registry lifecycle, Session invariants, LLM replay, snapshot harness and normalizer, and Cordis config helpers. All 256 tests in 9 files passed. Representative assertions cover all companions registering through Loader, registry attribution and atomic rollback, a Session veto not advancing the trace, and positional replay failure semantics for throw, hang, exhaustion, and underrun.<evidence id="TINV-INVARIANT-TOPOLOGY-TEST"></evidence><evidence id="TINV-REGISTRY-TEST"></evidence><evidence id="TINV-SESSION-TEST"></evidence><evidence id="TINV-REPLAY-TEST"></evidence></p>
+  <pre><code>pnpm exec vitest run \
+  scripts/coverage-exempt.spec.ts \
+  scripts/test-invariants.spec.ts \
+  packages/runtime-diagnostics/invariants/tests/service.spec.ts \
+  packages/core/session/tests/invariant.spec.ts \
+  packages/test-support/llm-replay/tests/llm-replay.spec.ts \
+  packages/test-support/acp-snapshot/tests/harness.spec.ts \
+  packages/test-support/acp-snapshot/tests/normalize.spec.ts \
+  scripts/cordis-config-files.spec.ts \
+  scripts/verify-cordis-config.spec.ts
+
+Test Files  9 passed (9)
+Tests      256 passed (256)
+Duration   22.17s</code></pre>
+  <p>The second run used the replay and source defaults with both environment variables unset; the reproduction command below pins them explicitly. It ran the snapshot config read-only for canonical session-fixture layout and the translation-prompt snapshot: 2 files and 2 tests passed. The layout guard scans all session-format JSONL and rejects a noncanonical packed representation.<evidence id="TINV-FIXTURE-LAYOUT-TEST"></evidence></p>
+  <pre><code>DSH_SNAPSHOT=replay DSH_EXAMPLE_MODE=src \
+pnpm exec vitest run --config vitest.snapshot.config.ts \
+  scripts/session-fixture-layout.snapshot.ts \
+  scripts/translation-prompt.snapshot.ts
+
+Test Files  2 passed (2)
+Tests      2 passed (2)
+Duration   1.98s</code></pre>
+  <p>The third run likewise used the replay and source defaults with both variables unset; the reproduction command pins them explicitly. It selected only the ACP <code>handshake</code> scenario. Its real source-mode assembled process passed: 1 test ran and passed, while 85 tests in the same file were skipped by the <code>-t handshake</code> filter. This is not a full ACP snapshot result.</p>
+  <pre><code>DSH_SNAPSHOT=replay DSH_EXAMPLE_MODE=src \
+pnpm exec vitest run --config vitest.snapshot.config.ts \
+  examples/acp-agent/tests/acp.snapshot.ts -t handshake
+
+Test Files  1 passed (1)
+Tests      1 passed | 85 skipped (86)
+Duration   14.70s</code></pre>
+  <p>Finally, six read-only structural gates all completed with exit code 0. <code>verify-package-invariants</code> reported 219 hand-owned companions; <code>verify-runtime-closure</code> reported 109 workspace packages; <code>verify-cordis-config</code> reported 120 config files; the config catalog was current; all 93 generated Cordis files or regions were current; and <code>verify-type-equiv</code> reported 384 blocks matching source and JSDoc plus 384 paired derivatives. The focused Cordis metadata tests also cover the allowed <code>disabled</code> expression and three rejection paths.<evidence id="TINV-CONFIG-TEST"></evidence></p>
+  <pre><code>pnpm run verify-package-invariants
+pnpm run verify-runtime-closure
+pnpm run verify-cordis-config
+pnpm run verify-config-catalog
+pnpm run verify-cordis-catalog
+pnpm run verify-type-equiv</code></pre>
+</section>
