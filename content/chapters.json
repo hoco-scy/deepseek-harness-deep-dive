@@ -20,7 +20,7 @@
     {"id":"14","slug":"memory-knowledge","part":"上下文治理","title":"记忆与知识：有何能力、又刻意没有什么","subtitle":"会话日志、摘要、Skill、Session Query 与长期语义记忆的边界","status":"queued","scope":"辨析 working context、durable log、session reference、query、skill 和真正跨会话记忆之间的区别。"},
     {"id":"15","slug":"plan-goal-todo","part":"协作状态","title":"Plan、Goal 与 Todo","subtitle":"三种看似相近但生命周期不同的协作原语","status":"queued","scope":"分析 logged plan mode、goal revision/continuation、todo projection、权限与 UI 呈现。"},
 
-    {"id":"16","slug":"tool-primitives","part":"工具系统","title":"工具定义原语与执行管线","subtitle":"schema、scope、execution mode、presentation 与 waterfall","status":"queued","scope":"拆解 ToolDefinition、registry、快照、pre/guard/around/post/finalize/result 和 Code Mode 子调用。"},
+    {"id":"16","slug":"tool-primitives","part":"工具系统","title":"工具定义原语与执行管线","subtitle":"schema、scope、execution mode、presentation 与 waterfall","status":"verified","scope":"拆解 ToolDefinition、registry、快照、pre/guard/around/post/finalize/result 和 Code Mode 子调用。"},
     {"id":"17","slug":"tool-catalog","part":"工具系统","title":"工具全集与能力分类","subtitle":"每一个模型可见工具的输入、输出、策略与 UI 意图","status":"queued","scope":"从生成 catalog 与源码逐项枚举工具名、提供包、schema、并行模式、危险面和后端 seam。"},
     {"id":"18","slug":"tool-parallelism","part":"工具系统","title":"工具并行器与结果顺序","subtitle":"barrier、滚动窗口、重分类与模型顺序提交","status":"queued","scope":"追踪 executionMode 分类、并发池、屏障、开跑前重分类、settlement 和 additional context 顺序。"},
     {"id":"19","slug":"permission-approval","part":"工具系统","title":"权限分析、审批与单调 Guard","subtitle":"谁提出风险、谁能放行、谁只能拒绝","status":"queued","scope":"分析 pre-execute policy、approval waterfall、absence fail-closed、monotonic guards、preset 与每次调用授权。"},
