@@ -1,61 +1,151 @@
 <section>
-  <h2>一句话结论</h2>
-  <div class="thesis">
-    <p>DeepSeek Harness 的核心哲学不是“给 Agent 增加更多内置能力”，而是把产品拆成<strong>可配置组合、作用域隔离、可逆挂载、事件可追溯</strong>的能力网络；复杂功能尽量作为 loop 之外的插件，通过稳定的 service 与 event seam 参与同一条语义主干。</p>
+  <h2>结论：可替换性来自更严格的交互规则</h2>
+  <div class="thesis"><p>“一切皆插件”并不意味着任何组件都可以随意行动。DeepSeek Harness 把约束集中到少数协议——具名 service、typed event mode、effect 所有权、scope 路由、append-only 事实、显式提交点和包自有运行时不变量——以此换取具体实现的可替换性。</p></div>
+  <p>它把固定中心从具体类迁移到了交互规则。启动组合、Agent 生命周期、Turn / Step Loop、工具、prompt contributor、provider、持久化和 UI projection 都围绕这一选择展开。</p>
+</section>
+
+<section>
+  <h2>1. “没有特权核心”不等于“没有架构骨架”</h2>
+  <div class="claim fact"><div class="claim-label">官方架构</div><p>模型 adapter、工具 registry、session log 和 Agent Loop 都作为 Cordis 插件挂载；相邻插件无需修改某个特权 Application 对象即可贡献或替换行为，其注册项也会随插件卸载而撤销。<evidence id="ARCH-PLUGIN-CORE"></evidence></p></div>
+  <p>但系统仍然有骨架：公共 service key、interface、event 名称和 mode、session event 词汇、scope 规则，以及配置 entry identity。替换 provider 并不会消除这些义务。</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>可替换实现</th><th>仍需遵守的协议</th><th>这一区分为何重要</th></tr></thead>
+    <tbody>
+      <tr><td>LLM provider</td><td>Adapter 注册、请求/流式词汇、错误和 usage 归一化</td><td>Loop 必须通过同一稳定 seam 消费所有 provider</td></tr>
+      <tr><td>Tool</td><td>Definition、schema、受控执行、耐久 call/result event</td><td>策略和 replay 不能依赖工具私有实现</td></tr>
+      <tr><td>Agent driver</td><td><code>Agent</code> interface、registry 生命周期、inbox 与 session 事实</td><td>产品 surface 无需导入默认 Loop 就能驱动 Agent</td></tr>
+      <tr><td>Persistence backend</td><td>Session header 与 event-log 语义</td><td>重载历史必须与 live 历史表达同一事实</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">设计评价</div><p>“无特权核心”描述的是实现权力，而非不存在宪法。真正的核心是协议；只有替代实现继续满足消费者依赖的义务，插件替换才成立。</p></div>
+</section>
+
+<section>
+  <h2>2. 五种组合原语取代中央 Application 类</h2>
+  <div class="claim fact"><div class="claim-label">框架语义</div><p>Cordis 提供五种反复出现的机制：plugin 实现 Service 生命周期；context 通过稳定 key 暴露 service；<code>inject</code> 声明可用性依赖；typed event 选择观察或拦截语义；<code>effect</code>/<code>on</code> 把贡献与 teardown 绑定。<evidence id="DESIGN-CORDIS-SEMANTICS"></evidence></p></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>原语</th><th>架构职责</th><th>误用后的失败</th></tr></thead>
+    <tbody>
+      <tr><td>Service key</td><td>把能力定义和 provider 分开</td><td>消费者直接导入具体 provider，使配置替换沦为表面形式</td></tr>
+      <tr><td><code>inject</code></td><td>不依赖 YAML row 顺序地表达所需拓扑</td><td>插件看到缺失服务，或发明静默 fallback</td></tr>
+      <tr><td>Typed event</td><td>让策略、adapter 和 observer 无需导入 orchestrator 即可挂接</td><td>事件 mode 与调用方期望分裂</td></tr>
+      <tr><td>Waterfall</td><td>以显式 <code>next()</code> 委托形成 around middleware</td><td>观察者意外短路决策链</td></tr>
+      <tr><td>Effect</td><td>让注册与撤销成为同一条受管生命周期</td><td>HMR 或 session disposal 泄漏陈旧 provider、tool 或 listener</td></tr>
+    </tbody>
+  </table></div>
+  <p><code>emit</code>、<code>parallel</code>、<code>serial</code> 和 <code>waterfall</code> 不是风格差异。等待方式、顺序、返回值与短路语义各不相同；选择 mode 就是在规定谁能够影响该操作。</p>
+</section>
+
+<section>
+  <h2>3. 注册项是有所有者的资源，不是全局变更</h2>
+  <div class="claim fact"><div class="claim-label">仓库规则</div><p>Prompt section、tool definition、adapter、provider 与 event listener 都以可逆 effect 注册；registry 的 <code>register()</code> 返回精确 disposer，HMR safety 测试还必须证明 owner fiber dispose 后贡献确实消失。<evidence id="ROOT-EFFECTS"></evidence><evidence id="PKG-INVARIANTS"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">生产实现</div><p><code>ScopedLayers</code> 让注册 context 同时承载两层含义：哪一个 scope 可以看到该贡献，以及哪个 effect 对其生命周期负责。全局项依次被祖先与最近 scope 叠加；undo 只删除这一笔注册，并回收已经为空的 layer。<evidence id="DESIGN-SCOPED-LAYERS"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">行为测试</div><p>Scope 测试验证同步可用性、重复 dispose 的共享 quiescence、反向清理顺序、按 key 路由的事件可见性，以及单向继承：后代 dispatch 可以到达祖先 scope listener，祖先 dispatch 不会向后代泄漏。<evidence id="DESIGN-SCOPE-TEST"></evidence></p></div>
+  <div class="claim inference"><div class="claim-label">机制推导</div><p>这既是依赖注入，也是资源账本。插件从哪个 context 做出贡献，就同时记录了该贡献的可达范围和清理责任；正是这种耦合，让在线配置和 per-Agent composition 无需另建一份全局清理 registry。</p></div>
+</section>
+
+<section>
+  <h2>4. 耐久事实与 live 决策分处两个平面</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>平面</th><th>例子</th><th>生命周期</th><th>用途</th></tr></thead>
+    <tbody>
+      <tr><td>Durable session events</td><td><code>turn/start</code>、message、request header、chunk、tool call/result、<code>turn/end</code></td><td>跨 reload 与 persistence 存活</td><td>对话事实、重建、replay、projection</td></tr>
+      <tr><td>Live Agent events</td><td><code>agent/pre-step</code>、<code>agent/request</code>、request-error recovery、stopping</td><td>单个活跃进程与 scoped runtime</td><td>拦截、策略、路由、控制</td></tr>
+      <tr><td>Capability events</td><td>Tool、filesystem、telemetry 与 provider hooks</td><td>Provider/plugin 生命周期</td><td>无需耦合 Loop 即可附加策略</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">事实源规则</div><p>Session log 是模型历史的事实源。任何进入模型请求的内容都必须可以从日志重建，因此 model-visible input 需要 session event，不能只存在于短命 callback mutation 中。<evidence id="ARCH-LOG"></evidence><evidence id="ROOT-MODEL-LOGGED"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">可执行校验</div><p>默认 Loop 会标记自己的 request，并安装运行时不变量：从 session log 独立派生 messages 和折叠 request header，再与即将 dispatch 的 request 比较。<evidence id="LOOP-REQUEST-INVARIANT"></evidence></p></div>
+  <div class="claim assessment"><div class="claim-label">设计评价</div><p>这里是选择性事件溯源。耐久流记录具有对话语义的事实，而不是把每个 live callback、registry mutation 或进程细节都写入日志；系统避免把 event log 变成整个 runtime 的转储，同时保住必须可复现的投影——模型究竟看到了什么。</p></div>
+</section>
+
+<section>
+  <h2>5. 提交点把准备态与发布态分开</h2>
+  <div class="claim fact"><div class="claim-label">全包设计纪律</div><p>仓库规则要求一个异步操作只有一个生命周期 owner；成功之前不能发布 derived state；限制必须在完整值已经确定的位置执行；每个 runtime invariant 由拥有该关系的 package 负责。<evidence id="DESIGN-PACKAGE-RULES"></evidence></p></div>
+  <p>已经核实的运行时章节在不同尺度上重复同一种结构：</p>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>Boot</h3><p>组合并准备候选树；只有 Loader settle 与 activation audit 通过才返回。</p></div>
+    <div><span>2</span><h3>Agent creation</h3><p>在不可见状态构建 Session、Agent 与 scoped world；同步 commit setup；再按固定顺序 enter/announce registry。</p></div>
+    <div><span>3</span><h3>Inbox mutation</h3><p>先 append durable splice，再改变 live queue projection。</p></div>
+    <div><span>4</span><h3>Turn execution</h3><p>dispatch 前写入边界与 request input；下一次 derived request 前提交 assistant 与 tool outcome。</p></div>
   </div>
-  <p>这句话包含源码事实，也包含归纳。本页将二者拆开。</p>
+  <div class="claim inference"><div class="claim-label">机制推导</div><p>反复出现的状态机是 <em>prepare → validate → commit → publish → dispose</em>。提交产物可以是 Loader tree、registry entry 或 session event，但下游消费者都被刻意隔离在仍可能失败的候选状态之外。</p></div>
 </section>
 
 <section>
-  <h2>原则一：没有特权核心，但存在架构宪法</h2>
-  <div class="claim fact"><div class="claim-label">源码事实</div><p>Cordis context 接收 service、typed event 与 reversible effect；模型 adapter、工具注册表、session log 和 agent loop 自身都作为插件装配，扩展方式是并列挂载插件。<evidence id="ARCH-PLUGIN-CORE"></evidence></p></div>
-  <div class="claim inference"><div class="claim-label">机制推导</div><p>“没有特权核心”不等于“没有核心”。真正难以随意替换的是组合协议：context scope、event 顺序、effect disposal、waterfall delegation、session event 兼容性，以及 service definition/provider/consumer 三方关系。替换实现必须继续遵守这些协议。</p></div>
-  <div class="claim assessment"><div class="claim-label">设计评价</div><p>优势是功能无需持续向一个巨型 loop 注入条件分支，插件可以按 profile 或 per-agent preset 组合；代价是系统正确性从单类局部逻辑扩散为“插件图 + 事件顺序 + 配置叠层”的全局性质，理解和验证成本显著上升。</p></div>
+  <h2>6. 一项能力必须形成三角色 seam</h2>
+  <div class="claim fact"><div class="claim-label">官方架构</div><p>完整 capability seam 包含 Service Definition、至少一个 Service Provider 和 Consumer。只有 provider 不是产品能力；只有 tool 或 UI consumer 也不是可替换抽象。<evidence id="ARCH-LOG"></evidence></p></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>角色</th><th>应该知道什么</th><th>不应该拥有</th></tr></thead>
+    <tbody>
+      <tr><td>Definition</td><td>全部当前 consumer 共同需要的操作与义务</td><td>某个 provider 的部署细节或某个 UI 的词汇</td></tr>
+      <tr><td>Provider</td><td>外部 API/process/storage 细节和 provider-local config</td><td>替换 provider 后仍需存在的 model-facing 产品策略</td></tr>
+      <tr><td>Consumer</td><td>能力如何呈现给 model、user、API 或 orchestrator</td><td>对单一 provider 实现的隐含假设</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">设计评价</div><p>这种拆分避免最常见的伪模块化：先写一个接口，却让字段完全照搬第一个 backend。代价是更多 package 与显式 wiring，收益则是 provider replacement 真能成为配置操作，而不是重写每个 caller。</p></div>
 </section>
 
 <section>
-  <h2>原则二：注册是一种可撤销的生命周期副作用</h2>
-  <div class="claim fact"><div class="claim-label">仓库政策</div><p>贡献必须通过 <code>ctx.effect()</code> / <code>ctx.on()</code> 注册，registry 的 <code>register()</code> 返回 disposer；waterfall listener 必须显式调用 <code>next()</code> 才把控制权交给下游。<evidence id="ROOT-EFFECTS"></evidence></p></div>
-  <div class="claim inference"><div class="claim-label">机制推导</div><p>插件“存在”不是进程级永久事实，而是绑定到某个 Cordis scope 的租约。卸载 scope 必须反向撤销服务、工具、事件 listener 与 provider。这让 per-session / per-agent 组合和运行时自修改成为可能，也要求任何旁路注册都被视为架构违规。</p></div>
+  <h2>7. 行为应当挂在 Loop 旁边，而不是塞进 Loop</h2>
+  <div class="claim fact"><div class="claim-label">控制流事实</div><p>默认 Loop 只拥有最小 orchestrating skeleton：打开 Turn、认领输入、组装 step、派生 request、流式调用模型、执行工具，并判断是否还欠下一步。Prompt contributor、request rewrite、retry decision、tool policy、context injection 与 stopping behavior 都通过 service/event 挂接。<evidence id="ARCH-TURN"></evidence><evidence id="LOOP-TURN-STATE"></evidence></p></div>
+  <div class="claim inference"><div class="claim-label">机制推导</div><p>保持 Loop 小并非追求代码行数，而是为了稳定唯一 orchestrating path，让不同 owner 的行为可以独立演进。代价是语义分布：理解一次 request 必须沿多个插件注册点追踪，而不能只读一个大函数。</p></div>
 </section>
 
 <section>
-  <h2>原则三：组合优于隐藏默认</h2>
-  <div class="claim fact"><div class="claim-label">源码事实</div><p>运行中的 dsh 从空 entry list 开始，依次应用 profile 声明的 bundles、profile 自己的 patch、home-level patch 和命令行 overlay；patch 按 row id 定位，并整体替换该 row 的 config 或插入新 row。<evidence id="ARCH-LAYERS"></evidence></p></div>
-  <div class="claim fact"><div class="claim-label">仓库政策</div><p>跨 package 的默认值要求在拥有该语义的实现中通过显式 <code>resolve(request): Spec</code> 完成；部署相关 tunable 需要成为可验证配置，错误配置应在可判定的最早位置失败。<evidence id="ROOT-BOUNDARIES"></evidence></p></div>
-  <div class="claim assessment"><div class="claim-label">设计评价</div><p>显式叠层让最终运行树可打印、可覆盖、可审计，但“整体替换 config”不是深合并：上层 patch 必须理解下层完整配置形状，否则容易在覆盖一个字段时丢失其他字段。这是一种用可预测语义换取使用者谨慎的选择。</p></div>
+  <h2>8. 显式边界决定信任在哪停止</h2>
+  <div class="claim fact"><div class="claim-label">仓库策略</div><p>同进程内已经由 TypeScript interface 保证的值直接信任；parser/config、model/tool JSON、durable storage、worker、process 与 wire 边界必须做运行时验证。随部署变化的数值进入 validated config；缺失 referent 在最早可判定点失败；跨边界 identity 使用 branded type。<evidence id="ROOT-BOUNDARIES"></evidence></p></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>边界</th><th>优先做法</th><th>拒绝的模式</th></tr></thead>
+    <tbody>
+      <tr><td>同进程 typed call</td><td>信任 interface，保持路径直接</td><td>重复防御解析与静默 fallback</td></tr>
+      <tr><td>Config/parser/wire</td><td>验证完整输入，并带 owner 上下文快速失败</td><td>部分接受畸形值</td></tr>
+      <tr><td>Model/tool JSON</td><td>解析、归一化、snapshot，并保留可机器路由的失败</td><td>把概率性输出当作静态可信值</td></tr>
+      <tr><td>Persistence/replay</td><td>验证格式、identity、连续性和 JSON losslessness</td><td>加载 live code 永远不可能生成的历史</td></tr>
+      <tr><td>Policy decision</td><td>在实际执行位置强制约束</td><td>把 schema omission 或 UI filtering 当成授权</td></tr>
+    </tbody>
+  </table></div>
 </section>
 
 <section>
-  <h2>原则四：模型看到的东西必须成为耐久事实</h2>
-  <div class="claim fact"><div class="claim-label">源码事实</div><p>session log 是模型历史的事实源，<code>deriveMessages()</code> 从事件投影模型消息；原始 <code>assistant/chunk</code> 被保留以支持重放与 UI fidelity。任何进入模型请求的新增输入都必须对应 session event，并由运行时不变量检查。<evidence id="ARCH-LOG"></evidence><evidence id="ROOT-MODEL-LOGGED"></evidence></p></div>
-  <div class="claim inference"><div class="claim-label">机制推导</div><p>这条规则把提示词工程变成了事件建模问题：插件不能只在请求发送前偷偷拼接字符串；若该内容影响模型行为，就必须能从日志重建。于是 resume、fork、telemetry、snapshot 和 UI 不必各自维护一份“当时模型看到了什么”。</p></div>
-  <div class="claim assessment"><div class="claim-label">设计评价</div><p>这是 DeepSeek Harness 最有价值、也最昂贵的约束之一。它显著改善审计与重放，但每类动态上下文都要设计事件语义、兼容读取和派生规则，不能用一次性的 middleware state 草率实现。</p></div>
+  <h2>9. 不变量把局部所有权变成运行时证据</h2>
+  <div class="claim fact"><div class="claim-label">生产实现</div><p>Invariant registry 为每个 package 保留唯一注册，应用 allow/block selection，在 service 自有 child fiber 中安装被启用的检查，并把违反行为包装成带 <code>INVARIANT</code> code 与 package 归属的错误；setup 失败和 dispose 都会释放 reservation。<evidence id="DESIGN-INVARIANT-REGISTRY"></evidence></p></div>
+  <p>Invariant 应检查 package 自己拥有的关系，例如 request reconstruction、scope routing 或 event pairing，而不是只证明某个方法存在。插件系统即使类型全部通过，也无法仅靠静态类型证明最终组合仍然遵守跨插件顺序与 identity。</p>
+  <div class="claim assessment"><div class="claim-label">设计评价</div><p>这一机制承认了配置驱动架构的现实：一组单独合法的 package，仍可能组合成关系非法的 runtime。Package attribution 改善诊断；可选择启用的 live check 则让 invariant 不只停留在测试期。</p></div>
 </section>
 
 <section>
-  <h2>原则五：能力不是一个接口，而是闭合的三角色 seam</h2>
-  <div class="claim fact"><div class="claim-label">源码事实</div><p>仓库把可替换能力定义为三类角色：Service Definition 声明接口，Service Provider 实现它，Consumer 使用它（通常是模型可见工具）。只有单一角色不能算完整 seam。<evidence id="ARCH-LOG"></evidence></p></div>
-  <p>这个定义避免把“抽了一个 interface”误认为架构已经可替换。例如文件能力不仅有 <code>ctx.fs</code>，还要有 local/sandbox/E2B provider、模型工具 consumer、观察策略、错误词汇与执行世界的一致性。</p>
+  <h2>10. Developer Preview 改变了兼容性承诺</h2>
+  <div class="claim fact"><div class="claim-label">仓库状态</div><p>在本研究固定的基线上，项目明确声明首个 tag 前优先修正基础设计，而非保留 compatibility shim。SQLite schema version 单调前进；session format 仍为 <code>0</code> 且没有兼容承诺，旧磁盘格式可能被拒绝。<evidence id="ROOT-PREVIEW"></evidence></p></div>
+  <div class="claim assessment"><div class="claim-label">解读约束</div><p>当前设计的完整性不能被误读为稳定公共合同。系统确实在投资显式协议，但名称、package 边界、配置 row 与持久格式仍可能快速变化。因此本站将每条结论固定到同一 commit；后续 upstream 改动应形成新基线，而不是被悄悄改写进旧研究。</p></div>
 </section>
 
 <section>
-  <h2>原则六：在可信静态边界内简化，在真实不可信边界上验证</h2>
-  <div class="claim fact"><div class="claim-label">仓库政策</div><p>同进程、静态类型已约束的值不重复做敌意运行时校验；解析配置、排队数据、模型/工具 JSON、持久化文件、worker、进程和 wire 边界则必须验证。跨边界 ID 使用 branded 类型而非裸字符串。<evidence id="ROOT-TYPED-TRUST"></evidence></p></div>
-  <div class="claim assessment"><div class="claim-label">设计评价</div><p>这不是“多校验总是更安全”，而是把验证预算放在值可能被伪造、漂移或失真的地方。好处是内部代码不被冗余 guard 淹没；风险是团队必须准确识别边界，一旦把外部数据误当成 typed same-process value，防线会直接缺失。</p></div>
+  <h2>11. 这套哲学带来什么，又让什么更困难</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>选择</th><th>收益</th><th>结构性代价</th></tr></thead>
+    <tbody>
+      <tr><td>一切作为 plugin 挂载</td><td>产品 surface 与 provider 可按配置组合</td><td>仅看 import 无法理解 effective runtime</td></tr>
+      <tr><td>Registration 是 effect</td><td>HMR 与 scoped teardown 能可预测地撤回贡献</td><td>每项贡献都需要正确 owner 与 quiescence</td></tr>
+      <tr><td>Event 是扩展点</td><td>策略无需导入 Loop 即可挂接</td><td>Mode、顺序、短路与 scope 都成为公共语义</td></tr>
+      <tr><td>Model-visible 等价于 logged</td><td>Request、replay 与 projection 可以一致</td><td>短命 context 也需要耐久表示和 retention 语义</td></tr>
+      <tr><td>显式 commit point</td><td>Observer 只看到已提交状态</td><td>准备与 rollback 路径更复杂</td></tr>
+      <tr><td>Definition/provider/consumer seam</td><td>Provider replacement 真正成立</td><td>Package 数量和 composition surface 增长</td></tr>
+      <tr><td>Package-owned invariant</td><td>跨插件错误在语义 owner 附近失败</td><td>协议扩展时 invariant coverage 必须同步演进</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">本章评价</div><p>这套架构没有消灭核心，而是把核心迁移到协议和生命周期规则中。对于需要让 provider、tool、policy 与产品 surface 独立变化的 Agent harness，这是高度匹配的选择；但它的成功依赖严格 owner、生成式地图、runtime invariant 和可重建 log。缺少这些护栏，同样的间接层会变成分布式、配置敏感且更难理解的控制流。</p></div>
 </section>
 
 <section>
-  <h2>暂定哲学模型</h2>
-  <div class="principle-grid">
-    <div><strong>组合单元</strong><span>Plugin</span></div>
-    <div><strong>能力边界</strong><span>Service seam</span></div>
-    <div><strong>协调机制</strong><span>Typed events / waterfall</span></div>
-    <div><strong>生命周期</strong><span>Scope + reversible effects</span></div>
-    <div><strong>事实源</strong><span>Append-only session log</span></div>
-    <div><strong>产品装配</strong><span>Profile + bundle + patch layers</span></div>
-    <div><strong>安全姿态</strong><span>Boundary validation + fail loud</span></div>
-    <div><strong>扩展策略</strong><span>Plugins, not loop changes</span></div>
-  </div>
-  <aside class="caveat"><strong>尚未完成：</strong>以上是基于架构文档和仓库政策的第一轮归纳。后续章节会用生产源码验证这些原则是否在提示词、工具并行、压缩、checkpoint、多 Agent、workflow 和 UI 中真正一致；出现反例时，本页会修正而不是维护理论完整性。</aside>
+  <h2>本章复核清单</h2>
+  <ul class="audit-list">
+    <li>已区分可替换实现与替换后仍必须遵守的协议。</li>
+    <li>已核实 Cordis service、inject、event mode、waterfall 与 effect 语义。</li>
+    <li>已从生产 store 和行为测试追踪 scope 可见性与 effect 所有权。</li>
+    <li>已把 model-visible/logged 原则连接到 Loop 的可执行 request 重建不变量。</li>
+    <li>已用 Boot、Agent、Inbox 与 Turn 机制交叉检查提交点和所有权规则。</li>
+    <li>已核实带 package 归属的 invariant 安装与 teardown。</li>
+    <li>所有设计评价均保留 Developer Preview 的兼容性限制。</li>
+  </ul>
 </section>

@@ -4,7 +4,7 @@
   "chapters": [
     {"id":"00","slug":"reading-guide","part":"导论","title":"阅读入口与研究地图","subtitle":"如何阅读、当前进度、全量问题域","status":"drafting","scope":"给出全站结构、完成定义、阅读路径与阶段边界。"},
     {"id":"01","slug":"methodology","part":"导论","title":"基线、方法与证据规则","subtitle":"怎样把源码事实、机制推导和设计评价分开","status":"verified","scope":"固定上游 commit，说明证据等级、引用稳定性与完成门槛。"},
-    {"id":"02","slug":"design-philosophy","part":"导论","title":"设计哲学总论","subtitle":"Everything is a plugin 背后的运行时观","status":"drafting","scope":"分析可替换核心、可逆副作用、组合优先、显式边界和事件溯源。"},
+    {"id":"02","slug":"design-philosophy","part":"导论","title":"设计哲学总论","subtitle":"Everything is a plugin 背后的运行时观","status":"verified","scope":"分析可替换核心、可逆副作用、组合优先、显式边界和事件溯源。"},
     {"id":"03","slug":"module-atlas","part":"导论","title":"219 个包的模块地图","subtitle":"包组、角色、依赖方向与运行时位置","status":"drafting","scope":"枚举全部 workspace 包并按定义、提供者、消费者、界面和支撑设施分类。"},
 
     {"id":"04","slug":"boot-profiles-bundles","part":"核心运行时","title":"启动、Profile、Bundle 与配置叠层","subtitle":"运行中的 dsh 如何由有序插件树组合出来","status":"verified","scope":"追踪 CLI 到 Loader、profile/bundle patch 顺序、隔离域、配置替换语义和卸载。"},
