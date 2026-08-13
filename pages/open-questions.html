@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="zh-CN" data-root="../">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Developer Preview 中尚未闭合的语义和证据">
+  <link rel="canonical" href="https://hoco-scy.github.io/dpsk-harness-analysis/pages/open-questions.html">
+  <link rel="stylesheet" href="../assets/site.css">
+  <title>缺口、限制与待验证问题 · DeepSeek Harness 系统拆解</title>
+</head>
+<body data-page="open-questions" data-baseline="47f943859bef60e4160492346772ded9b24f765a">
+  <header class="topbar">
+    <button class="icon-button nav-toggle" type="button" data-nav-toggle aria-label="打开章节目录" aria-expanded="false">☰</button>
+    <a class="brand" href="../index.html"><span class="brand-mark">DS</span><span>Harness 系统拆解</span></a>
+    <span class="topbar-meta">固定基线 47f943859b · 1 已复核 / 2 撰写中 / 36 章</span>
+    <div class="topbar-actions"><button class="icon-button" type="button" data-theme-toggle aria-label="切换明暗主题">◐</button></div>
+  </header>
+  <div class="layout">
+    <aside class="sidebar" data-sidebar aria-label="章节目录">
+      <input class="filter" data-chapter-filter type="search" placeholder="筛选章节……" aria-label="筛选章节">
+
+    <section class="nav-part" data-part>
+      <h2 class="part-title">导论</h2>
+
+        <a class="chapter-link" data-chapter-item href="../pages/reading-guide.html">
+          <span class="chapter-number">00</span>
+          <span>阅读入口与研究地图</span>
+          <span class="status-dot drafting" title="撰写中"></span>
+        </a>
+        <a class="chapter-link" data-chapter-item href="../pages/methodology.html">
+          <span class="chapter-number">01</span>
+          <span>基线、方法与证据规则</span>
+          <span class="status-dot verified" title="已复核"></span>
+        </a>
+        <a class="chapter-link" data-chapter-item href="../pages/design-philosophy.html">
+          <span class="chapter-number">02</span>
+          <span>设计哲学总论</span>
+          <span class="status-dot drafting" title="撰写中"></span>
+        </a>
+        <a class="chapter-link" data-chapter-item href="../pages/module-atlas.html">
+          <span class="chapter-number">03</span>
+          <span>219 个包的模块地图</span>
+          <span class="status-dot queued" title="待研究"></span>
+        </a>
+    </section>
+    <section class="nav-part" data-part>
+      <h2 class="part-title">核心运行时</h2>
+
+        <a class="chapter-link" data-chapter-item href="../pages/boot-profiles-bundles.html">
+          <span class="chapter-number">04</span>
+          <span>启动、Profile、Bundle 与配置叠层</span>
+          <span class="status-dot queued" title="待研究"></span>
+        </a>
+        <a class="chapter-link" data-chapter-item href="../pages/agent-object-lifecycle.html">
+          <span class="chapter-number">05</span>
+          <span>Agent 对象、注册表与生命周期</span>
+          <span class="status-dot queued" title="待研究"></span>
+        </a>
+        <a class="chapter-link" data-chapter-item href="../pages/turn-step-loop.html">
+          <span class="chapter-number">06</span>
+          <span>Turn / Step / Loop 状态机</span>
+          <span class="status-dot queued" title="待研究"></span>
+        </a>
+        <a class="chapter-link" data-chapter-item href="../pages/prompt-context.html">
+          <span class="chapter-number">07</span>
+          <span>提示词组装与上下文注入</span>
+          <span class="status-dot queued" title="待研究"></span>
+        </a>
+        <a class="chapter-link" data-chapter-item href="../pages/llm-adapters.html">
+          <span class="chapter-number">08</span>
+          <span>LLM Adapter 与会话协议转换</span>
+          <span class="status-dot queued" title="待研究"></span>
+        </a>
+    </section>
+    <section class="nav-part" data-part>
+      <h2 class="part-title">会话与持久化</h2>
+
+        <a class="chapter-link" data-chapter-item href="../pages/session-event-model.html">
+          <span class="chapter-number">09</span>
+          <span>内部会话结构与事件模型</span>
+          <span class="status-dot queued" title="待研究"></span>
+        </a>
+        <a class="chapter-link" data-chapter-item href="../pages/log-replay.html">
+          <span class="chapter-number">10</span>
+          <span>日志、派生历史、重放与 Fork</span>
+          <span class="status-dot queued" title="待研究"></span>
+        </a>
+        <a class="chapter-link" data-chapter-item href="../pages/persistence-database.html">
+          <span class="chapter-number">11</span>
+          <span>持久化与数据库设计</span>
+          <span class="status-dot queued" title="待研究"></span>
+        </a>
+        <a class="chapter-link" data-chapter-item href="../pages/projections-checkpoints.html">
+          <span class="chapter-number">12</span>
+          <span>Projection、Checkpoint 与冷启动</span>
+          <span class="status-dot queued" title="待研究"></span>
+        </a>
+    </section>
+    <section class="nav-part" data-part>
+      <h2 class="part-title">上下文治理</h2>
+
+        <a class="chapter-link" data-chapter-item href="../pages/compaction.html">
+          <span class="chapter-number">13</span>
+          <span>压缩体系与上下文压力</span>
+          <span class="status-dot queued" title="待研究"></span>
+        </a>
+        <a class="chapter-link" data-chapter-item href="../pages/memory-knowledge.html">
+          <span class="chapter-number">14</span>
+          <span>记忆与知识：有何能力、又刻意没有什么</span>
+          <span class="status-dot queued" title="待研究"></span>
+        </a>
+    </section>
+    <section class="nav-part" data-part>
+      <h2 class="part-title">协作状态</h2>
+
+        <a class="chapter-link" data-chapter-item href="../pages/plan-goal-todo.html">
+          <span class="chapter-number">15</span>
+          <span>Plan、Goal 与 Todo</span>
+          <span class="status-dot queued" title="待研究"></span>
+        </a>
+    </section>
+    <section class="nav-part" data-part>
+      <h2 class="part-title">工具系统</h2>
+
+        <a class="chapter-link" data-chapter-item href="../pages/tool-primitives.html">
+          <span class="chapter-number">16</span>
+          <span>工具定义原语与执行管线</span>
+          <span class="status-dot queued" title="待研究"></span>
+        </a>
+        <a class="chapter-link" data-chapter-item href="../pages/tool-catalog.html">
+          <span class="chapter-number">17</span>
+          <span>工具全集与能力分类</span>
+          <span class="status-dot queued" title="待研究"></span>
+        </a>
+        <a class="chapter-link" data-chapter-item href="../pages/tool-parallelism.html">
+          <span class="chapter-number">18</span>
+          <span>工具并行器与结果顺序</span>
+          <span class="status-dot queued" title="待研究"></span>
+        </a>
+        <a class="chapter-link" data-chapter-item href="../pages/permission-approval.html">
+          <span class="chapter-number">19</span>
+          <span>权限分析、审批与单调 Guard</span>
+          <span class="status-dot queued" title="待研究"></span>
+        </a>
+    </section>
+    <section class="nav-part" data-part>
+      <h2 class="part-title">执行环境</h2>
+
+        <a class="chapter-link" data-chapter-item href="../pages/sandbox-filesystem.html">
+          <span class="chapter-number">20</span>
+          <span>Sandbox、Filesystem 与观察策略</span>
+          <span class="status-dot queued" title="待研究"></span>
+        </a>
+        <a class="chapter-link" data-chapter-item href="../pages/shell-terminal-jobs.html">
+          <span class="chapter-number">21</span>
+          <span>Shell、PTY、Terminal 与后台作业</span>
+          <span class="status-dot queued" title="待研究"></span>
+        </a>
+        <a class="chapter-link" data-chapter-item href="../pages/web-lsp-mcp-skill.html">
+          <span class="chapter-number">22</span>
+          <span>Web、LSP、MCP 与 Skill</span>
+          <span class="status-dot queued" title="待研究"></span>
+        </a>
+        <a class="chapter-link" data-chapter-item href="../pages/code-mode-self-modification.html">
+          <span class="chapter-number">23</span>
+          <span>Code Mode、自修改与动态插件</span>
+          <span class="status-dot queued" title="待研究"></span>
+        </a>
+    </section>
+    <section class="nav-part" data-part>
+      <h2 class="part-title">编排</h2>
+
+        <a class="chapter-link" data-chapter-item href="../pages/multi-agent.html">
+          <span class="chapter-number">24</span>
+          <span>多 Agent 协同</span>
+          <span class="status-dot queued" title="待研究"></span>
+        </a>
+        <a class="chapter-link" data-chapter-item href="../pages/workflow-ralph.html">
+          <span class="chapter-number">25</span>
+          <span>Workflow 与 Ralph</span>
+          <span class="status-dot queued" title="待研究"></span>
+        </a>
+        <a class="chapter-link" data-chapter-item href="../pages/inbox-steering-continuation.html">
+          <span class="chapter-number">26</span>
+          <span>Inbox、Steering 与 Continuation</span>
+          <span class="status-dot queued" title="待研究"></span>
+        </a>
+    </section>
+    <section class="nav-part" data-part>
+      <h2 class="part-title">可靠性与产品面</h2>
+
+        <a class="chapter-link" data-chapter-item href="../pages/failure-recovery.html">
+          <span class="chapter-number">27</span>
+          <span>重试、错误、取消与恢复</span>
+          <span class="status-dot queued" title="待研究"></span>
+        </a>
+        <a class="chapter-link" data-chapter-item href="../pages/observability.html">
+          <span class="chapter-number">28</span>
+          <span>可观测、Telemetry 与轨迹</span>
+          <span class="status-dot queued" title="待研究"></span>
+        </a>
+        <a class="chapter-link" data-chapter-item href="../pages/api-sdk-acp.html">
+          <span class="chapter-number">29</span>
+          <span>API、SDK、JSON-RPC 与 ACP</span>
+          <span class="status-dot queued" title="待研究"></span>
+        </a>
+        <a class="chapter-link" data-chapter-item href="../pages/web-ui.html">
+          <span class="chapter-number">30</span>
+          <span>Web UI 插件架构</span>
+          <span class="status-dot queued" title="待研究"></span>
+        </a>
+        <a class="chapter-link" data-chapter-item href="../pages/security-trust.html">
+          <span class="chapter-number">31</span>
+          <span>安全模型与信任边界</span>
+          <span class="status-dot queued" title="待研究"></span>
+        </a>
+        <a class="chapter-link" data-chapter-item href="../pages/testing-invariants.html">
+          <span class="chapter-number">32</span>
+          <span>测试、快照与运行时不变量</span>
+          <span class="status-dot queued" title="待研究"></span>
+        </a>
+    </section>
+    <section class="nav-part" data-part>
+      <h2 class="part-title">综合结论</h2>
+
+        <a class="chapter-link" data-chapter-item href="../pages/tradeoffs.html">
+          <span class="chapter-number">33</span>
+          <span>优势、代价与设计取舍</span>
+          <span class="status-dot queued" title="待研究"></span>
+        </a>
+        <a class="chapter-link current" data-chapter-item href="../pages/open-questions.html">
+          <span class="chapter-number">34</span>
+          <span>缺口、限制与待验证问题</span>
+          <span class="status-dot queued" title="待研究"></span>
+        </a>
+        <a class="chapter-link" data-chapter-item href="../pages/glossary-evidence.html">
+          <span class="chapter-number">35</span>
+          <span>术语、证据目录与源码索引</span>
+          <span class="status-dot queued" title="待研究"></span>
+        </a>
+    </section>
+    </aside>
+    <main class="main">
+      <div class="page-shell">
+        <article class="article" data-article>
+          <header>
+            <div class="page-kicker"><span>综合结论</span><span>·</span><span>第 34 章</span></div>
+            <h1>缺口、限制与待验证问题</h1>
+            <p class="subtitle">Developer Preview 中尚未闭合的语义和证据</p>
+            <div class="page-meta">
+              <span class="status queued">待研究</span>
+              <span>上游 47f943859b</span>
+              <span>范围：记录未实现、弱保证、文档/代码漂移、平台差异及需要运行实验的问题。</span>
+            </div>
+          </header>
+
+    <section class="placeholder">
+      <p class="eyebrow">研究队列</p>
+      <h2>本章尚未进入结论状态</h2>
+      <p><strong>当前范围：</strong>记录未实现、弱保证、文档/代码漂移、平台差异及需要运行实验的问题。</p>
+      <p>页面已经纳入全量研究地图，但尚未完成源码控制流复核。以下是升级为“已复核”之前必须覆盖的检查面：</p>
+      <ul class="placeholder-checks">
+        <li>实际 bundle / profile 装配入口</li>
+        <li>公开类型、事件与配置 schema</li>
+        <li>正常控制流与状态突变时机</li>
+        <li>并发、scope、所有权与 cleanup</li>
+        <li>错误、取消、重试和降级分支</li>
+        <li>持久化、projection 与 replay 语义</li>
+        <li>生产路径测试与运行时不变量</li>
+        <li>优势、代价、限制与待验证问题</li>
+      </ul>
+    </section>
+
+    <section class="learning-notes" aria-labelledby="learning-notes-title">
+      <h2 id="learning-notes-title">我的学习体会</h2>
+      <p class="privacy">内容仅自动保存到当前浏览器，不上传、不进入仓库。你可以导出 Markdown 自行归档。</p>
+      <textarea data-learning-notes aria-label="我的学习体会" placeholder="记录你的理解、疑问、反例和可迁移原则……"></textarea>
+      <div class="note-footer">
+        <span data-note-saved>本地草稿</span>
+        <button type="button" data-note-export>导出 Markdown</button>
+        <button type="button" class="danger" data-note-clear>清空</button>
+        <span data-note-count>0 字符</span>
+      </div>
+    </section>
+          <nav class="pagination" aria-label="章节翻页"><a href="../pages/tradeoffs.html"><small>← 上一章 · 33</small><strong>优势、代价与设计取舍</strong></a><a class="next" href="../pages/glossary-evidence.html"><small>下一章 · 35 →</small><strong>术语、证据目录与源码索引</strong></a></nav>
+        </article>
+        <aside class="right-rail" aria-label="页内导航">
+          <h2 class="rail-title">本页目录</h2>
+          <nav class="toc" data-toc></nav>
+          <label class="jump-label" for="chapter-jump">跳转章节</label>
+          <select class="jump-select" id="chapter-jump" data-chapter-jump><option value="reading-guide">00 · 阅读入口与研究地图</option><option value="methodology">01 · 基线、方法与证据规则</option><option value="design-philosophy">02 · 设计哲学总论</option><option value="module-atlas">03 · 219 个包的模块地图</option><option value="boot-profiles-bundles">04 · 启动、Profile、Bundle 与配置叠层</option><option value="agent-object-lifecycle">05 · Agent 对象、注册表与生命周期</option><option value="turn-step-loop">06 · Turn / Step / Loop 状态机</option><option value="prompt-context">07 · 提示词组装与上下文注入</option><option value="llm-adapters">08 · LLM Adapter 与会话协议转换</option><option value="session-event-model">09 · 内部会话结构与事件模型</option><option value="log-replay">10 · 日志、派生历史、重放与 Fork</option><option value="persistence-database">11 · 持久化与数据库设计</option><option value="projections-checkpoints">12 · Projection、Checkpoint 与冷启动</option><option value="compaction">13 · 压缩体系与上下文压力</option><option value="memory-knowledge">14 · 记忆与知识：有何能力、又刻意没有什么</option><option value="plan-goal-todo">15 · Plan、Goal 与 Todo</option><option value="tool-primitives">16 · 工具定义原语与执行管线</option><option value="tool-catalog">17 · 工具全集与能力分类</option><option value="tool-parallelism">18 · 工具并行器与结果顺序</option><option value="permission-approval">19 · 权限分析、审批与单调 Guard</option><option value="sandbox-filesystem">20 · Sandbox、Filesystem 与观察策略</option><option value="shell-terminal-jobs">21 · Shell、PTY、Terminal 与后台作业</option><option value="web-lsp-mcp-skill">22 · Web、LSP、MCP 与 Skill</option><option value="code-mode-self-modification">23 · Code Mode、自修改与动态插件</option><option value="multi-agent">24 · 多 Agent 协同</option><option value="workflow-ralph">25 · Workflow 与 Ralph</option><option value="inbox-steering-continuation">26 · Inbox、Steering 与 Continuation</option><option value="failure-recovery">27 · 重试、错误、取消与恢复</option><option value="observability">28 · 可观测、Telemetry 与轨迹</option><option value="api-sdk-acp">29 · API、SDK、JSON-RPC 与 ACP</option><option value="web-ui">30 · Web UI 插件架构</option><option value="security-trust">31 · 安全模型与信任边界</option><option value="testing-invariants">32 · 测试、快照与运行时不变量</option><option value="tradeoffs">33 · 优势、代价与设计取舍</option><option value="open-questions" selected>34 · 缺口、限制与待验证问题</option><option value="glossary-evidence">35 · 术语、证据目录与源码索引</option></select>
+        </aside>
+      </div>
+      <footer class="footer">独立研究 · 固定源码基线 47f943859bef60e4160492346772ded9b24f765a · 学习笔记默认仅保存在浏览器本地</footer>
+    </main>
+  </div>
+  <script src="../assets/site.js" defer></script>
+</body>
+</html>
