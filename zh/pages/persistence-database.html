@@ -6,7 +6,7 @@
 <body data-page="persistence-database" data-baseline="47f943859bef60e4160492346772ded9b24f765a" data-lang="zh">
   <header class="topbar"><button class="icon-button nav-toggle" type="button" data-nav-toggle aria-label="打开章节目录" aria-expanded="false">☰</button>
     <a class="brand" href="../index.html"><span class="brand-mark">DS</span><span>Harness 系统拆解</span></a>
-    <span class="topbar-meta">固定基线 47f943859b · 13 已复核 / 1 撰写中 / 36 章</span>
+    <span class="topbar-meta">固定基线 47f943859b · 17 已复核 / 1 撰写中 / 36 章</span>
     <div class="topbar-actions"><a class="language-switch" href="../../pages/persistence-database.html" lang="en" aria-label="阅读本章英文版">English</a><button class="icon-button" type="button" data-theme-toggle aria-label="切换明暗主题">◐</button></div></header>
   <div class="layout"><aside class="sidebar" data-sidebar aria-label="章节目录"><input class="filter" data-chapter-filter type="search" placeholder="筛选章节……" aria-label="筛选章节"><section class="nav-part" data-part><h2 class="part-title">导论</h2>
     <a class="chapter-link" data-chapter-item href="../pages/reading-guide.html">
@@ -23,16 +23,16 @@
     <a class="chapter-link" data-chapter-item href="../pages/session-event-model.html">
       <span class="chapter-number">09</span><span>内部会话结构与事件模型</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link" data-chapter-item href="../pages/log-replay.html">
       <span class="chapter-number">10</span><span>日志、派生历史、重放与 Fork</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link current" data-chapter-item href="../pages/persistence-database.html">
-      <span class="chapter-number">11</span><span>持久化与数据库设计</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/projections-checkpoints.html">
+      <span class="chapter-number">11</span><span>持久化与数据库设计</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link" data-chapter-item href="../pages/projections-checkpoints.html">
       <span class="chapter-number">12</span><span>Projection、Checkpoint 与冷启动</span><span class="status-dot verified" title="已复核"></span></a></section><section class="nav-part" data-part><h2 class="part-title">上下文治理</h2>
     <a class="chapter-link" data-chapter-item href="../pages/compaction.html">
       <span class="chapter-number">13</span><span>压缩体系与上下文压力</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link" data-chapter-item href="../pages/memory-knowledge.html">
-      <span class="chapter-number">14</span><span>记忆与知识：有何能力、又刻意没有什么</span><span class="status-dot queued" title="待研究"></span></a></section><section class="nav-part" data-part><h2 class="part-title">协作状态</h2>
+      <span class="chapter-number">14</span><span>记忆与知识：有何能力、又刻意没有什么</span><span class="status-dot verified" title="已复核"></span></a></section><section class="nav-part" data-part><h2 class="part-title">协作状态</h2>
     <a class="chapter-link" data-chapter-item href="../pages/plan-goal-todo.html">
-      <span class="chapter-number">15</span><span>Plan、Goal 与 Todo</span><span class="status-dot queued" title="待研究"></span></a></section><section class="nav-part" data-part><h2 class="part-title">工具系统</h2>
+      <span class="chapter-number">15</span><span>Plan、Goal 与 Todo</span><span class="status-dot verified" title="已复核"></span></a></section><section class="nav-part" data-part><h2 class="part-title">工具系统</h2>
     <a class="chapter-link" data-chapter-item href="../pages/tool-primitives.html">
       <span class="chapter-number">16</span><span>工具定义原语与执行管线</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link" data-chapter-item href="../pages/tool-catalog.html">
-      <span class="chapter-number">17</span><span>工具全集与能力分类</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/tool-parallelism.html">
+      <span class="chapter-number">17</span><span>工具全集与能力分类</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link" data-chapter-item href="../pages/tool-parallelism.html">
       <span class="chapter-number">18</span><span>工具并行器与结果顺序</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/permission-approval.html">
       <span class="chapter-number">19</span><span>权限分析、审批与单调 Guard</span><span class="status-dot queued" title="待研究"></span></a></section><section class="nav-part" data-part><h2 class="part-title">执行环境</h2>
     <a class="chapter-link" data-chapter-item href="../pages/sandbox-filesystem.html">
@@ -56,10 +56,221 @@
       <span class="chapter-number">34</span><span>缺口、限制与待验证问题</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/glossary-evidence.html">
       <span class="chapter-number">35</span><span>术语、证据目录与源码索引</span><span class="status-dot queued" title="待研究"></span></a></section></aside>
     <main class="main"><div class="page-shell"><article class="article" data-article><header><div class="page-kicker"><span>会话与持久化</span><span>·</span><span>第 11 章</span></div>
-      <h1>持久化与数据库设计</h1><p class="subtitle">JSONL、SQLite、通用 Storage 与数据所有权</p><div class="page-meta"><span class="status queued">待研究</span><span>上游 47f943859b</span><span>范围: 分析 session persistence、SQLite schema/migrations、JSONL、KV storage、domain form、附件与工作区。</span></div></header>
-      <section class="placeholder"><p class="eyebrow">研究队列</p><h2>本章尚未进入结论状态</h2>
-    <p><strong>当前范围:</strong> 分析 session persistence、SQLite schema/migrations、JSONL、KV storage、domain form、附件与工作区。</p><p>页面已经纳入全量研究地图，但尚未完成源码控制流复核。以下是升级为“已复核”之前必须覆盖的检查面：</p>
-    <ul class="placeholder-checks"><li>实际 bundle / profile 装配入口</li><li>公开类型、事件与配置 schema</li><li>正常控制流与状态突变时机</li><li>并发、scope、所有权与 cleanup</li><li>错误、取消、重试和降级分支</li><li>持久化、projection 与 replay 语义</li><li>生产路径测试与运行时不变量</li><li>优势、代价、限制与待验证问题</li></ul></section><section class="learning-notes" aria-labelledby="learning-notes-title"><h2 id="learning-notes-title">我的学习体会</h2>
+      <h1>持久化与数据库设计</h1><p class="subtitle">JSONL、SQLite、通用 Storage 与数据所有权</p><div class="page-meta"><span class="status verified">已复核</span><span>上游 47f943859b</span><span>范围: 分析 session persistence、SQLite schema/migrations、JSONL、KV storage、domain form、附件与工作区。</span></div></header>
+      <section>
+  <h2>结论：持久化是一组数据所有权合同，而不是一个笼统的“数据库”</h2>
+  <div class="thesis"><p>DeepSeek Harness 刻意拆出了三组持久化体系。<code>SessionPersistence</code> 拥有权威事件日志及其不可 replay 的 Header；通用 Storage/Domain 栈拥有由消费者 schema 赋予含义的 Host 侧记录；Attachment Store 拥有不可变二进制对象，而 Session event 只保留内容寻址引用。Workspace 再把 Domain 状态与 Session Header 组合起来，但它既不拥有项目目录，也不拥有 Session 日志。</p></div>
+  <p>这种分离是本章最重要的结论。JSONL 与 SQLite 是同一 Session 合同的替代物理 provider，但通用 JSON/SQLite backend 并不是 Session 数据库。同样，Workspace 的归组记录不等于对 transcript 的外键所有权，attachment reference 也不等于对象本身。</p>
+</section>
+
+<section>
+  <h2>1. 所有权地图阻止意外级联</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>所有者</th><th>耐久数据</th><th>对什么具有权威性</th><th>明确不拥有什么</th></tr></thead>
+    <tbody>
+      <tr><td><code>SessionPersistence</code></td><td><code>SessionHeader</code> 与连续 <code>SessionEvent</code></td><td>模型可见 History、Replay、Resume 与 Fork 事实</td><td>Workspace 标签、图片二进制、项目文件</td></tr>
+      <tr><td>Storage backend</td><td>不透明 JSON KV unit</td><td>原子且耐久的介质操作</td><td>记录 schema、写入顺序、Domain 含义</td></tr>
+      <tr><td>Domain</td><td>经 schema 校验的记录与可选 global state</td><td>内存当前视图、串行写入、变化事件</td><td>Session-event 语义或跨 Domain 事务</td></tr>
+      <tr><td>Attachment store</td><td>不可变的内容寻址字节</td><td>对象完整性与已验证图片 metadata</td><td>消息顺序与引用生命周期</td></tr>
+      <tr><td>Workspace</td><td>规范路径、标题、有序候选 ID、Registry 顺序与 Archive 状态</td><td>Host 侧分组与展示顺序</td><td>目录、其中的文件或被引用的 Session 日志</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Session 权威性</div><p>Service Definition 明确要求 backend 把既有 <code>SessionEvent</code> 存为事件溯源日志，并单独保存不可 replay 的 <code>SessionHeader</code> metadata。它的 API 区分 raw artifact 定位、延迟创建、耐久 append、会突变的 load、非突变 inspect、物理 suffix read 与轻量 listing。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-persistence/src/index.ts#L1-L240" title="SessionPersistence 权威事实与读取面: Service Definition 将 SessionHeader 与连续 SessionEvent 定义为耐久事实，并区分 locate、create、append、prepare、load、inspect、readFrom、list 与 listSnapshots。" aria-label="证据 PERSIST-SEAM-API">PERSIST-SEAM-API</a></p></div>
+</section>
+
+<section>
+  <h2>2. SessionPersistence 是行为 seam，不是 CRUD repository</h2>
+  <pre><code>create(header)              // 预留 identity；可以只存在于内存
+append(id, contiguousBatch) // 只在耐久后 resolve
+inspect(id)                 // 平衡的逻辑视图；不做物理修复
+load(id)                    // Cold 时提交修复，再返回平衡视图
+prepare(id)                 // 为 Resume 独占预留 exact unpublished Session
+readFrom(id, seq)           // 分离、非突变的 stored suffix
+list / listSnapshots        // 只列已 materialize 的日志</code></pre>
+  <p>这个 seam 把崩溃语义写进了接口。完整且有效、但中断的最后一个 Turn 会被保留，并以确定性 closers 闭合；provider 返回连续前缀，以及它判定为不可恢复后缀的不透明 marker。这个抽象比字面上的“部分物理记录”更宽；第 6、8 节会审计具体分类。已 create、从未 append 的 Session 可以完全不留下 artifact。因此不能用普通增删改查替代 SQLite 实现——provider 必须实现 append 连续性、identity、repair 与静止关闭。</p>
+  <div class="claim fact"><div class="claim-label">Backend 义务</div><p>共享 backend 合同要求 Header 与首个 batch 原子 materialize、提供不透明 torn-tail marker 与 source-qualified revision，并要求 <code>appendBatch</code> 只有在耐久后返回。它明确允许 repair 非原子，从而让文件 backend 可以用两个已同步步骤完成 truncate 与追加 closers。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-persistence/src/coordinator.ts#L117-L214" title="Session 持久化后端合同: 后端提供读前缀、revision、可选 suffix seek、原子首次 materialization、耐久 append、repair、list 与 close；协调器拥有其余协议。" aria-label="证据 PERSIST-BACKEND-CONTRACT">PERSIST-BACKEND-CONTRACT</a></p></div>
+</section>
+
+<section>
+  <h2>3. Coordinator 才是真正的可移植层</h2>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>快照式接纳</h3><p>Header 与 event batch 在等待 chain 前先做 lossless JSON snapshot。</p></div>
+    <div><span>2</span><h3>按 ID 串行化</h3><p>同一 Session ID 的每个操作进入同一条 Promise chain。</p></div>
+    <div><span>3</span><h3>校验并提交</h3><p>调用 provider 的单个耐久 primitive 前，先检查格式与 seq 连续性。</p></div>
+    <div><span>4</span><h3>发布状态</h3><p>只有耐久成功后，内存 cursor 才前进，prepared view 才失效。</p></div>
+  </div>
+  <p><code>PersistenceCoordinator</code> 拥有延迟 identity 冲突检查、write-behind controller、按 ID 串行化、prepared-session cache、live adoption、crash-repair sequencing、revision retry 与 disposal。Provider 只贡献介质 primitive，无需重写这套状态机。</p>
+  <div class="claim fact"><div class="claim-label">共享协议</div><p>Coordinator 按 Session ID 保存 backend bookkeeping，按 exact live Session 保存 lifecycle/write-behind 状态，并拥有 retirement drain、四阶段 preparation pool 与每 ID 一条 Promise chain。已提交 append 只有在 <code>appendBatch</code> 返回后才更新 <code>materialized</code> 与 <code>cursor</code>。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-persistence/src/coordinator.ts#L575-L710" title="PersistenceCoordinator 状态与提交顺序: 协调器按 Session ID 管理状态、promise chain 与 preparation，按 live Session 管理生命周期，并只在 appendBatch 耐久返回后推进 materialized、cursor 与 cache invalidation。" aria-label="证据 PERSIST-COORDINATOR">PERSIST-COORDINATOR</a></p></div>
+  <div class="claim fact"><div class="claim-label">读取面</div><p><code>inspect</code> 可以复用 immutable prepared graph 而不 repair；<code>load</code> 与 <code>prepare</code> 会 reserve 并提交 repair；<code>readFrom</code> 绕过该 cache，且永远不 repair。它们是刻意不同的 ownership 操作。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-persistence/src/coordinator.ts#L712-L970" title="Prepare、Load、Inspect 与 ReadFrom 的分工: prepare 预留精确未发布 Session，load 提交冷恢复，inspect 借用不变视图且不提交修复，readFrom 绕过 preparation cache 并保持非变更。" aria-label="证据 PERSIST-READ-FACES">PERSIST-READ-FACES</a></p></div>
+</section>
+
+<section>
+  <h2>4. Write-behind 把热路径接纳与耐久静止点分开</h2>
+  <pre><code>session/event → structuredClone → pending queue
+                 首个 item 启动固定 deadline
+deadline → stable batch → backend append
+failure  → batch 恢复到队首；暂停自动重试
+flush    → 取消 timer → 加入 active write → 重试并排空</code></pre>
+  <p>后续 event 不会延长当前 batching deadline。一次写入期间接纳的 event 会形成 follow-up batch。后台失败会被报告，同时 exact batch 仍被保留；显式 flush 是重试与 quiescence barrier。Backend disposal 会先排空 controller，再关闭介质。</p>
+  <div class="claim fact"><div class="claim-label">失败安全队列</div><p><code>SessionWriteBehind</code> 会复制已接纳 event，让并发 flush caller 共享一个 barrier，并把失败 batch 放回比新 pending event 更前的位置。队列不会静默确认失败的耐久写。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-persistence/src/write-behind.ts#L19-L157" title="失败安全的 Session 写后队列: 队列克隆事件、使用固定 deadline、共享并发 flush barrier；失败 batch 恢复到新事件之前，显式 flush 重试并排空到静止点。" aria-label="证据 PERSIST-WRITE-BEHIND">PERSIST-WRITE-BEHIND</a></p></div>
+</section>
+
+<section>
+  <h2>5. JSONL 是一种逻辑事件流，对应两种物理编码</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>属性</th><th>Raw <code>.jsonl</code></th><th>默认 <code>.jsonl.zstd</code></th></tr></thead>
+    <tbody>
+      <tr><td>Header</td><td>第一条以换行结束的 record</td><td>一个带 checksum 的 Header frame</td></tr>
+      <tr><td>Append batch</td><td>新增 JSONL lines</td><td>一个独立的 checksummed frame</td></tr>
+      <tr><td>Chunk packing</td><td colspan="2">符合条件的 delta run 可变成 lossless packed row；load 时再展开为 events</td></tr>
+      <tr><td>Suffix seek</td><td colspan="2">没有：<code>readFrom</code> 仍扫描物理前缀，然后只返回 suffix</td></tr>
+      <tr><td>Raw export</td><td colspan="2">返回精确 logical JSONL text，保留 packed row 与序列化细节</td></tr>
+    </tbody>
+  </table></div>
+  <p>配置 root 必填，并在 constructor 中只 resolve 一次，因此后续 <code>process.cwd()</code> 变化不会拆散同一 backend。Session ID 在成为路径 segment 前会做 injective escape。Repair 或 append 前会检查 Header identity 以及由 cwd/id 推导的路径；混用 compression suffix 的 root 或已退役 flat layout 会被拒绝，而不是猜测。</p>
+  <div class="claim fact"><div class="claim-label">文件 Identity</div><p>Provider 只 resolve 一次 root，公开 absolute location，并刻意不实现 seek-capable <code>loadStoredFrom</code>。Format 使用一条专用 Header record，后跟 verbatim 或 packed storage rows；未验证的 branded Session ID 会先转成 path-safe 编码。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-persistence-jsonl/src/index.ts#L115-L200" title="JSONL 根目录与顺序介质边界: JSONL 构造器一次解析 root、补齐程序化构造默认值、返回绝对 artifact path，并故意不实现 seek-capable loadStoredFrom。" aria-label="证据 PERSIST-JSONL-ROOT">PERSIST-JSONL-ROOT</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-persistence-jsonl/src/format.ts#L28-L223" title="JSONL Header、路径编码与 chunk packing: 格式以专用 Session Header 开头，将未验证的 branded ID 注入式转义为安全路径段，并可把 delta run 无损打包为 storage rows。" aria-label="证据 PERSIST-JSONL-FORMAT">PERSIST-JSONL-FORMAT</a></p></div>
+</section>
+
+<section>
+  <h2>6. JSONL 的耐久性很强，但 Repair 刻意分成两个阶段</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>操作</th><th>耐久边界</th><th>失败行为</th></tr></thead>
+    <tbody>
+      <tr><td>首次 append</td><td>同步临时文件；无覆盖发布；POSIX 下同步父目录</td><td>同 ID 发布冲突会拒绝，不会替换日志</td></tr>
+      <tr><td>后续 append</td><td>追加编码 batch 并 fsync 文件</td><td>写入/同步失败会 truncate 回此前 byte length</td></tr>
+      <tr><td>Repair</td><td>Truncate + fsync，再 append recovered records 与 synthetic closers + fsync</td><td>两个步骤之间崩溃可能留下更短、但仍可恢复的 open tail</td></tr>
+    </tbody>
+  </table></div>
+  <p>Raw mode 只容忍不完整的最后一条 record，或严格位于最后一个 committed <code>turn/end</code> 之后的缺陷。Zstandard mode 会拒绝损坏的完整 frame，但可以从结构不完整的 final frame 中抢救已经输出的完整 JSONL records。它从该 frame 起点截断，只重写 recovered records 与 closers，不会改写更早的 committed prefix。</p>
+  <div class="claim fact"><div class="claim-label">物理 Repair 范围</div><p>Reader 返回 byte-offset marker，以及从不完整 final frame 中恢复出的完整 event。<code>commitRepair</code> 先 fsync truncation，再通过正常同步 append path 追加 recovered events 与 closers。Coordinator 合同允许这个非原子序列。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-persistence-jsonl/src/index.ts#L306-L701" title="JSONL 读取、发布、回滚与 repair: 读取器返回 byte-offset torn marker 与可恢复完整事件；首次写经 synced temp 与无覆盖发布，append 失败回滚长度，repair 先 truncate+fsync 再经正常 append 写 recovered events 和 closers。" aria-label="证据 PERSIST-JSONL-REPAIR">PERSIST-JSONL-REPAIR</a></p></div>
+  <div class="claim assessment"><div class="claim-label">分类范围宽于字节撕裂</div><p>Raw scanner 也接收完整、以换行结束的 records。如果这样的 row 不是合法 JSON、storage shape 无效，或展开后出现 seq gap，scanner 会记录问题，但只有在后续 decoded row 闭合 Turn 时才抛错；否则 <code>finish()</code> 返回缺陷前的 byte offset。因此 repair 可能丢弃一条物理完整的 row，以及最终 open Turn 中位于其后的所有 rows。这个策略保护了每个已闭合 Turn，却不能证明该 suffix 从未耐久提交。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-persistence-jsonl/src/format.ts#L272-L388" title="JSONL 完整行的尾部分类: scanner 对完整换行记录的 JSON、storage shape 与 seq 做检查；异常后若没有遇到后续 turn/end，finish 返回异常前的 committedBytes，使完整异常行也进入可截断尾部。" aria-label="证据 PERSIST-JSONL-SCAN">PERSIST-JSONL-SCAN</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-persistence-jsonl/src/index.ts#L306-L701" title="JSONL 读取、发布、回滚与 repair: 读取器返回 byte-offset torn marker 与可恢复完整事件；首次写经 synced temp 与无覆盖发布，append 失败回滚长度，repair 先 truncate+fsync 再经正常 append 写 recovered events 和 closers。" aria-label="证据 PERSIST-JSONL-REPAIR">PERSIST-JSONL-REPAIR</a></p></div>
+  <aside class="caveat"><strong>Suffix 范围：</strong>JSONL 的 <code>readFrom</code> 限制的是返回和重新 fold 的 events，而不是 I/O 或 parse。由于介质是顺序的，即使 seek backend 不会检查，一个更早的 unsupported required event 仍可能让 suffix 请求拒绝。</aside>
+</section>
+
+<section>
+  <h2>7. Session SQLite 把同一日志合同映射为 STRICT rows</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>表</th><th>作用</th><th>Identity / Durability 细节</th></tr></thead>
+    <tbody>
+      <tr><td><code>persistence_state</code></td><td>单例 store UUID</td><td>避免不同 store 的本地 counter 被误判为相同</td></tr>
+      <tr><td><code>sessions</code></td><td>Header columns、incarnation UUID、revision counter</td><td>Row 是否存在就是 lazy materialization 标志</td></tr>
+      <tr><td><code>events</code></td><td>每 event 一行，主键 <code>(session_id, seq)</code></td><td>Foreign-key cascade 与 strict columns</td></tr>
+    </tbody>
+  </table></div>
+  <p>数据库同时携带 <code>application_id</code> 与 <code>user_version</code>。Pristine database 会初始化并 stamp；非空未版本化 database、外来 application identity，或 <code>SCHEMA_VERSION = 15</code> 之外的任何版本都会拒绝。尽管字段名叫“version”，这个 pre-release 实现没有 migration path。</p>
+  <div class="claim fact"><div class="claim-label">Schema 所有权</div><p>初始化持有 <code>BEGIN IMMEDIATE</code>，检查 schema ownership，创建三个 STRICT tables，分配 store identity，并在应用指定 journal mode 前 stamp application/schema version。既有的不兼容介质会被拒绝，不会被改成猜测出来的 shape。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-persistence-sqlite/src/schema.ts#L15-L171" title="Session SQLite 严格 schema 与拒绝式版本策略: 后端使用 schema version 15、application id、store identity、sessions 与 events STRICT tables；未知、外来或非空未版本化数据库拒绝而不迁移。" aria-label="证据 PERSIST-SQLITE-SCHEMA">PERSIST-SQLITE-SCHEMA</a></p></div>
+</section>
+
+<section>
+  <h2>8. SQLite Append 与 Repair 获得事务原子性和真正的 Suffix Read</h2>
+  <p>首次 materialization 与其 batch 中的每个 event 在一个 transaction 内提交。后续 append batch 同样如此，并只让 Session revision 增加一次。Load 在同一事务快照中扫描完整 row set，找出第一个 invalid tail seq，再用一个 transaction 删除 <code>seq &gt;= tornMarker</code>、插入确定性 closers，并递增 revision。</p>
+  <div class="claim fact"><div class="claim-label">Row Repair</div><p><code>scanRows</code> 会拒绝位于最后一个有效 <code>turn/end</code> 及其之前的 unparsable row 或 sequence gap，但把更晚的缺陷当作 torn tail。<code>commitRepair</code> 原子删除该 suffix 并插入 closers；marker 之前的有效 committed row 不会被改写。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-persistence-sqlite/src/schema.ts#L220-L269" title="SQLite torn suffix 判定: scanRows 将最后一个有效 turn/end 以内的坏 JSON 或 seq gap 视为 committed corruption，只把其后的第一个缺陷标记为可丢弃 torn tail。" aria-label="证据 PERSIST-SQLITE-SCAN">PERSIST-SQLITE-SCAN</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-persistence-sqlite/src/index.ts#L278-L338" title="SQLite append 与 repair 事务: 首次 materialization 和 batch append 在一个事务内；repair 在另一个事务中删除 torn suffix、插入 synthetic closers，并一次推进 revision。" aria-label="证据 PERSIST-SQLITE-REPAIR">PERSIST-SQLITE-REPAIR</a></p></div>
+  <div class="claim assessment"><div class="claim-label">同一策略也存在于 Row 粒度</div><p>SQLite row 可以已被 transaction 完整提交，却包含坏 JSON 或错误 sequence。当缺陷位于最后一个有效 <code>turn/end</code> 之后时，<code>scanRows</code> 会把该 row 与后续 rows 标成 never-committed torn tail，变更型 load 可以删除它们。这是合理的可用性选择，但“位于最后一个闭合 Turn 之后”属于语义恢复规则，并不是 rows 曾被物理撕裂的证据。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-persistence-sqlite/src/schema.ts#L220-L269" title="SQLite torn suffix 判定: scanRows 将最后一个有效 turn/end 以内的坏 JSON 或 seq gap 视为 committed corruption，只把其后的第一个缺陷标记为可丢弃 torn tail。" aria-label="证据 PERSIST-SQLITE-SCAN">PERSIST-SQLITE-SCAN</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-persistence-sqlite/src/index.ts#L278-L338" title="SQLite append 与 repair 事务: 首次 materialization 和 batch append 在一个事务内；repair 在另一个事务中删除 torn suffix、插入 synthetic closers，并一次推进 revision。" aria-label="证据 PERSIST-SQLITE-REPAIR">PERSIST-SQLITE-REPAIR</a></p></div>
+  <div class="claim fact"><div class="claim-label">Seek 语义</div><p><code>loadStoredFrom</code> 执行 <code>WHERE session_id = ? AND seq &gt;= ? ORDER BY seq</code>，只扫描选中区域。它明确非突变：错误的 selected tail 只会缩短返回视图，不会被 repair。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-persistence-sqlite/src/index.ts#L220-L237" title="SQLite 真正的 suffix seek: loadStoredFrom 以 session_id 与 seq &gt;= fromSeq 直接查询并只扫描所选行；torn tail 只缩短返回视图，不触发修复。" aria-label="证据 PERSIST-SQLITE-SUFFIX">PERSIST-SQLITE-SUFFIX</a></p></div>
+  <aside class="caveat"><strong>校验范围刻意不对称：</strong>SQLite suffix read 不证明 <code>fromSeq</code> 之前 payload 的有效性；JSONL 通常会 parse 完整 artifact。完整 <code>load</code>/<code>prepare</code> 在突变恢复前仍检查整份日志。</aside>
+</section>
+
+<section>
+  <h2>9. 文档中的 WAL 默认值存在 Direct-constructor 陷阱</h2>
+  <div class="claim assessment"><div class="claim-label">静态发现</div><p>Plugin schema 把 <code>journalMode</code> 默认成 <code>wal</code>，但 <code>SqliteSessionPersistence</code> constructor 只为 cache size 与 batch delay 补 fallback。它把仍为 optional 的 <code>journalMode</code> 强制转换成 required 后继续传递，而 <code>openDatabase</code> 会调用 <code>journalMode.toUpperCase()</code>。因此 <code>new SqliteSessionPersistence(ctx, { path })</code> 不会使用 WAL，而会异步失败。Direct-constructor test 通过显式传入 <code>journalMode: 'wal'</code> 避开了该缺陷。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-persistence-sqlite/src/index.ts#L69-L146" title="Session SQLite 直接构造默认值泄漏: schema 将 journalMode 默认成 wal，但构造器只补齐 cache 与 batching 默认值，把仍可缺省的 journalMode 断言为 Required 后传给 openDb。" aria-label="证据 PERSIST-SESSION-SQLITE-CONSTRUCTOR">PERSIST-SESSION-SQLITE-CONSTRUCTOR</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-persistence-sqlite/tests/sqlite.spec.ts#L677-L691" title="Session SQLite 直接构造测试显式传 WAL: 绕过 Schemastery 的直接构造测试验证 preparation cache 默认值，但显式传 journalMode: wal，因此未覆盖 journalMode 缺省。" aria-label="证据 PERSIST-SESSION-SQLITE-CONSTRUCTOR-TEST">PERSIST-SESSION-SQLITE-CONSTRUCTOR-TEST</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-persistence-sqlite/src/schema.ts#L15-L171" title="Session SQLite 严格 schema 与拒绝式版本策略: 后端使用 schema version 15、application id、store identity、sessions 与 events STRICT tables；未知、外来或非空未版本化数据库拒绝而不迁移。" aria-label="证据 PERSIST-SQLITE-SCHEMA">PERSIST-SQLITE-SCHEMA</a></p></div>
+  <p>通用 SQLite storage backend 也出现相同形状：Schemastery 承诺 WAL 默认值，但 public constructor 强制转换一个缺失的 optional value，随后 open path 解引用它。经 Loader/schema normalization 的 plugin 构造是安全的；没有传 <code>journalMode</code> 的直接程序化构造则不是。</p>
+  <div class="claim assessment"><div class="claim-label">重复的边界泄漏</div><p><code>SqliteStorageBackend({ path })</code> 因同样原因把 undefined journal mode 交给后续 <code>toUpperCase()</code>。属于 public config 合同的默认值，应在 constructor 侧完成 normalization，或让 constructor 类型要求 already-normalized config。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/storage/storage-sqlite/src/index.ts#L23-L72" title="通用 SQLite Storage 构造器默认值泄漏: 配置 schema 承诺 WAL 默认值，但公开构造器把 optional journalMode 强制断言后直接传给异步 openDatabase。" aria-label="证据 PERSIST-STORAGE-SQLITE-CONSTRUCTOR">PERSIST-STORAGE-SQLITE-CONSTRUCTOR</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/storage/storage-sqlite/src/schema.ts#L52-L80" title="通用 SQLite open 路径解引用 journalMode: openDatabase 解析数据库路径后进入 configureDatabase，后者无防护调用 journalMode.toUpperCase()。" aria-label="证据 PERSIST-STORAGE-SQLITE-OPEN">PERSIST-STORAGE-SQLITE-OPEN</a></p></div>
+</section>
+
+<section>
+  <h2>10. 通用 Storage 刻意比 SessionPersistence 知道得更少</h2>
+  <pre><code>Storage hub
+  ├─ backend registry: name → 一个介质与可选 facets
+  └─ mounted forms: 当前为 domain
+
+KV backend contract
+  open(unit descriptor) → loadAll / putRecord / deleteRecord / setGlobal / close
+
+Domain form
+  spec + zod schemas + route → authoritative memory + 单写入 chain + change events</code></pre>
+  <p>对 backend 而言，KV value 是不透明 JSON。Unit 保证每次单独调用原子且耐久，但明确不串行化并发调用。Domain 层补上这一顺序，在 open 时校验数据，先完成 backend durability，再修改内存 Map，只有两者一致后才发出 <code>domain/changed</code>。</p>
+  <div class="claim fact"><div class="claim-label">分层边界</div><p>Backend 合同把介质 ownership 与单次调用 durability 交给 <code>KvUnit</code>，把 schema 与并发顺序留给 caller。Backend unregister 不会关闭介质；provider plugin 拥有该 lifecycle。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/storage/storage/src/backend.ts#L12-L104" title="通用 Storage backend seam: StorageBackend 拥有一个 medium 与生命周期；KvUnit 只承诺单次调用原子耐久，把 opaque JSON、schema 和并发写排序留给调用方。" aria-label="证据 PERSIST-STORAGE-SEAM">PERSIST-STORAGE-SEAM</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/storage/storage/src/registry.ts#L14-L36" title="Storage registry 的非拥有型注销: registry disposer 仅在 identity 仍匹配时删除名称，明确不会 close backend；medium 生命周期属于 provider plugin。" aria-label="证据 PERSIST-STORAGE-REGISTRY">PERSIST-STORAGE-REGISTRY</a></p></div>
+  <div class="claim fact"><div class="claim-label">Domain 写序</div><p>每 Domain 一条 Promise chain，让 update function 看到自己 queue slot 时的 value。Backend 写失败会让内存保持不变；写成功则先更新内存，再发送受控 notification。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/storage/storage-domain/src/domain.ts#L135-L269" title="Domain 的耐久先行写序: Domain 以一个 promise chain 串行化写入，backend 成功后才更新内存并发送受控 changed notification；失败写不改变内存。" aria-label="证据 PERSIST-DOMAIN-ORDER">PERSIST-DOMAIN-ORDER</a></p></div>
+  <p>通用 SQLite provider 在 <code>units</code> 中为每个 unit 保存一行，在 <code>unit_globals</code> 中保存可选 global row，并为每个声明表创建一个 STRICT <code>u_&lt;unit&gt;_&lt;table&gt;</code> table。它的物理 <code>user_version</code> 为 1；其他 stamped layout 会拒绝，而不是 migration。每次 KV mutation 是一条 prepared statement，因此 provider 提供单次调用原子性，Domain 仍负责写序。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/storage/storage-sqlite/src/schema.ts#L15-L119" title="通用 SQLite Storage 物理 schema: 通用 backend 使用 physical user_version 1、units 与 unit_globals STRICT tables，并为每个 unit table 生成受验证的物理表名；其他 stamped version 拒绝而不迁移。" aria-label="证据 PERSIST-STORAGE-SQLITE-SCHEMA">PERSIST-STORAGE-SQLITE-SCHEMA</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/storage/storage-sqlite/src/unit.ts#L23-L147" title="通用 SQLite KV unit 原语: 每个声明表预编译 upsert/delete/select，global slot 单独 upsert；每次 KV mutation 是一个同步 SQLite statement，经 Promise 合同结算。" aria-label="证据 PERSIST-STORAGE-SQLITE-UNIT">PERSIST-STORAGE-SQLITE-UNIT</a></p>
+</section>
+
+<section>
+  <h2>11. JSON KV 发布认真处理了耐久性，但相对 Root 仍是动态的</h2>
+  <p>每次 JSON KV mutation 都会重新发布整份 human-readable unit file。Writer 创建同目录、owner-only 的临时文件，写入并 fsync，以 atomic rename 覆盖 target，然后在 POSIX 下 fsync 父目录。Windows 通过 libuv 获得 atomic replacement，但没有显式 write-through flag。实现也没有跨进程 writer lock。</p>
+  <div class="claim fact"><div class="claim-label">Replace 协议</div><p>临时文件与 target 位于同一目录，因此 rename 是 publication point；此前先同步文件，之后在 POSIX 上同步目录。任何失败路径都会删除临时文件并传播 error。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/storage/storage-json/src/atomic.ts#L1-L52" title="JSON KV 原子替换协议: writer 在同目录创建 owner-only temp，写入并 fsync，rename 覆盖目标，再在 POSIX fsync 父目录；失败清理 temp 并传播错误。" aria-label="证据 PERSIST-JSON-ATOMIC">PERSIST-JSON-ATOMIC</a></p></div>
+  <div class="claim assessment"><div class="claim-label">发布后错误存在歧义</div><p><code>rename()</code> 发生在父目录 fsync 之前。如果后者拒绝，<code>writeAtomic</code> 会在 target 可能已经暴露新 bytes 后返回失败。<code>JsonKvUnit</code> 随即回滚自身 state，Domain 也因 backend call 失败而保持旧内存。于是 caller 收到 failure，但 reopen 可能读到新文件，crash durability 同样未知。Backend 需要明确 post-publication policy——例如 poison/reload unit，或保留足够状态完成 reconcile——而不能把每个 rejection 都当作尚未发布。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/storage/storage-json/src/atomic.ts#L1-L52" title="JSON KV 原子替换协议: writer 在同目录创建 owner-only temp，写入并 fsync，rename 覆盖目标，再在 POSIX fsync 父目录；失败清理 temp 并传播错误。" aria-label="证据 PERSIST-JSON-ATOMIC">PERSIST-JSON-ATOMIC</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/storage/storage-json/src/unit.ts#L47-L140" title="JSON KV 失败后的内存回滚: 每个 KV mutation 先修改 unit 内存，再发布整文件；publish 任意拒绝都会恢复旧内存，而 publish 的拒绝可能发生在 rename 之后的目录 fsync。" aria-label="证据 PERSIST-JSON-UNIT-ROLLBACK">PERSIST-JSON-UNIT-ROLLBACK</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/storage/storage-domain/src/domain.ts#L135-L269" title="Domain 的耐久先行写序: Domain 以一个 promise chain 串行化写入，backend 成功后才更新内存并发送受控 changed notification；失败写不改变内存。" aria-label="证据 PERSIST-DOMAIN-ORDER">PERSIST-DOMAIN-ORDER</a></p></div>
+  <div class="claim assessment"><div class="claim-label">静态 Root 缺口</div><p>Config 正确要求显式 <code>root</code>，但 schema 接受 relative string，<code>JsonStorageBackend</code> 也原样保存该 string。<code>mkdir(root)</code> 与 <code>join(root, unit.json)</code> 在以后运行，因此 process-wide cwd change 可以把后续 unit open 指向别处。Session JSONL provider 通过在 constructor 中只 resolve 一次 root，避开了完全相同的问题。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/storage/storage-json/src/index.ts#L21-L66" title="JSON Storage 相对 root 缺口: 配置要求显式 root，但 schema 接受相对 string，backend 原样保存，并在后续 openUnit 才执行 mkdir 与 join，因此 cwd 变化可重定向新 unit。" aria-label="证据 PERSIST-JSON-ROOT-GAP">PERSIST-JSON-ROOT-GAP</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-persistence-jsonl/src/index.ts#L115-L200" title="JSONL 根目录与顺序介质边界: JSONL 构造器一次解析 root、补齐程序化构造默认值、返回绝对 artifact path，并故意不实现 seek-capable loadStoredFrom。" aria-label="证据 PERSIST-JSONL-ROOT">PERSIST-JSONL-ROOT</a></p></div>
+</section>
+
+<section>
+  <h2>12. Domain Close 存在一种单向失败状态</h2>
+  <p>Happy path 是可靠的：<code>close()</code> 立刻拒绝新写入，排空已经 settle 的 write-chain tail，关闭 backend unit，把读取标记为 closed，最后释放 facility 的 name reservation。重复 close 会共享同一个 Promise。</p>
+  <div class="claim assessment"><div class="claim-label">静态 Lifecycle 缺口</div><p>如果 <code>unit.close()</code> 拒绝，<code>disposing</code> 会保持 true，<code>closed</code> 保持 false，<code>onClosed()</code> 不会释放 name，而 <code>disposal</code> 永远保留那个 rejected Promise。结果是 handle 拒绝所有新写入，却仍允许读取；同名 Domain 也无法 reopen。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/storage/storage-domain/src/domain.ts#L148-L275" title="Domain close 的单向失败状态: close 首先置 disposing 并 drain chain；若 unit.close 拒绝，closed 与 onClosed 均不会到达，rejected disposal 被缓存，导致写拒绝、读仍可用且名称无法重开。" aria-label="证据 PERSIST-DOMAIN-CLOSE-GAP">PERSIST-DOMAIN-CLOSE-GAP</a></p></div>
+  <aside class="caveat"><strong>为何重要：</strong>这不是数据损坏——write chain 已排空——但它是 lifecycle leak 与含糊的 service state。稳健的关闭路径需要明确 retry、terminal closure、reservation release 与介质关闭失败聚合策略。</aside>
+</section>
+
+<section>
+  <h2>13. Attachment 使用 Commit-before-reference 与内容寻址 Ownership</h2>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>接纳</h3><p>限制 encoded bytes，完整解码 raster，验证格式、尺寸与 pixel count。</p></div>
+    <div><span>2</span><h3>寻址</h3><p>对 exact encoded bytes 做 hash，生成不透明 <code>sha256:</code> attachment ID。</p></div>
+    <div><span>3</span><h3>发布</h3><p>同步 private staging file，以 exclusive hard link 发布，再同步目录祖先。</p></div>
+    <div><span>4</span><h3>引用</h3><p>只有此后 Session event 才能保存 ID、media type、byte length、dimensions 与 sanitized display name。</p></div>
+  </div>
+  <p>Deduplication 是安全的，因为接受既有对象前会重新读取并 hash。Read 会重新 hash bytes，把存储 metadata 与日志 reference 对比，并保留 cancellation。由于 resumed/forked Session 可能共享对象，所有对象会无限期保留；删除 Session 或 Workspace 都不会隐式 garbage-collect 它们。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/attachment/attachment-local/README.md#L17-L21" title="Attachment 无限期保留限制: 已知限制明确说明对象无限期保留，reference-aware garbage collection 尚未实现。" aria-label="证据 PERSIST-ATTACH-LIMITS">PERSIST-ATTACH-LIMITS</a></p>
+  <div class="claim fact"><div class="claim-label">Binary Ownership</div><p>Attachment seam 公开 immutable reference，而不是 path 或 provider URL。Local provider 在 versioned root 下保存 owner-private objects，只有完成 content 与 namespace durability 检查后才发布 durable reference。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/attachment/attachment/src/index.ts#L28-L59" title="Attachment durability seam: AttachmentStore 暴露 immutable binary reference；saveImage 必须在所属 Session event append 前完成验证与耐久提交，readImage 必须验证 bytes 与 reference。" aria-label="证据 PERSIST-ATTACH-SEAM">PERSIST-ATTACH-SEAM</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/attachment/attachment-local/src/store.ts#L19-L194" title="本地 Attachment 内容寻址发布: local store 以 SHA-256 寻址，使用 private staging、synced file、exclusive hard-link publication 与目录 fsync，并在 dedup race 中重新读取和 hash 已有对象。" aria-label="证据 PERSIST-ATTACH-STORE">PERSIST-ATTACH-STORE</a></p></div>
+</section>
+
+<section>
+  <h2>14. Attachment 的 Read-time Decode 文档不正确</h2>
+  <div class="claim assessment"><div class="claim-label">文档漂移</div><p>Local-backend README 声称 write admission 与 read 都会完整解码 raster。生产源码则明确相反：admission 调用 <code>image.raw().toBuffer()</code> 完整 decode；通过 digest 校验的 read 调用 <code>probeImage()</code>，只向 Sharp 请求 Header metadata。源码给出的理由是 digest 已证明它们正是先前接纳的 exact bytes，因此无需在 replay 时再次引入 pixel amplification。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/attachment/attachment-local/README.md#L1-L7" title="Attachment README 声称 read 完整 decode: README 明确写道 write admission 与 reads 都会在接受 format 与 dimensions 前完整 decode raster。" aria-label="证据 PERSIST-ATTACH-DECODE-DOC">PERSIST-ATTACH-DECODE-DOC</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/attachment/attachment-local/src/store.ts#L46-L230" title="Attachment admission 与 read 实际分支: admission 通过 detectImage，read 先验证 digest 再调用 probeImage，并对比 media type、bytes、width 与 height。" aria-label="证据 PERSIST-ATTACH-DECODE-SOURCE">PERSIST-ATTACH-DECODE-SOURCE</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/attachment/attachment-local/src/image.ts#L21-L65" title="完整 decode 与 Header probe 的实现差异: probeImage 只读取 Sharp metadata；detectImage 检查 pixel limit 后调用 image.raw().toBuffer() 完整 decode。" aria-label="证据 PERSIST-ATTACH-DECODE-IMPL">PERSIST-ATTACH-DECODE-IMPL</a></p></div>
+  <p>实现仍然验证 integrity 与 reference metadata；漂移涉及的是计算工作和 malformed-payload revalidation，而不是跳过 digest verification。文档应改成“admission 时完整 decode；read 时先验证 digest，再 probe Header”。</p>
+</section>
+
+<section>
+  <h2>15. Workspace 是 Domain State 之上的可恢复两次写 Registry</h2>
+  <p><code>workspace</code> domain（version 2）为每个 Workspace 保存一条 record——canonical path、title、有序 candidate Session IDs 与 timestamps——并以 global state 保存 initialized、Workspace order、archive IDs 与可选 pending create/delete marker。首次启动只列 Session Header，规范化有效 cwd 目录，对其分组，并把 initialized marker 放到最后写。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/workspace/workspace/src/index.ts#L118-L140" title="Workspace 初始化顺序: 初始化先 open Domain、恢复 pending mutation 与验证 state；未初始化时 list Header、完整替换 index 并 bootstrap，已初始化时启动路径完整替换 Header index。" aria-label="证据 PERSIST-WORKSPACE-INIT">PERSIST-WORKSPACE-INIT</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/workspace/workspace/src/index.ts#L426-L508" title="Workspace Header-only bootstrap: bootstrap 按 canonical cwd 将 Header 分组，复用部分 record，写 Workspace rows 与 order，并把 initialized=true marker 放在最后写。" aria-label="证据 PERSIST-WORKSPACE-BOOTSTRAP">PERSIST-WORKSPACE-BOOTSTRAP</a></p>
+  <p>Create/delete 无法成为一个通用 cross-record transaction，因此 Registry 会在 record/order pair 可能分叉前先写 pending marker。启动时只完成被 marker 点名的 mutation；无法解释的 order/table、duplicate path 或 duplicate-session ownership 仍会 fail loud。删除 Workspace 只删除注册与 account，绝不删除目录、文件、live Session、persisted log 或 attachment。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/workspace/workspace/src/index.ts#L285-L424" title="Workspace 两次写 mutation 与恢复: create/delete 在 record 与 order 可能分叉前写 durable pending marker，包含补偿分支；startup 只完成 marker 指定的 mutation，不猜测其他 divergence。" aria-label="证据 PERSIST-WORKSPACE-MUTATION">PERSIST-WORKSPACE-MUTATION</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/workspace/workspace/README.md#L11-L23" title="Workspace 删除与所有权边界: Workspace 删除只移除 registration、durable order entry 与 Session account；目录、用户文件、live Sessions 与 persisted logs 均不触碰。" aria-label="证据 PERSIST-WORKSPACE-OWNERSHIP">PERSIST-WORKSPACE-OWNERSHIP</a></p>
+  <div class="claim fact"><div class="claim-label">存储 Shape</div><p>Zod spec 通过 Domain storage 投影出一个 <code>workspaces</code> table 与一个 global state slot。Runtime validation 另行检查 order 完整性、path 唯一性与每 Session 只归一个 Workspace。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/workspace/workspace/src/spec.ts#L13-L75" title="Workspace Domain schema: Workspace domain version 2 由一张 workspaces table 与 global state 组成；ID、path、title、Session ID 与 timestamp 的运行时 shape 基本都是 plain strings。" aria-label="证据 PERSIST-WORKSPACE-SCHEMA">PERSIST-WORKSPACE-SCHEMA</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/workspace/workspace/src/index.ts#L510-L551" title="Workspace 跨 record 不变量: 启动验证拒绝重复 order ID、missing/orphan rows、重复 canonical path 与一个 Session 被多个 Workspace account。" aria-label="证据 PERSIST-WORKSPACE-INVARIANTS">PERSIST-WORKSPACE-INVARIANTS</a></p></div>
+</section>
+
+<section>
+  <h2>16. Workspace 的 Title、Schema 与 Refresh 合同存在可见缺口</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>发现</th><th>源码行为</th><th>后果</th></tr></thead>
+    <tbody>
+      <tr><td>陈旧的 title parameter</td><td><code>create(path, title?)</code> 仍是 public，但源码 TODO 说明其最后一个生产 caller 已删除</td><td>README/API surface 仍在宣传发布 consumer 已不再使用的分支</td></tr>
+      <tr><td>宽松 scalar schemas</td><td>Workspace ID、path、title、Session ID 与 timestamps 都只是 <code>z.string()</code></td><td>空白 title、非 UUID ID、非 ISO timestamp 与非规范 stored path 都能通过 schema</td></tr>
+      <tr><td>部分补偿</td><td>启动时另行检查 duplicate order ID、missing/orphan row、duplicate path 与 duplicate Session accounting</td><td>跨记录完整性强于 Zod shape，但 scalar semantics 仍未检查</td></tr>
+      <tr><td>没有 public full refresh</td><td>只有启动会 clear/replace Header index；未缓存 lookup 调用 <code>list()</code> 并增量索引返回 Header</td><td>被外部删除的 cached Session 不会被该增量过程移除；只有 restart 保证完整清理</td></tr>
+      <tr><td>Cached fast path</td><td><code>readSessionHeader</code> 直接返回 cached Header，不重新 list，也不重新 stat cwd</td><td>外部 cwd damage 只有在其他路径碰巧重新索引该 Header 或 restart 时才会被观察</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">Title 与 Schema 缺口</div><p>实现允许 create 接受 optional raw title，<code>setTitle</code> 接受任何 string；耐久 record schema 没有 nonblank、timestamp、UUID 或 path refinement。源码自己也把 create-time title parameter 标记为待删除。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/workspace/workspace/src/index.ts#L142-L163" title="Workspace create-time title 遗留分支: 公开 create(path, title?) 仍接收 raw optional title，但源码 TODO 说明最后一个 production caller 已删除并要求移除该参数。" aria-label="证据 PERSIST-WORKSPACE-TITLE-GAP">PERSIST-WORKSPACE-TITLE-GAP</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/workspace/workspace/src/entity.ts#L101-L107" title="Workspace title setter 无语义校验: setTitle 接受任意 string 并直接写入 record mutation，没有 nonblank、trim 或长度检查。" aria-label="证据 PERSIST-WORKSPACE-TITLE-SETTER">PERSIST-WORKSPACE-TITLE-SETTER</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/workspace/workspace/src/spec.ts#L13-L75" title="Workspace Domain schema: Workspace domain version 2 由一张 workspaces table 与 global state 组成；ID、path、title、Session ID 与 timestamp 的运行时 shape 基本都是 plain strings。" aria-label="证据 PERSIST-WORKSPACE-SCHEMA">PERSIST-WORKSPACE-SCHEMA</a></p></div>
+  <div class="claim assessment"><div class="claim-label">Refresh 缺口与 README 过度表述</div><p>README 称外部 deletion 或 cwd damage 会在“下次 refresh 或 restart”后出现，但生产实现没有 public full-refresh operation。Runtime miss 只调用增量 <code>indexHeaders</code>，不会清掉缺失 ID；cached hit 更完全不 refresh。Restart 是唯一明确的 full replacement path。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/workspace/workspace/src/index.ts#L561-L630" title="Workspace Header index 刷新路径: startup replacement 会清空三张 Header/path map；runtime uncached lookup 只增量 index list 结果，cached hit 直接返回且没有 public full-refresh path。" aria-label="证据 PERSIST-WORKSPACE-REFRESH">PERSIST-WORKSPACE-REFRESH</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/workspace/workspace/README.md#L41-L44" title="Workspace README 的 refresh 表述: README 声称外部 Session deletion 或 cwd damage 会在下次 refresh 或 restart 后被观察。" aria-label="证据 PERSIST-WORKSPACE-REFRESH-DOC">PERSIST-WORKSPACE-REFRESH-DOC</a></p></div>
+</section>
+
+<section>
+  <h2>17. 一个有用的 Codex 对照：介质相似，权威性拓扑不同</h2>
+  <p>对 Codex 用户来说，文件名很容易造成误解。在 Codex 官方公开仓库提交 <code>66919805ea080053d1933b6b43afeb0d8bf70c91</code> 上，<a href="https://github.com/openai/codex/blob/66919805ea080053d1933b6b43afeb0d8bf70c91/codex-rs/rollout/src/recorder.rs#L1-L1">rollout module</a> 明确说 JSONL Session rollout 会被持久化，以便 replay 或后续 inspection；<a href="https://github.com/openai/codex/blob/66919805ea080053d1933b6b43afeb0d8bf70c91/codex-rs/rollout/src/recorder.rs#L77-L84">recorder</a> 会把 canonical rollout items 写入 JSONL。公开 config 把 <code>sqlite_home</code> 定义为 <a href="https://github.com/openai/codex/blob/66919805ea080053d1933b6b43afeb0d8bf70c91/codex-rs/config/src/config_toml.rs#L315-L326">SQLite state DB</a> 的目录；App Server 的 <code>thread/list</code> 合同说明默认路径可以<a href="https://github.com/openai/codex/blob/66919805ea080053d1933b6b43afeb0d8bf70c91/codex-rs/app-server/README.md#L429-L435">扫描 JSONL rollout 来修复 metadata</a>，而 <code>useStateDbOnly</code> 会关闭该行为。</p>
+  <aside class="caveat"><strong>证据不对称：</strong>本章每一条 DeepSeek Harness 结论都基于本章固定基线 <code>47f943859bef60e4160492346772ded9b24f765a</code>。Codex 对照只是对上方单独提交的官方公开仓库做更窄的快照；它只支持链接中四项客户端存储事实，不对 OpenAI 服务端或私有实现作任何结论。</aside>
+  <div class="claim assessment"><div class="claim-label">架构差异</div><p>DeepSeek Harness 让 JSONL 与 SQLite 成为一个行为 seam 后面的可互换、<em>权威 Session-log provider</em>。它的通用 SQLite state、Workspace records 与 attachment objects 仍属于分开的 ownership domains。可迁移的教训不是“JSONL 对 SQLite”，而是明确哪种介质可以重建哪些事实、哪种介质只是 index/projection，以及哪些 repair 可以修改权威事实。</p></div>
+</section>
+
+<section>
+  <h2>18. 审计结论：合同扎实，并有七个具体后续项</h2>
+  <ul class="audit-list">
+    <li><strong>在 Constructor 边界 Normalize SQLite Defaults。</strong>修复两个 direct-constructor <code>journalMode</code> 路径，或要求 normalized config type。</li>
+    <li><strong>准确命名 Torn-tail Policy。</strong>明确两种 provider 都可能丢弃最后一个闭合 Turn 后、物理完整但异常的 records；在无法确认物理撕裂时，考虑保留诊断信息或要求显式 repair。</li>
+    <li><strong>解决 JSON KV 发布后失败。</strong>目录 sync 在 rename 后失败时，让 Domain、unit memory 与已发布 target 进入定义清楚的状态。</li>
+    <li><strong>冻结 JSON KV Root Identity。</strong>像 Session JSONL 一样，只 resolve 一次显式 relative root。</li>
+    <li><strong>定义失败的 Domain Closure。</strong>明确 retry 与 name-release 语义，避免 close error 留下 readable-but-unwritable handle。</li>
+    <li><strong>修正 Attachment 文档。</strong>明确 admission 时完整 decode，read 时执行 digest + Header verification。</li>
+    <li><strong>收紧或明确 Workspace 边界。</strong>删除已无 caller 的 create-time title 分支，按意图校验用户可见 title/timestamp/ID，并提供 runtime full refresh，或停止承诺它。</li>
+  </ul>
+  <p>系统的中心设计仍然连贯：耐久事实有明确 owner，provider 共享同一份 Session 合同。Recovery 对最后一个闭合 Turn 以内的历史保持保守，而最终 open tail 遵循更宽的策略，应该被准确命名。静态缺口集中在 repair classification、发布后失败、configuration、lifecycle、documentation 与 cache refresh 边界，并不是对 event-log 所有权认识混乱。</p>
+</section>
+<section class="learning-notes" aria-labelledby="learning-notes-title"><h2 id="learning-notes-title">我的学习体会</h2>
     <p class="privacy">内容仅自动保存到当前浏览器，不上传、不进入仓库。你可以导出 Markdown 自行归档。</p><textarea data-learning-notes aria-label="我的学习体会" placeholder="记录你的理解、疑问、反例和可迁移原则……"></textarea>
     <div class="note-footer"><span data-note-saved>本地草稿</span><button type="button" data-note-export>导出 Markdown</button>
     <button type="button" class="danger" data-note-clear>清空</button><span data-note-count>0 字符</span></div></section><nav class="pagination" aria-label="章节翻页"><a href="../pages/log-replay.html"><small>← 上一章 · 10</small><strong>日志、派生历史、重放与 Fork</strong></a><a class="next" href="../pages/projections-checkpoints.html"><small>下一章 · 12 →</small><strong>Projection、Checkpoint 与冷启动</strong></a></nav></article>

@@ -6,7 +6,7 @@
 <body data-page="tool-catalog" data-baseline="47f943859bef60e4160492346772ded9b24f765a" data-lang="en">
   <header class="topbar"><button class="icon-button nav-toggle" type="button" data-nav-toggle aria-label="Open chapter directory" aria-expanded="false">☰</button>
     <a class="brand" href="../index.html"><span class="brand-mark">DS</span><span>Harness Systems Dissection</span></a>
-    <span class="topbar-meta">Pinned baseline 47f943859b · 13 verified / 1 in progress / 36 chapters</span>
+    <span class="topbar-meta">Pinned baseline 47f943859b · 17 verified / 1 in progress / 36 chapters</span>
     <div class="topbar-actions"><a class="language-switch" href="../zh/pages/tool-catalog.html" lang="zh-CN" aria-label="Read this chapter in Chinese">中文</a><button class="icon-button" type="button" data-theme-toggle aria-label="Toggle light or dark theme">◐</button></div></header>
   <div class="layout"><aside class="sidebar" data-sidebar aria-label="Chapter directory"><input class="filter" data-chapter-filter type="search" placeholder="Filter chapters…" aria-label="Filter chapters"><section class="nav-part" data-part><h2 class="part-title">Introduction</h2>
     <a class="chapter-link" data-chapter-item href="../pages/reading-guide.html">
@@ -23,16 +23,16 @@
     <a class="chapter-link" data-chapter-item href="../pages/session-event-model.html">
       <span class="chapter-number">09</span><span>Internal Sessions and the Event Model</span><span class="status-dot verified" title="Verified"></span></a><a class="chapter-link" data-chapter-item href="../pages/log-replay.html">
       <span class="chapter-number">10</span><span>Logs, Derived History, Replay, and Forking</span><span class="status-dot verified" title="Verified"></span></a><a class="chapter-link" data-chapter-item href="../pages/persistence-database.html">
-      <span class="chapter-number">11</span><span>Persistence and Database Design</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/projections-checkpoints.html">
+      <span class="chapter-number">11</span><span>Persistence and Database Design</span><span class="status-dot verified" title="Verified"></span></a><a class="chapter-link" data-chapter-item href="../pages/projections-checkpoints.html">
       <span class="chapter-number">12</span><span>Projections, Checkpoints, and Cold Start</span><span class="status-dot verified" title="Verified"></span></a></section><section class="nav-part" data-part><h2 class="part-title">Context Governance</h2>
     <a class="chapter-link" data-chapter-item href="../pages/compaction.html">
       <span class="chapter-number">13</span><span>Compaction and Context Pressure</span><span class="status-dot verified" title="Verified"></span></a><a class="chapter-link" data-chapter-item href="../pages/memory-knowledge.html">
-      <span class="chapter-number">14</span><span>Memory and Knowledge: Capabilities and Deliberate Omissions</span><span class="status-dot queued" title="Queued"></span></a></section><section class="nav-part" data-part><h2 class="part-title">Collaborative State</h2>
+      <span class="chapter-number">14</span><span>Memory and Knowledge: Capabilities and Deliberate Omissions</span><span class="status-dot verified" title="Verified"></span></a></section><section class="nav-part" data-part><h2 class="part-title">Collaborative State</h2>
     <a class="chapter-link" data-chapter-item href="../pages/plan-goal-todo.html">
-      <span class="chapter-number">15</span><span>Plan, Goal, and Todo</span><span class="status-dot queued" title="Queued"></span></a></section><section class="nav-part" data-part><h2 class="part-title">Tool System</h2>
+      <span class="chapter-number">15</span><span>Plan, Goal, and Todo</span><span class="status-dot verified" title="Verified"></span></a></section><section class="nav-part" data-part><h2 class="part-title">Tool System</h2>
     <a class="chapter-link" data-chapter-item href="../pages/tool-primitives.html">
       <span class="chapter-number">16</span><span>Tool Definition Primitives and the Execution Pipeline</span><span class="status-dot verified" title="Verified"></span></a><a class="chapter-link current" data-chapter-item href="../pages/tool-catalog.html">
-      <span class="chapter-number">17</span><span>Complete Tool Catalog and Capability Taxonomy</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/tool-parallelism.html">
+      <span class="chapter-number">17</span><span>Complete Tool Catalog and Capability Taxonomy</span><span class="status-dot verified" title="Verified"></span></a><a class="chapter-link" data-chapter-item href="../pages/tool-parallelism.html">
       <span class="chapter-number">18</span><span>Tool Parallelism and Result Ordering</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/permission-approval.html">
       <span class="chapter-number">19</span><span>Permission Analysis, Approval, and Monotonic Guards</span><span class="status-dot queued" title="Queued"></span></a></section><section class="nav-part" data-part><h2 class="part-title">Execution Environment</h2>
     <a class="chapter-link" data-chapter-item href="../pages/sandbox-filesystem.html">
@@ -56,10 +56,248 @@
       <span class="chapter-number">34</span><span>Gaps, Limitations, and Open Questions</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/glossary-evidence.html">
       <span class="chapter-number">35</span><span>Glossary, Evidence Catalog, and Source Index</span><span class="status-dot queued" title="Queued"></span></a></section></aside>
     <main class="main"><div class="page-shell"><article class="article" data-article><header><div class="page-kicker"><span>Tool System</span><span>·</span><span>Chapter 17</span></div>
-      <h1>Complete Tool Catalog and Capability Taxonomy</h1><p class="subtitle">Inputs, outputs, policy, and UI intent for every model-visible tool</p><div class="page-meta"><span class="status queued">Queued</span><span>Upstream 47f943859b</span><span>Scope: Enumerate tool names, provider packages, schemas, parallel modes, risk surfaces, and backend seams from generated catalogs and source.</span></div></header>
-      <section class="placeholder"><p class="eyebrow">Research queue</p><h2>This chapter has not reached a conclusion state</h2>
-    <p><strong>Current scope:</strong> Enumerate tool names, provider packages, schemas, parallel modes, risk surfaces, and backend seams from generated catalogs and source.</p><p>This page is part of the complete research map, but its source-level control-flow audit is not complete. It must cover all of the following before it can be marked Verified:</p>
-    <ul class="placeholder-checks"><li>Actual bundle and profile assembly entry points</li><li>Public types, events, and configuration schemas</li><li>Normal control flow and exact mutation points</li><li>Concurrency, scope, ownership, and cleanup</li><li>Error, cancellation, retry, and degradation branches</li><li>Persistence, projections, and replay semantics</li><li>Production-path tests and runtime invariants</li><li>Benefits, costs, limitations, and open questions</li></ul></section><section class="learning-notes" aria-labelledby="learning-notes-title"><h2 id="learning-notes-title">My Learning Notes</h2>
+      <h1>Complete Tool Catalog and Capability Taxonomy</h1><p class="subtitle">Inputs, outputs, policy, and UI intent for every model-visible tool</p><div class="page-meta"><span class="status verified">Verified</span><span>Upstream 47f943859b</span><span>Scope: Enumerate tool names, provider packages, schemas, parallel modes, risk surfaces, and backend seams from generated catalogs and source.</span></div></header>
+      <section>
+  <h2>Conclusion: DeepSeek Harness has no single fixed “default tool list”; it has a provably complete shipped-package ceiling and a runtime view resolved by composition</h2>
+  <div class="thesis"><p>At the pinned baseline, the upstream generated catalog covers 24 shipped tool packages, 52 schema entries, and 51 unique generated names. The only duplicate is <code>bash</code>, registered by both a one-shot shell implementation and a persistent PTY implementation. The generator also records the shipped configured alias <code>subagent_fork</code> without giving it a separate schema heading, so the catalog represents 52 distinct shipped names. Those names never appear together by default: the standard Web preset resolves to 25 root tools on the baseline Linux composition with an attachment service, the minimal preset has 2, and Code/Cordis/custom presets, scope restrictions, dynamic plugins, and child identity change the set further.</p></div>
+  <div class="claim fact"><div class="claim-label">Reproducible counting rule</div><p>This chapter counts package and tool headings in the generated catalog and checks every package-map row. It derives each actual set again from the shipped preset and host-service conditions. The generator boots every package in a separate real Context, reads <code>ctx.tools.schemas()</code>, and uses an on-disk glob to prevent a new tool package from being omitted. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/docs/tool-catalog.md#L1-L41" title="Generated-tool-catalog scope and complete package map: The catalog explains real plugin boot for dynamic schemas, default and required branches, configurable names, and excluded examples, then lists every shipped tool package at the pinned baseline with names, dependencies, effects, and aliases." aria-label="Evidence TOOLCAT-GENERATED">TOOLCAT-GENERATED</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/scripts/gen-tool-catalog.ts#L556-L704" title="Catalog completeness guards, isolated package boots, and schema rendering: The generator rejects omitted on-disk tool packages and pending boots that harvest zero schemas, then uses a fresh Context per package to load ToolRuntime, collect scoped schemas, dispose, and render name, description, parameters, and source." aria-label="Evidence TOOLCAT-GENERATOR">TOOLCAT-GENERATOR</a></p></div>
+</section>
+
+<section>
+  <h2>1. Three Sets That Must Not Be Conflated</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Set</th><th>Pinned-baseline result</th><th>Question answered</th><th>What it does not prove</th></tr></thead>
+    <tbody>
+      <tr><td>Generated catalog ceiling</td><td>24 package sections; 52 schema entries; 51 unique generated names; 1 additional shipped alias</td><td>What every shipped <code>packages/*/tool-*</code> package can contribute under the selected config</td><td>That one Agent sees everything at once</td></tr>
+      <tr><td>Composition set</td><td>Preset + host services + platform + feature flags</td><td>Which definitions a deployment mounted</td><td>That every scope may see them</td></tr>
+      <tr><td>Request set</td><td>Scope view + restrictions + native/code/both projection</td><td>Which schemas this model request actually receives</td><td>That a call will be approved or its backend is ready</td></tr>
+    </tbody>
+  </table></div>
+  <p>There is also a fourth, temporal dimension: definitions are live Cordis effects. Hot mounting or disposal after queueing but before start can change visibility or parallel classification. Auditing therefore needs the request header and durable call/result records; the process's current catalog cannot reconstruct history by itself.</p>
+</section>
+
+<section>
+  <h2>2. Why the Generated Catalog Is Stronger Than Static Grep—and Still Not Runtime Truth</h2>
+  <pre><code>glob packages/*/tool-* → completeness guard
+for each manifest entry:
+  fresh Context → SystemPrompt → ToolRuntime → package-specific seams
+  → mount plugin → ctx.tools.schemas(scope) → sort → dispose
+render package map + name + description + JSON Schema + source link</code></pre>
+  <div class="claim fact"><div class="claim-label">Two failure guards</div><p>Omitting an on-disk tool package from the manifest fails. Listing a package that remains pending for a missing service and registers zero schemas also fails. Each package boots independently so registrations from one package cannot be attributed to the next. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/scripts/gen-tool-catalog.ts#L556-L704" title="Catalog completeness guards, isolated package boots, and schema rendering: The generator rejects omitted on-disk tool packages and pending boots that harvest zero schemas, then uses a fresh Context per package to load ToolRuntime, collect scoped schemas, dispose, and render name, description, parameters, and source." aria-label="Evidence TOOLCAT-GENERATOR">TOOLCAT-GENERATOR</a></p></div>
+  <aside class="caveat"><strong>Catalog boundary:</strong> packages boot with defaults, except required fields without defaults for which the generator records a chosen branch. Names and schemas can depend on configuration, MCP and dynamic Cordis tools can add more at deployment time, and examples are deliberately excluded. This is an executable snapshot of the shipped-package capability ceiling, not a closed enumeration of every possible tool.</aside>
+</section>
+
+<section>
+  <h2>3. Complete Package/Name Map (24 Packages, 51 Generated Names + 1 Shipped Configured Alias)</h2>
+  <div class="table-scroll"><table class="package-table">
+    <thead><tr><th>Capability family / package</th><th>Model-visible names</th><th>Main seam / effect</th></tr></thead>
+    <tbody>
+      <tr><td>Human · <code>tool-ask-user</code></td><td><code>ask_user_question</code></td><td>Waits for a human answer from a UI/provider; the call remains open while waiting</td></tr>
+      <tr><td>Code transport · <code>tools</code></td><td><code>run_code</code></td><td>Reserved Code Mode transport; nested subcalls re-enter the complete tool pipeline</td></tr>
+      <tr><td>Plan · <code>plan-mode</code></td><td><code>exit_plan_mode</code></td><td>Reviews a plan and writes <code>plan/mode inactive</code> after approval</td></tr>
+      <tr><td>One-shot shell</td><td><code>bash</code> / <code>pwsh</code></td><td>Fresh process, optional background job; platform selects one</td></tr>
+      <tr><td>Runtime self-modification · <code>tool-cordis</code></td><td><code>cordis_define</code>, <code>cordis_inspect_list</code>, <code>cordis_inspect_query</code>, <code>cordis_inspect_self</code>, <code>cordis_run</code>, <code>cordis_stop</code>, <code>cordis_undefine</code></td><td>Defines, inspects, starts, and disposes process-local dynamic packages; absent from shipped trees by default</td></tr>
+      <tr><td>Persistent shell</td><td><code>bash</code></td><td>Owner-isolated PTY state; same name as one-shot bash, different definition</td></tr>
+      <tr><td>Standalone editor</td><td><code>str_replace_editor</code></td><td>View/create/literal replace/insert over <code>ctx.fs</code></td></tr>
+      <tr><td>Filesystem</td><td><code>read</code>, <code>read_image</code>, <code>write</code>, <code>edit</code></td><td>Observation events, write/edit intents, durable attachments; image registration requires an attachment service</td></tr>
+      <tr><td>Filesystem discovery</td><td><code>glob</code>, <code>grep</code></td><td>Fixed argv invokes packaged ripgrep; complete capped output may spill</td></tr>
+      <tr><td>Terminal</td><td><code>terminal_open</code>, <code>terminal_read</code>, <code>terminal_send</code>, <code>terminal_signal</code>, <code>terminal_list</code>, <code>terminal_close</code></td><td>Persistent PTY lifecycle; send can register a background job</td></tr>
+      <tr><td>Goal</td><td><code>create_goal</code>, <code>get_goal</code>, <code>update_goal</code></td><td>Session-owned durable goal, revision, and round state with authority checks</td></tr>
+      <tr><td>Schedule</td><td><code>schedule_create</code>, <code>schedule_delete</code>, <code>schedule_list</code></td><td>Opt-in live root scope only; writes <code>schedule/change</code></td></tr>
+      <tr><td>Language server</td><td><code>lsp</code></td><td>Stable schema and a structured refusal when no provider exists</td></tr>
+      <tr><td>Fixed iteration</td><td><code>ralph</code></td><td>Creates a fresh structured child per round in a fixed foreground workflow</td></tr>
+      <tr><td>Skill</td><td><code>skill</code></td><td>Loads a trusted instruction catalog/body and can inject replacement catalogs</td></tr>
+      <tr><td>Session query</td><td><code>session_search</code>, <code>session_event_search</code>, <code>session_trace</code>, <code>session_event_trace</code>, <code>session_event_read</code></td><td>Explicitly authorized lexical search, lineage, and exact event reads; absent from the default standard preset</td></tr>
+      <tr><td>Delegation</td><td><code>subagent</code> (shipped alias <code>subagent_fork</code>)</td><td>Provider, name, and background mode are configured; the child owns a separate Session</td></tr>
+      <tr><td>Child control</td><td><code>send_message</code>, <code>interrupt_agent</code>, <code>list_agents</code></td><td>Follow-up, interruption, and listing for continuable children</td></tr>
+      <tr><td>Child return channel</td><td><code>report</code></td><td>Registered only inside a continuable in-process child; writes a user-role message to its direct parent</td></tr>
+      <tr><td>Background jobs</td><td><code>job_list</code>, <code>job_output</code>, <code>job_kill</code></td><td>Unified control for shell, PTY-send, and one-shot-subagent jobs</td></tr>
+      <tr><td>Todo</td><td><code>todo_write</code></td><td>Writes <code>todo/write</code>; allowing multiple in-progress items is a required deployment choice</td></tr>
+      <tr><td>Programmable orchestration</td><td><code>workflow</code></td><td>Restricted worker script orchestrates Agents; the script itself has no filesystem, network, or timers</td></tr>
+      <tr><td>Web</td><td><code>web_search</code>, <code>web_fetch</code></td><td>Provider-neutral seam; composition selects search and fetch availability</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Per-package attribution</div><p>The upstream package map records Requires, Writes/Affects, shipped aliases, and a deployment note for every package. Exact descriptions, parameter JSON Schemas, and production-source links follow. This table is the complete index without copying more than 1,800 lines of schemas. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/docs/tool-catalog.md#L16-L41" title="Names and capability seams for 24 shipped tool packages: The package map lists model-visible names, requirements, writes or effects, shipped aliases, and deployment notes for every package, including opt-in Cordis, conditional read_image, configured subagents, and child-only report." aria-label="Evidence TOOLCAT-PACKAGE-MAP">TOOLCAT-PACKAGE-MAP</a></p></div>
+</section>
+
+<section>
+  <h2>4. The Standard Web Root's Actual 25 Tools</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Source</th><th>Names</th><th>Count</th></tr></thead>
+    <tbody>
+      <tr><td>Platform shell</td><td><code>bash</code> on Linux/macOS; <code>pwsh</code> on Windows</td><td>1</td></tr>
+      <tr><td>Filesystem + search</td><td><code>read</code>, <code>read_image</code>, <code>write</code>, <code>edit</code>, <code>glob</code>, <code>grep</code></td><td>6</td></tr>
+      <tr><td>Jobs + skill</td><td><code>job_list</code>, <code>job_output</code>, <code>job_kill</code>, <code>skill</code></td><td>4</td></tr>
+      <tr><td>Goal + plan</td><td><code>create_goal</code>, <code>get_goal</code>, <code>update_goal</code>, <code>exit_plan_mode</code></td><td>4</td></tr>
+      <tr><td>Delegation</td><td><code>subagent</code>, <code>subagent_fork</code>, <code>send_message</code>, <code>interrupt_agent</code>, <code>list_agents</code></td><td>5</td></tr>
+      <tr><td>Workflow</td><td><code>workflow</code>, <code>ralph</code></td><td>2</td></tr>
+      <tr><td>Interaction/state/web</td><td><code>ask_user_question</code>, <code>todo_write</code>, <code>web_search</code></td><td>3</td></tr>
+      <tr><td><strong>Total</strong></td><td></td><td><strong>25</strong></td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Conditions are part of the conclusion</div><p>The standard preset selects one platform shell; mounts fs/search/jobs/skill/goal/plan, two delegation names, three controls, workflow/Ralph/ask/todo; and sets <code>fetch:false</code>. The baseline host mounts a local attachment store, so <code>read_image</code> registers. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/apps/cli/config/agent-presets/standard/agent.cordis.yml#L35-L124" title="Shell, filesystem, jobs, Skill, Goal, and plan tools in the standard preset: The preset selects one platform shell, mounts fs/search, job controls, Skill, Goal, and the stable exit_plan_mode schema, and explicitly keeps the tool catalog unchanged across plan-mode transitions for request-cache stability." aria-label="Evidence TOOLCAT-STANDARD-BASE">TOOLCAT-STANDARD-BASE</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/apps/cli/config/agent-presets/standard/agent.cordis.yml#L157-L251" title="Delegation, workflow, interaction, and Web tools in the standard preset: The preset mounts three child controls, continuable spawn and fork names, workflow, Ralph, ask, todo, and search-only Web, while explicitly disabling Codex and Claude Code delegation and fetch." aria-label="Evidence TOOLCAT-STANDARD-ORCHESTRATION">TOOLCAT-STANDARD-ORCHESTRATION</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/bundle/base/cordis.patch.yml#L98-L115" title="JSONL, local attachments, and disabled FTS in the base Host: The baseline Host mounts a local attachment service, allowing the standard fs package to register read_image; the same region shows Session Query present while full-text search defaults to openAt never." aria-label="Evidence TOOLCAT-ATTACHMENT">TOOLCAT-ATTACHMENT</a></p></div>
+  <p><code>exit_plan_mode</code> remains in the schema even when planning is inactive so changing mode does not churn the tool catalog and request-cache prefix; execution rejects invalid state instead. Codex and Claude Code delegation rows are explicitly disabled in this preset, and <code>web_fetch</code> is absent.</p>
+</section>
+
+<section>
+  <h2>5. Minimal Is Not Merely “A Smaller Standard”; It Encodes a Different Complete Product Assumption</h2>
+  <div class="claim fact"><div class="claim-label">Exact set</div><p>Minimal uses a complete persona, suppresses runtime-context snapshots, omits compaction, and exposes only persistent <code>bash</code> and <code>str_replace_editor</code>. It creates isolated realms for its PTY and bare local filesystem. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/apps/cli/config/agent-presets/minimal/agent.cordis.yml#L1-L62" title="The complete two-tool minimal composition: Minimal uses a complete fixed persona, suppresses runtime context, omits compaction, and exposes only persistent bash and str_replace_editor in isolated PTY and filesystem realms." aria-label="Evidence TOOLCAT-MINIMAL">TOOLCAT-MINIMAL</a></p></div>
+  <p>This is why “the Harness supports 51 tools” and “this Agent has 2 tools” can both be true. Capability is not a binary product checklist; it is the language a profile/preset composes for an Agent.</p>
+</section>
+
+<section>
+  <h2>6. Same Name Does Not Mean Same Semantics: Two <code>bash</code> Definitions</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Implementation</th><th>Process model</th><th>State</th><th>Typical composition</th></tr></thead>
+    <tbody>
+      <tr><td><code>dsh-tool-bash</code></td><td>Fresh process per call through <code>ctx.shell</code></td><td>cwd/env come from request and executor; no continuous PTY state</td><td>standard/base</td></tr>
+      <tr><td><code>dsh-tool-bash-persistent</code></td><td>Reuses an owner-isolated PTY through <code>ctx.terminals</code></td><td>Shell state survives across calls</td><td>minimal</td></tr>
+    </tbody>
+  </table></div>
+  <aside class="caveat"><strong>Registry constraint:</strong> one visibility layer cannot register two definitions with the same name. Composition must choose, isolate, or shadow. Historical audit cannot infer the backend from <code>name:"bash"</code> alone; it also needs the composition/request header at that time.</aside>
+</section>
+
+<section>
+  <h2>7. Filesystem Family: Discovery, Reads, Mutation, and Observation Are Separated</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Tool</th><th>Action</th><th>Key policy</th><th>Presentation intent</th></tr></thead>
+    <tbody>
+      <tr><td><code>glob</code>/<code>grep</code></td><td>Fixed-argv discovery through packaged rg</td><td>Timeout/cap/spill; neither shell nor <code>ctx.fs</code></td><td>Search-result groups</td></tr>
+      <tr><td><code>read</code></td><td>Bounded UTF-8 line window</td><td>Records present/absent version observation</td><td>Read card + locations</td></tr>
+      <tr><td><code>read_image</code></td><td>Bounded bytes → content-addressed attachment</td><td>Extension/media/model-route gates before I/O</td><td>Durable image block + metadata</td></tr>
+      <tr><td><code>write</code>/<code>edit</code></td><td>Create/overwrite and literal replacement</td><td>Default observation policy requires an unchanged version; sandbox can escalate approval</td><td>Diff intent + durable metadata</td></tr>
+      <tr><td><code>str_replace_editor</code></td><td>Combines view/create/replace/insert in one tool</td><td>Compressed interface for minimal; still uses the fs seam</td><td>Generic/diff</td></tr>
+    </tbody>
+  </table></div>
+  <p>Notably, <code>glob</code>/<code>grep</code> are semantically read-only but do not opt into parallelism. Read/write semantics and scheduler classification are independent dimensions.</p>
+</section>
+
+<section>
+  <h2>8. Shell, Terminal, and Job: Execution Capability Is Orthogonal to Lifecycle Control</h2>
+  <pre><code>bash/pwsh --run_in_background--> Job Registry <--terminal_send / one-shot subagent
+                                        |
+                           job_list / job_output / job_kill
+
+terminal_open/read/send/signal/list/close → persistent PTY registry</code></pre>
+  <p>Job tools are not a shell-specific API; they form one control plane across producers. The six terminal tools explicitly expose session creation, I/O, signaling, and close in exchange for stronger statefulness. Standard does not mount them. Minimal does not expose terminal controls either; it wraps a persistent PTY as the same <code>bash</code> name.</p>
+</section>
+
+<section>
+  <h2>9. Plan, Goal, Todo, and Ask: Four Human/Collaboration States, Not One Task List</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Primitive</th><th>Lifetime</th><th>Source of truth</th><th>Tool action</th></tr></thead>
+    <tbody>
+      <tr><td>Plan mode</td><td>Agent mode across steps</td><td><code>plan/mode</code> events + reviewer</td><td><code>exit_plan_mode</code> submits a complete plan</td></tr>
+      <tr><td>Goal</td><td>Multi-round and continuable within a Session</td><td>Goal service/projection</td><td>Create/get/update</td></tr>
+      <tr><td>Todo</td><td>Latest checklist projection within a Session</td><td><code>todo/write</code></td><td>Whole-list replacement write</td></tr>
+      <tr><td>Question</td><td>Suspension of one tool call</td><td>UserQuestion provider</td><td>Waits for and returns an answer</td></tr>
+    </tbody>
+  </table></div>
+  <p>Chapter 15 analyzes their durable semantics. Here the important point is that similar names do not justify merging their tool surfaces.</p>
+</section>
+
+<section>
+  <h2>10. Delegation, Workflow, and Ralph: Three Degrees of Orchestration Freedom</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Tool</th><th>The model chooses</th><th>The runtime fixes</th><th>Result channel</th></tr></thead>
+    <tbody>
+      <tr><td><code>subagent*</code></td><td>One child prompt, label, foreground/background</td><td>Provider, depth, background mode</td><td>Tool result, job settlement, or continuable child</td></tr>
+      <tr><td><code>workflow</code></td><td>Fan-out/control flow in restricted JavaScript</td><td>Worker isolation, Agent bridge, concurrency/total caps</td><td>Foreground aggregated result</td></tr>
+      <tr><td><code>ralph</code></td><td>Objective and optional round count</td><td>Fixed iteration script with a fresh child per round</td><td>Foreground final result</td></tr>
+    </tbody>
+  </table></div>
+  <p><code>send_message</code>/<code>interrupt_agent</code>/<code>list_agents</code> manage continuable children. <code>report</code> exists in the reverse direction inside child scope, not in the root catalog. Chapters 24–26 trace Sessions, activation, and inboxes.</p>
+</section>
+
+<section>
+  <h2>11. Web, LSP, Session Query, and Skill: Stable Schemas, Potentially Absent Provider Capability</h2>
+  <p>These tools separate their model-facing contracts from backends: <code>web_search</code>/<code>web_fetch</code> use <code>ctx.web</code>, <code>lsp</code> uses <code>ctx.lsp</code>, Session Query uses <code>ctx.sessionQuery</code> whose FTS can be disabled, and Skill uses a scope-layered catalog. Schemas may remain prefix-stable while execution returns unavailable/disabled. A visible tool never proves provider success.</p>
+  <div class="claim assessment"><div class="claim-label">Design assessment</div><p>This stable surface favors KV caching and provider replacement. The cost is that capability discovery cannot stop at schemas. A strong host should also surface provider readiness, policy mode, and failure reasons in UI/telemetry instead of making the model probe with failed calls.</p></div>
+</section>
+
+<section>
+  <h2>12. The Cordis Toolset Is a Deliberately Opt-in “Modify My Runtime” Capability</h2>
+  <p>The seven <code>cordis_*</code> tools define, inspect, run, stop, and undefine dynamic packages. A running package can register more model-visible tools until stop, undefine, or restart, so the 51-name ceiling is naturally non-closed once this facility is enabled.</p>
+  <div class="claim fact"><div class="claim-label">Default safety posture</div><p>The generated package map explicitly says this toolset appears in no shipped tree. Without <code>dynamicCordisRunner</code> it never activates. It is not a hidden default superpower; it is a real runtime-code trust boundary a deployment must opt into. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/docs/tool-catalog.md#L16-L41" title="Names and capability seams for 24 shipped tool packages: The package map lists model-visible names, requirements, writes or effects, shipped aliases, and deployment notes for every package, including opt-in Cordis, conditional read_image, configured subagents, and child-only report." aria-label="Evidence TOOLCAT-PACKAGE-MAP">TOOLCAT-PACKAGE-MAP</a></p></div>
+</section>
+
+<section>
+  <h2>13. Parallel Classification: Only 8 Unique Names/Definitions Explicitly Opt In; Everything Else Fails Closed to Exclusive</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Explicitly parallel-safe</th><th>Rationale</th><th>In standard root?</th></tr></thead>
+    <tbody>
+      <tr><td><code>read</code>, <code>read_image</code></td><td>Reads only; later mutation closes observation races with an in-lock version check; attachments are content-addressed</td><td>Yes</td></tr>
+      <tr><td><code>web_search</code>, <code>web_fetch</code></td><td>Provider reads do not mutate parent-Agent state</td><td>Search only</td></tr>
+      <tr><td><code>session_trace</code>, <code>session_event_trace</code>, <code>session_event_read</code></td><td>Authorized exact/lineage reads</td><td>No; query package is opt-in</td></tr>
+      <tr><td><code>subagent</code> definition (including configured aliases)</td><td>A child does not mutate the parent Session; the only parent write is a synchronous commutative task insertion</td><td><code>subagent</code> and <code>subagent_fork</code></td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Fail-closed classifier</div><p>After excluding helpers, generated code, and tests, production source contains only these eight <code>isConcurrencySafe: () =&gt; true</code> declarations. The registry returns parallel only for an exact true; absence, invalid input, or a thrown classifier is exclusive. Seemingly read-only operations such as <code>glob</code>/<code>grep</code>, goal reads, and job listing therefore remain barriers. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/.agents/notes/implemented/feature/2026-07-10-parallel-tool-call-execution.md#L53-L65" title="Conservative parallel declarations for shipped tools: The implementation note lists Web search and fetch, filesystem reads, Session Query trace and read, and subagent delegation as opt-ins, while writes and edits, shells, query searches, workflow, human interaction, todo, Code, and Cordis remain exclusive." aria-label="Evidence TOOLCAT-PARALLEL-OPTINS">TOOLCAT-PARALLEL-OPTINS</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L1228-L1285" title="Model-schema allowlist, Code SDK output schema, and fail-closed classification: Native schemas project only detached name, description, and parameters, the Code SDK additionally carries output schemas, and executionMode is parallel only for an exact true while absence, invalid input, or exceptions are exclusive." aria-label="Evidence TOOL-SCHEMA-PROJECTION">TOOL-SCHEMA-PROJECTION</a></p></div>
+</section>
+
+<section>
+  <h2>14. “Dangerous” Is Not One Boolean on a Tool Name</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Risk axis</th><th>Representative tools</th><th>Actual control point</th></tr></thead>
+    <tbody>
+      <tr><td>File mutation</td><td>write/edit/editor</td><td>fs intent, observed version, sandbox escalation, approval</td></tr>
+      <tr><td>Arbitrary process</td><td>bash/pwsh/terminal</td><td>Sandbox provider, shell policy, timeout, signal/job kill</td></tr>
+      <tr><td>External data flow</td><td>web/MCP/LSP</td><td>Provider URL/credential/SSRF boundary and output retention</td></tr>
+      <tr><td>Cross-Agent</td><td>subagent/control/workflow</td><td>Parent authority, depth/caps, workspace effects, continuation ownership</td></tr>
+      <tr><td>Durable state</td><td>goal/todo/schedule</td><td>Session/root authority, event validation, durability barrier</td></tr>
+      <tr><td>Runtime code</td><td>run_code/cordis_*</td><td>VM/worker surface, nested pipeline, opt-in composition</td></tr>
+    </tbody>
+  </table></div>
+  <p>This table is a threat-model classification, not a source-level risk score. Harness distributes controls across provider confinement, pre approval, monotonic guards, tool-specific event gates, and execution ownership. Chapters 19, 20, and 31 verify those boundaries.</p>
+</section>
+
+<section>
+  <h2>15. Inputs, Outputs, and UI Intent: The Catalog Promises Model Schemas; the Execution Contract Still Lives in ToolDefinition</h2>
+  <div class="claim fact"><div class="claim-label">Catalog contents</div><p>The generator emits name, description, parameter JSON Schema, and source for each item. Output schemas, canonical values, timeout/concurrency metadata, presenters, and finalizers are outside the generated catalog page. The ToolDefinition analysis in Chapter 16 and this package map must be read together. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/scripts/gen-tool-catalog.ts#L556-L704" title="Catalog completeness guards, isolated package boots, and schema rendering: The generator rejects omitted on-disk tool packages and pending boots that harvest zero schemas, then uses a fresh Context per package to load ToolRuntime, collect scoped schemas, dispose, and render name, description, parameters, and source." aria-label="Evidence TOOLCAT-GENERATOR">TOOLCAT-GENERATOR</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L212-L301" title="Canonical output, execution, and presentation contracts in ToolDefinition: A definition combines model schema, canonical output schema/render/meta, body, timeout and concurrency metadata, finalization, and pure UI presenters while explicitly separating successful values from durable content." aria-label="Evidence TOOL-DEFINITION">TOOL-DEFINITION</a></p></div>
+  <p>The UI does not hard-code every card by tool name either. Tools return provider-neutral generic/terminal/diff/search/read/web render intents. The Host pairs calls and results through the current scoped definition; missing pairing or presenter failure preserves the raw event and falls back to a generic card. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/presentation.ts#L1-L388" title="Provider-neutral call and result render-intent vocabulary: Core defines generic, terminal, and diff pending cards plus generic, terminal, diff, search, read, and web completed cards, with structured fields for follow-along, truncation, line views, and citations independent of a particular UI." aria-label="Evidence TOOL-PRESENTATION-INTENTS">TOOL-PRESENTATION-INTENTS</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/src/api-proxy.ts#L735-L779" title="Host pairing and fail-soft fallback for live and replay presenters: The Host computes call and result views from the current scoped definition and looks up result arguments; a cross-page missing call, JSON parse error, or presenter throw only omits the view while the original event still ships for generic client fallback." aria-label="Evidence TOOL-HOST-PRESENTER">TOOL-HOST-PRESENTER</a></p>
+</section>
+
+<section>
+  <h2>16. Availability Matrix: Registration, Visibility, Scheduling, Approval, and Backend Readiness Are Five Gates</h2>
+  <pre><code>package mounted?
+  → required service satisfied and tool registered?
+    → current Agent scope can see it?
+      → presentation mode exposes native name or Code SDK?
+        → pre-policy + approval + guards allow this call?
+          → provider/runtime is ready and body succeeds?</code></pre>
+  <p>A “no” at any layer can appear as no schema, UNKNOWN_TOOL, approval required, provider unavailable, or an ordinary error result. Calling all of them “permission failures” sends diagnosis to the wrong layer.</p>
+</section>
+
+<section>
+  <h2>17. Confirmed Documentation/Composition Drift and Audit Traps</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Trap</th><th>Correct reading</th></tr></thead>
+    <tbody>
+      <tr><td>Treating the generated catalog as the standard default</td><td>It is an isolated per-package boot ceiling; derive standard from its preset</td></tr>
+      <tr><td>Guessing parallelism from “read-only”</td><td>Only an explicit classifier returning true is parallel; everything else is exclusive</td></tr>
+      <tr><td>Inferring implementation from tool name</td><td><code>bash</code> has two shipped definitions, and subagent names are configurable</td></tr>
+      <tr><td>Assuming schema presence means provider readiness</td><td>LSP/Web/Query can keep stable schemas and fail as unavailable at execution</td></tr>
+      <tr><td>Using today's presenter to reconstruct historical UI</td><td>The Host reads the current definition; a call on an older page gets generic fallback</td></tr>
+      <tr><td>Assuming Code Mode deletes capabilities</td><td>It changes the wire entrance; the SDK retains end capabilities and subcalls re-enter the pipeline</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>18. Design Assessment and Verification Status</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Choice</th><th>Benefit</th><th>Cost</th></tr></thead>
+    <tbody>
+      <tr><td>Separate tool package from provider seam</td><td>Stable schemas with replaceable backends</td><td>Schemas cannot express readiness</td></tr>
+      <tr><td>Collect the generated catalog by real boot</td><td>Captures dynamic schemas, configured names, and injection conditions</td><td>Still represents the generator's selected config branches</td></tr>
+      <tr><td>Let presets define the capability language</td><td>One runtime spans a two-tool minimal Agent and a full Agent</td><td>Any “default count” needs surface/platform/service qualifiers</td></tr>
+      <tr><td>Make parallelism explicit opt-in</td><td>Unknown third-party tools serialize safely</td><td>Read-only tools that omit the declaration lose throughput</td></tr>
+      <tr><td>Provider-neutral presentation</td><td>Web and CLI share semantics with replay fallback</td><td>Hot-changing a presenter can change the current rendering of old events</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Verification scope</div><p>This chapter checked the generated tool catalog, generator completeness/boot logic, all 24 package-map rows, standard and minimal shipped presets, the attachment condition, every production <code>isConcurrencySafe</code> declaration, and the ToolRuntime classifier. Counts come from reproducible heading statistics over the pinned-baseline text. Upstream dependencies are absent, so this chapter does not claim a local generator or upstream-test run. The site's own build and consistency checks run before publication.</p></div>
+</section>
+<section class="learning-notes" aria-labelledby="learning-notes-title"><h2 id="learning-notes-title">My Learning Notes</h2>
     <p class="privacy">Autosaved only in this browser. Nothing is uploaded or committed. Export Markdown whenever you want to keep a copy.</p><textarea data-learning-notes aria-label="My Learning Notes" placeholder="Record your understanding, questions, counterexamples, and transferable principles…"></textarea>
     <div class="note-footer"><span data-note-saved>Local draft</span><button type="button" data-note-export>Export Markdown</button>
     <button type="button" class="danger" data-note-clear>Clear</button><span data-note-count>0 characters</span></div></section><nav class="pagination" aria-label="Chapter pagination"><a href="../pages/tool-primitives.html"><small>← Previous chapter · 16</small><strong>Tool Definition Primitives and the Execution Pipeline</strong></a><a class="next" href="../pages/tool-parallelism.html"><small>Next chapter · 18 →</small><strong>Tool Parallelism and Result Ordering</strong></a></nav></article>
