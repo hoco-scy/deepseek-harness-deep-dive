@@ -1,0 +1,146 @@
+<section>
+  <h2>Conclusion: there is no single completeness score, only a ledger of questions in different evidence states</h2>
+  <div class="thesis"><p>DeepSeek Harness deliberately maintains a limitations ledger in its public repository, but the existence of that ledger does not make every limitation the same kind of claim. This chapter uses five strict categories: <strong>confirmed gaps</strong> directly established by source and public contracts; <strong>weak guarantees</strong> where a capability exists but delivery, isolation, or consistency ends at a stated boundary; <strong>documentation/code drift</strong> where public prose and implementation disagree in the same commit; <strong>platform differences</strong> where operating systems or runners provide different mechanisms and strength; and <strong>runtime experiment questions</strong> that static inspection cannot decide without a real network, process, crash, or concurrency fixture.</p></div>
+  <p>The classification prevents two common mistakes. An explicitly excluded capability is not automatically a defect, and the absence of a runtime experiment is not evidence that the system already fails. Every repository fact is pinned to commit <code>47f943859bef60e4160492346772ded9b24f765a</code>.</p>
+</section>
+
+<section>
+  <h2>1. The five evidence states are not interchangeable</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>State</th><th>Criterion used here</th><th>Supported conclusion</th><th>Unsupported conclusion</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Confirmed gap</strong></td><td>Implementation, type contract, or public Known Limitations explicitly says absent, stubbed, reserved-but-unimplemented, or returns an unsafe value on a named path</td><td>The capability is absent or unsafe to rely on at this commit</td><td>A production incident has occurred</td></tr>
+      <tr><td><strong>Weak guarantee</strong></td><td>A capability exists, but acknowledgement, atomicity, isolation, consistency, completion, or recovery covers only a limited boundary</td><td>The caller owns the remaining policy</td><td>The implementation is worthless</td></tr>
+      <tr><td><strong>Documentation/code drift</strong></td><td>Public contract and implementation in the same commit directly disagree about a value or coverage surface</td><td>At least one side must change; consumers cannot trust both</td><td>All hand-written documentation is stale</td></tr>
+      <tr><td><strong>Platform difference</strong></td><td>Linux, macOS, Windows, or CI runners explicitly provide different mechanisms, strength, or verdict weight</td><td>Every conclusion must name platform and runner</td><td>The weaker platform is necessarily buggy</td></tr>
+      <tr><td><strong>Runtime experiment question</strong></td><td>The answer depends on DNS, a kernel, an SDK, a filesystem, crash timing, concurrent processes, or live-model behavior</td><td>A falsifiable experiment can be specified</td><td>Source alone proves pass or failure</td></tr>
+    </tbody>
+  </table></div>
+  <p>The repository gate scans every <code>packages/*/*/package.json</code>, requires a sibling README with the one canonical heading and at least one top-level bullet, and in this run reported 219 package READMEs checked, one whitelist entry, and full conformance.<evidence id="OPEN-LIMITATIONS-GATE"></evidence></p>
+  <aside class="caveat"><strong>Exact meaning of the gate:</strong> it proves that the ledger exists and that its heading has not drifted. The implementation checks only for a bullet; it does not validate that prose still matches code, assign risk, or prioritize deferred work. It is an inventory gate, not a correctness or risk-closure proof.</aside>
+</section>
+
+<section>
+  <h2>2. Confirmed gaps: two input boundaries can still carry a sensitive target or secret across</h2>
+  <p><strong>Settings wire redaction:</strong> <code>redactSecrets</code> recurses only through <code>object</code>, <code>dict</code>, and <code>array</code>. Its default branch explicitly says that a secret reachable only through a union, intersection, or transform is returned verbatim with no record of the miss.<evidence id="OPEN-SETTINGS-REDACTION-CODE"></evidence>The public README adds a second path: <code>schema.toJSON()</code> carries a secret field's default to the client, and neither case currently fails closed.<evidence id="OPEN-SETTINGS-REDACTION-DOC"></evidence></p>
+  <p><strong>HTTP fetch SSRF:</strong> the provider bounds URL shape, protocol, size, timeout, content type, and same-origin redirects, but it explicitly has no private, loopback, link-local, or multicast destination block, no resolve-then-validate step, and no per-hop revalidation. The public contract calls it an SSRF primitive in a deployment that can reach sensitive internal targets and says not to enable it there.<evidence id="OPEN-WEB-SSRF"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">State: confirmed gap</div><p>These are not merely opportunities for more defense in depth. The current wire and network admission paths cannot cover named schema shapes or destination classes. Existing schemas, cookie-free requests, same-origin redirects, and byte caps do not substitute for a fail-closed secret proof or destination policy.</p></div>
+</section>
+
+<section>
+  <h2>3. Confirmed gap versus scope boundary: file confinement is not hostile-code isolation</h2>
+  <p>The sandbox seam's entire policy vocabulary covers file effects. Network, process, syscall, device, and credential restrictions are outside its contract. It is also same-world confinement; denial classification depends on a stderr dialect, and runner diagnostics are in-band, so a malicious child can forge a diagnostic and cause false attribution, though not bypass the underlying confinement by doing so.<evidence id="OPEN-SANDBOX-SCOPE"></evidence></p>
+  <p>The current workflow engine pays one worker thread per run. It prevents a synchronous script from blocking the host event loop and enables forced termination, but its documentation explicitly says <code>node:vm</code> is API shaping: an escaped script can recover host-process authority, and genuinely untrusted scripts need a different process or container engine.<evidence id="OPEN-WORKFLOW-ISOLATION"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Classification boundary</div><p>“Sandbox does not restrict networking” is an explicit scope of the implemented seam, not evidence that its file policy fails. “The current workflow engine cannot host hostile scripts” is a confirmed gap relative to an untrusted-code deployment. Together they show why the words sandbox, worker, and vm do not imply a general security boundary.</p></div>
+</section>
+
+<section>
+  <h2>4. Confirmed gaps: long-running work, resource budgets, and lifecycle still have empty seats</h2>
+  <p>Workflow supports foreground collection only and journals neither scripts, child progress, nor intermediate values, so a process restart cannot resume a run. The interface also has no cross-child token-budget vocabulary, and the holder rather than a service registry tracks each live run.<evidence id="OPEN-WORKFLOW-DURABILITY"></evidence>Ralph accepts a worker's self-declared completion with no independent evaluator, while round count is the only aggregate effort cap; token, price, and elapsed-time budgets remain deferred.<evidence id="OPEN-RALPH-VERIFICATION"></evidence></p>
+  <p>Attachment objects are immutable and may be shared by resumed and forked sessions, but retention and reference-aware garbage collection are not implemented; the local backend publicly says it retains objects indefinitely.<evidence id="OPEN-ATTACHMENT-RETENTION"></evidence><evidence id="OPEN-ATTACHMENT-LOCAL-RETENTION"></evidence>The generic atomic-write primitive provides visible same-directory rename atomicity but does not <code>fsync</code> the file or directory, so it is not crash durability; a lock orphaned by owner death also requires operator recovery after proving that no writer remains.<evidence id="OPEN-ATOMIC-DURABILITY"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">State: confirmed gap</div><p>These gaps do not erase the current value of foreground workflows, immutable attachments, or atomic replacement. They bound the product semantics that cannot be promised: process-resumable orchestration, an aggregate model budget, automatic object reclamation, and crash-durable commit for generic atomic-write callers.</p></div>
+</section>
+
+<section>
+  <h2>5. Weak guarantee: recovery preserves unknown outcomes instead of creating exactly-once execution</h2>
+  <p>Checkpoint policy persists execution intent before a top-level tool body. If a crash lands after the call is durable but before its result is durable, recovery writes <code>TOOL_OUTCOME_UNKNOWN</code>. The contract explicitly says it cannot prove whether the external effect completed and therefore does not retry automatically; a side-effecting provider should use <code>exec.callId</code> as an idempotency key when supported.<evidence id="OPEN-CHECKPOINT-UNKNOWN"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">State: weak guarantee</div><p>The guarantee is “recover the intent and do not disguise uncertainty as success,” not exactly-once effects in an arbitrary external system. This is not a missing universal algorithm: without provider-side idempotency, querying, or compensation, an in-process runtime cannot infer the real-world outcome from a durable call alone.</p></div>
+</section>
+
+<section>
+  <h2>6. Weak guarantee: the telemetry cursor is a handoff watermark, not a delivery acknowledgement</h2>
+  <p>Telemetry disclosure claims only that a record was handed nonblockingly to a backend; batching, retry, and loss policy belong to its SDK. A module-scope cursor records the highest handed-off sequence rather than a delivered sequence, and resume does not backfill records that a previous process failed to deliver.<evidence id="OPEN-TELEMETRY-HANDOFF"></evidence></p>
+  <p>The seam also ships no redaction rule. Without a listener, records leave the process as captured, and data in a backend queue may be lost at crash time.<evidence id="OPEN-TELEMETRY-LIMITS"></evidence>The OTel backend leaves authentication, TLS, throttling, and live-collector behavior to the upstream SDK, and its shutdown deadline cannot cancel transport.<evidence id="OPEN-OTEL-BOUNDARY"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">State: weak guarantee plus explicit deployment responsibility</div><p>“Full” means every eligible event enters the handoff path, not that it was delivered. “Feedback-only” means an eligible prefix is replayed at feedback time, not that a capture-time snapshot exists. End-to-end delivery, deduplication, privacy, and retention require separate proof in the deployment and collector.</p></div>
+</section>
+
+<section>
+  <h2>7. Confirmed gaps: reserved seats in the public API and client lifecycle</h2>
+  <p>The <code>session.list</code> request accepts an optional cursor, but v1 returns every persisted session and the cursor is only an unimplemented reserved seat. <code>events.mux.since</code> is likewise ignored; reconnect means reopening the stream and refetching history.<evidence id="OPEN-API-RESERVED-SEATS"></evidence><evidence id="OPEN-EVENT-RESUME-SEAT"></evidence></p>
+  <p>The client runtime's public limitations also say that <code>loader.unload</code> is a not-implemented stub, with no general chain from fiber disposal through registration and style removal.<evidence id="OPEN-CLIENT-UNLOAD"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">State: confirmed gap</div><p>These are pinpointed missing capabilities, not evidence that reconnect or effect cleanup is wholly absent. Reconnect already has a reopen-plus-refetch path, and many concrete contributions clean up through fiber effects. The exact gaps are wire-level cursor resume, scalability of the unpaginated list, and a general module-unload chain.</p></div>
+</section>
+
+<section>
+  <h2>8. Documentation/code drift: <code>host.describe.version</code> is not the value its contract specifies</h2>
+  <p>The public Host API comment defines <code>version</code> as the package version of <code>apps/cli</code>.<evidence id="OPEN-HOST-VERSION-CONTRACT"></evidence>The implementation in the same commit carries a TODO and returns the constant <code>0.0.1</code>, while that commit's CLI package version is <code>0.1.0-rc.5</code>.<evidence id="OPEN-HOST-VERSION-IMPL"></evidence><evidence id="OPEN-CLI-VERSION"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">State: confirmed documentation/code drift</div><p>This is not another name for missing protocol-version negotiation; the contract specifically describes a host application version. Until corrected, consumers cannot treat the field as the real application version or infer compatibility from it.</p></div>
+  <p>A smaller public documentation omission appears in the sandbox seam's implementation summary: the parent README's implementation parenthetical lists only Linux and macOS, while the same page's error text and the provider README include the Windows ACL runner. The provider's existence is unaffected; the summary coverage needs correction.<evidence id="OPEN-SANDBOX-DOC-OMISSION"></evidence><evidence id="OPEN-SANDBOX-PLATFORM-LADDER"></evidence></p>
+</section>
+
+<section>
+  <h2>9. Platform differences: one “sandbox” or “process cleanup” label does not imply one strength</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Surface</th><th>Linux</th><th>macOS</th><th>Windows</th><th>Correct interpretation</th></tr></thead>
+    <tbody>
+      <tr><td>Local file confinement</td><td>bwrap first, then Landlock; older ABIs may report partial</td><td>Seatbelt, depending on deprecated <code>sandbox-exec</code></td><td>ACL restricted token, explicitly partial because of Everyone grants and NTFS hard links</td><td><code>enforcement</code> is a backend- and ABI-specific fact, not a property of the mode name alone</td></tr>
+      <tr><td>Terminal process observation</td><td>Tree/session inspection; a child calling <code>setsid</code> can leave the observable set</td><td><code>ps</code> snapshots; a child reparented before the first snapshot can be lost</td><td>No terminal inspector; ordinary tree kill is best-effort <code>taskkill</code></td><td>Process-tree termination is not continuous OS containment</td></tr>
+    </tbody>
+  </table></div>
+  <p>The provider exposes rather than hides these differences: Windows ACL and some Landlock ABIs report partial, while Seatbelt's future viability depends on Apple retaining its policy engine.<evidence id="OPEN-SANDBOX-PLATFORM-LIMITS"></evidence>The local subprocess provider likewise lists Windows best-effort behavior, the Linux/macOS inspector boundary, and daemonized-descendant escape.<evidence id="OPEN-PROCESS-PLATFORM-LIMITS"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">State: platform difference</div><p>A Linux bwrap result cannot be extrapolated to Windows ACL, and Windows being partial does not mean it provides no constraint. A deployment claim must name the mode, backend, kernel or ABI, reported enforcement, and effects actually tested.</p></div>
+</section>
+
+<section>
+  <h2>10. Verification gaps: deterministic replay has a named unexplored state space</h2>
+  <p>LLM replay binds live sessions to recorded parent and child scripts in first-call order, which assumes sequential delegation. Concurrent siblings would bind nondeterministically, and stronger keying is deferred. A pure pre-chunk throw, cancel or hang, and an unmarked external summarizer call also need an explicit sidecar.<evidence id="OPEN-REPLAY-CONCURRENCY"></evidence></p>
+  <p>For each eligible recorded scenario, the ACP snapshot suite runs the real assembled entry, normalizes volatile values, and separately compares stdout plus harvested parent and child logs with fixtures.<evidence id="TINV-SNAPSHOT-COMPARE"></evidence>Its session harvest supports raw JSONL only; compressed JSONL and SQLite compositions have no harvest path.<evidence id="OPEN-SNAPSHOT-BACKEND-GAP"></evidence>A green result is therefore evidence for the recorded scenario and harvested channels it actually compared, not concurrent-child interleavings or the same path through every persistence backend.</p>
+  <div class="claim assessment"><div class="claim-label">State: confirmed test-capability gap</div><p>The missing capability is counterexample generation and fixture collection, not a proven production-semantics failure. Stronger replay identity and backend-neutral harvesting must land before that state space can enter deterministic regression.</p></div>
+</section>
+
+<section>
+  <h2>11. CI aggregate boundary: a signal can exist outside one workflow's aggregate</h2>
+  <p>The pull-request <code>windows</code> job runs Windows Node under Wine on hosted Linux and is named in <code>all-checks-passed.needs</code>. Its invoked runner verifies the Windows Node archive and <code>win32 x64</code> identity, then runs only the workspace build and production-site build surfaces.<evidence id="OPEN-CI-WINDOWS-SIGNALS"></evidence><evidence id="TINV-WINE-RUNNER"></evidence>A real-Windows-kernel job runs the complete inventory but is explicitly absent from that <code>needs</code> list.<evidence id="OPEN-CI-VERDICT"></evidence>The hosted serial reference jobs for Linux and macOS are currently <code>if: false</code>; self-hosted serial lanes run only on master pushes.<evidence id="OPEN-CI-SERIAL-LANES"></evidence></p>
+  <p>Real-API E2E is a separate workflow. Fork and Dependabot pull requests skip the entire job under the secret model, and GitHub reports that job-level skip as a successful check.<evidence id="OPEN-REAL-API-CI"></evidence>The master-push real-kernel sandbox matrix covers bwrap, two Landlock architectures, and Seatbelt, and its command asserts that both platform files ran so a self-skip cannot appear green.<evidence id="OPEN-SANDBOX-CI"></evidence>Neither workflow is part of the <code>all-checks-passed</code> dependency graph in <code>ci.yml</code>.</p>
+  <div class="claim assessment"><div class="claim-label">State: workflow aggregation policy and platform difference</div><p>This does not mean “CI has no tests”; the repository has independent observational and reference signals. Static workflow files establish triggers, jobs, and the scope of the <code>all-checks-passed</code> aggregate. This study did not verify the repository's live ruleset or required-status configuration, so it does not claim which checks can actually block a merge.</p></div>
+</section>
+
+<section>
+  <h2>12. Cross-process consistency and resource bounds: local serialization is not a global guarantee</h2>
+  <p>Message feedback's per-Session mutation queue serializes one service process only. Storage-domain has no cross-process conditional write, so several Host processes writing one storage root have no compare-and-swap or lost-update guarantee. It also has no durable Session deletion cascade and no item-count or aggregate-row byte cap.<evidence id="OPEN-FEEDBACK-CONSISTENCY"></evidence>The settings seam likewise serializes by namespace only in-process; cross-process convergence belongs to the provider, and the local file provider resolves same-namespace conflicts last-write-wins.<evidence id="OPEN-SETTINGS-CROSS-PROCESS"></evidence></p>
+  <p>For resources, the browser <code>/api</code> bridge buffers each full request body in memory, with a default resident bound of 160 MiB. The native-command helper buffers both stdout and stderr without bounds and is currently justified only by callers expected to produce tiny output.<evidence id="OPEN-API-BODY-BOUND"></evidence><evidence id="OPEN-NATIVE-OUTPUT-BOUND"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">State: weak guarantee plus deployment premise</div><p>A single-process queue and today's small-output callers are valid local premises, not multi-writer consistency or general resource isolation. Deployments sharing a storage root, broadening the command surface, or accepting concurrent image requests near the limit must validate memory and conflict behavior separately.</p></div>
+</section>
+
+<section>
+  <h2>13. Runtime experiments: every question needs a falsifiable verdict</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Priority</th><th>Question</th><th>Minimum fixture</th><th>Falsifiable verdict</th><th>Evidence state</th></tr></thead>
+    <tbody>
+      <tr><td>P0</td><td>Can any wire-exposed secret schema leak?</td><td>Place a canary secret in union, intersection, transform, default, and error-text paths and read it through the real settings describe carrier</td><td>Unsupported schemas fail before publication; no response, error, or serialized schema contains the canary</td><td>Current gap confirmed; fix efficacy needs experiment</td></tr>
+      <tr><td>P0</td><td>Can HTTP fetch cross DNS rebinding or redirects into an internal address?</td><td>Dual-answer DNS, TTL switches, IPv4/IPv6 and mapped forms, per-hop redirects, and a local metadata-canary server</td><td>The actual destination is validated after resolution and at every hop; any non-public address is rejected before socket connect</td><td>Current gap confirmed; defense completeness needs experiment</td></tr>
+      <tr><td>P0</td><td>Can a hostile workflow script escape and read host authority?</td><td>Run CPU, memory, filesystem, network, and credential canaries in a candidate separate-process or container engine</td><td>Only explicit capabilities are reachable, OS boundaries reject escape, and cancel or kill leaves no surviving child</td><td>Current engine non-boundary confirmed; replacement needs experiment</td></tr>
+      <tr><td>P1</td><td>How does a tool effect converge across crash windows?</td><td>Kill the process at intent flush, external commit, and result append, with and without provider support for <code>callId</code> idempotency</td><td>The log always recovers; without idempotency it reports only unknown, while with idempotency a retry creates no second effect</td><td>Weak guarantee; provider-dependent</td></tr>
+      <tr><td>P1</td><td>What telemetry is actually lost, duplicated, or disclosed under collector failure?</td><td>Use a real OTLP collector to inject TLS/auth errors, 429, disconnect, queue saturation, hung shutdown, and crash. Run a current-baseline arm with no redaction listener, then a candidate-policy arm that explicitly mounts a redaction rule; place distinct privacy canaries in both.</td><td>The baseline arm quantifies disclosure, loss, and duplication without pretending to pass privacy. The candidate arm passes only if its canary never leaves, receiver dedupe works, and measured loss and shutdown behavior match the declared target policy.</td><td>SDK and deployment owned; static inspection cannot decide</td></tr>
+      <tr><td>P1</td><td>Do two processes writing one feedback or settings root lose updates?</td><td>Before the run, declare either a strong-consistency target or a last-write-wins characterization target. Then make two independent Host processes perform barrier-synchronized updates plus kill, restart, and watcher replacement.</td><td>For the strong target, every conflict is detectable and no update is silently lost. For characterization, repeated schedules produce and document the actual winner and lost-update window; that result remains explicitly non-atomic and is not counted as a strong-consistency pass.</td><td>Local guarantee known; deployment behavior needs experiment</td></tr>
+      <tr><td>P1</td><td>What are the real platform boundaries of sandboxing and process cleanup?</td><td>Run one file, network, process, hard-link, reparent, and <code>setsid</code> corpus under bwrap, each Landlock ABI, Seatbelt, and Windows ACL</td><td>Reported enforcement matches observed effects, failure is closed, and survivors and false attribution have platform-specific results</td><td>Platform differences known; kernel behavior needs experiment</td></tr>
+      <tr><td>P2</td><td>Can concurrent-sibling replay and non-raw backends regress deterministically?</td><td>Release two child first model calls simultaneously and harvest from raw, compressed, and SQLite backends</td><td>Script identity does not depend on scheduling and all three backends yield the same normalized logical log</td><td>Test-capability gap confirmed</td></tr>
+      <tr><td>P2</td><td>Do resource limits fit the deployment under concurrency?</td><td>Send concurrent API bodies near 160 MiB and make the native helper emit controlled large stdout and stderr</td><td>Resident memory, rejection point, cleanup, and operator diagnostics remain inside a predeclared budget</td><td>Static model gives one-request or unbounded behavior; capacity needs experiment</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>14. Priority: close authority-expanding seams before scale and convenience work</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Priority</th><th>Work</th><th>Why</th><th>Completion condition</th></tr></thead>
+    <tbody>
+      <tr><td>P0</td><td>Fail-closed settings wire description, HTTP destination policy, and hostile-workflow-engine selection</td><td>Failure can carry a secret, internal network target, or host-process authority across a surface users may treat as a boundary</td><td>Code fix, the canary or escape experiment above, and converged public contract</td></tr>
+      <tr><td>P1</td><td>Telemetry redaction and outbox policy, cross-process CAS, real-platform blocking signals, and workflow journal and budget</td><td>These determine privacy, recovery, consistency, and long-running operational promises</td><td>Declare target semantics first, then prove them with fault injection or a native lane</td></tr>
+      <tr><td>P2</td><td>API cursor and since, client unload, attachment GC, snapshot-backend parity, and resource tuning</td><td>These chiefly affect scale, lifecycle completeness, and test coverage and should not displace authority seams</td><td>Compatibility path, safe migration or GC, and regression proof are complete</td></tr>
+      <tr><td>Immediate documentation fix</td><td><code>host.describe.version</code> and the sandbox platform summary</td><td>There is a direct contradiction or omission with low correction cost and consumer impact</td><td>Code and public prose agree in one commit</td></tr>
+    </tbody>
+  </table></div>
+  <aside class="caveat"><strong>This priority is not an upstream roadmap:</strong> it is a risk ordering based on authority, irreversible effects, privacy, and recoverability. It does not claim that maintainers have committed to a date or solution.</aside>
+</section>
+
+<section>
+  <h2>15. Verification scope for this chapter</h2>
+  <ul class="audit-list">
+    <li>Used only source, package READMEs, and GitHub workflows from the public DeepSeek Harness repository at the pinned commit; neither prose nor evidence contains another project's name, path, or identifier.</li>
+    <li>Rechecked every cited live path and line range; confirmed gaps, weak guarantees, documentation/code drift, platform differences, and experiment questions carry distinct labels.</li>
+    <li>Ran only the structural documentation gate <code>pnpm run verify-package-readme-limitations</code>: 219 package READMEs, one whitelist entry, exit code 0.</li>
+    <li>Did not run the full build, unit, coverage, snapshot, browser, real-API, collector, crash-injection, multiprocess, native Windows or macOS, or kernel-sandbox experiments; no related claim is presented as runtime proof.</li>
+    <li>The Chinese and English pages have identical section, table, claim and caveat, and evidence-reference structure and first-use order.</li>
+  </ul>
+</section>

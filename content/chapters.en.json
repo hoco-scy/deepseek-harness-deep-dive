@@ -41,7 +41,7 @@
     {"id":"32","slug":"testing-invariants","part":"Reliability and Product Surfaces","title":"Tests, Snapshots, and Runtime Invariants","subtitle":"How the system proves that plugin composition still satisfies its semantics","status":"verified","scope":"Analyze the 100% per-file gate, keyless snapshots, invariant registries, generated-document checks, configuration closure, and platform matrices."},
 
     {"id":"33","slug":"tradeoffs","part":"Synthesis","title":"Strengths, Costs, and Design Tradeoffs","subtitle":"Which complexity buys real composability, and which complexity remains debt","status":"verified","scope":"Synthesize only from verified chapters instead of repeating the project’s own claims."},
-    {"id":"34","slug":"open-questions","part":"Synthesis","title":"Gaps, Limitations, and Open Questions","subtitle":"Semantics and evidence that remain incomplete during Developer Preview","status":"queued","scope":"Record missing behavior, weak guarantees, documentation/code drift, platform differences, and required runtime experiments."},
+    {"id":"34","slug":"open-questions","part":"Synthesis","title":"Gaps, Limitations, and Open Questions","subtitle":"Semantics and evidence that remain incomplete during Developer Preview","status":"verified","scope":"Record missing behavior, weak guarantees, documentation/code drift, platform differences, and required runtime experiments."},
     {"id":"35","slug":"glossary-evidence","part":"Synthesis","title":"Glossary, Evidence Catalog, and Source Index","subtitle":"Navigate from concepts and claims back to the pinned source baseline","status":"queued","scope":"Collect terminology, every evidence record, package/symbol/event indexes, and citation coverage."}
   ]
 }

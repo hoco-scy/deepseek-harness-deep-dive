@@ -41,7 +41,7 @@
     {"id":"32","slug":"testing-invariants","part":"可靠性与产品面","title":"测试、快照与运行时不变量","subtitle":"它怎样证明插件组合之后仍然满足系统语义","status":"verified","scope":"分析 100% per-file gate、keyless snapshot、invariant registry、生成文档校验、配置闭包与平台矩阵。"},
 
     {"id":"33","slug":"tradeoffs","part":"综合结论","title":"优势、代价与设计取舍","subtitle":"哪些复杂度换来了真正的可组合性，哪些仍在偿债","status":"verified","scope":"基于已验证章节综合评价，不把项目自述重复为结论。"},
-    {"id":"34","slug":"open-questions","part":"综合结论","title":"缺口、限制与待验证问题","subtitle":"Developer Preview 中尚未闭合的语义和证据","status":"queued","scope":"记录未实现、弱保证、文档/代码漂移、平台差异及需要运行实验的问题。"},
+    {"id":"34","slug":"open-questions","part":"综合结论","title":"缺口、限制与待验证问题","subtitle":"Developer Preview 中尚未闭合的语义和证据","status":"verified","scope":"记录未实现、弱保证、文档/代码漂移、平台差异及需要运行实验的问题。"},
     {"id":"35","slug":"glossary-evidence","part":"综合结论","title":"术语、证据目录与源码索引","subtitle":"从概念和 claim 反向定位固定基线源码","status":"queued","scope":"汇总术语、全部证据项、包/符号/事件索引和引用覆盖率。"}
   ]
 }
