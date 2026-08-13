@@ -1,0 +1,208 @@
+<section>
+  <h2>Conclusion: failure recovery is a stack of commit protocols, not one universal <code>retry</code></h2>
+  <div class="thesis"><p>DeepSeek Harness splits recovery across five boundaries: the adapter normalizes provider faults into recordable facts; the Agent decides whether to retry only at the model-request failure seam; tool timeout and cancellation wait for started work to converge; checkpoints make intent durable before external side effects; and repair fixes only log structure it can prove, without guessing what the outside world did while the process was crashing.</p></div>
+  <p>The defining property is that it <strong>does not collapse different uncertainties into one error</strong>. A request may be replayable while a started write tool can only be marked outcome-unknown; a timeout can signal cancellation but cannot make an uncooperative Promise stopped; an in-memory append can mean admitted while only flush/fsync places it in the durable prefix. Those commit points reveal the real recovery model more clearly than a list of error codes.</p>
+</section>
+
+<section>
+  <h2>1. Failure-ownership map: each layer recovers only what it can prove</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Layer</th><th>Facts it owns</th><th>Permitted recovery</th><th>Explicitly not responsible for</th></tr></thead>
+    <tbody>
+      <tr><td>Provider adapter</td><td>HTTP, SSE, idle, caller abort</td><td>Produce a stable failure snapshot and close transport</td><td>Choosing business retry count</td></tr>
+      <tr><td>Request recovery</td><td>Current Turn/Step, provider policy, failure history</td><td>Wait, then resend the same model request</td><td>Swallowing middleware, consumer, or cleanup bugs</td></tr>
+      <tr><td>Tool runtime</td><td>Which calls started and whether abort was observed</td><td>Stop replenishment, drain started calls, complete ordered results</td><td>Hard-killing an uncooperative in-process tool</td></tr>
+      <tr><td>Persistence/checkpoint</td><td>Which events are durable</td><td>Flush before side effects; roll back failed writes and retain batches</td><td>Proving an external side-effect outcome</td></tr>
+      <tr><td>Crash repair</td><td>The final complete parseable prefix</td><td>Truncate torn tails; synthesize tool/step/turn closers</td><td>Inventing unpersisted tool results</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">Inference</div><p>Recovery power comes from ownership boundaries, not the number of try/catch blocks. Guessing across a boundary turns a diagnosable failure into duplicated side effects, fabricated success, or an unreplayable log.</p></div>
+</section>
+
+<section>
+  <h2>2. The adapter demotes only adapter-owned failures into terminal chunks</h2>
+  <p>For a direct, unprepared <code>ctx.llm.stream()</code> call, the final adapter boundary owns adapter selection, asynchronous exact-model resolution, dispatch, iterator construction, and iteration; failures in those steps become one terminal <code>finish(error|aborted)</code>. The Agent path first calls <code>prepareCall()</code> in <code>buildRequest()</code>: except for its <code>NO_ADAPTER</code> fallback, selection or configuration-resolution failures throw before the stream boundary, close the Turn as an error, and never enter <code>agent/request-error</code>.<evidence id="FAILURE-AGENT-PREPARE-BOUNDARY"></evidence> After preparation succeeds, adapter dispatch and iterator failures still become terminal chunks. Middleware, downstream consumer, and iterator-cleanup errors remain thrown; early consumer stop awaits <code>iterator.return()</code>.<evidence id="FAILURE-ADAPTER-BOUNDARY"></evidence></p>
+  <div class="claim fact"><div class="claim-label">Fact</div><p><code>normalizeLlmFailure()</code> trusts a carried snapshot only when the Error exposes matching own data descriptors for <code>failure</code> and <code>code</code>. It then reads and validates the snapshot fields inside a <code>try</code>, but those inner fields need not themselves be own properties. Message/code must be non-empty, while status, Retry-After, and requestId must satisfy type and range checks. A standalone third-party SDK code without a matching failure snapshot does not enter the Harness taxonomy directly; it degrades to <code>UNKNOWN</code>. The snapshot is copied and frozen rather than placing a live Error object in the event stream.<evidence id="FAILURE-SNAPSHOT"></evidence></p></div>
+  <div class="claim assessment"><div class="claim-label">Tradeoff</div><p>The narrow boundary makes provider faults recoverable through one protocol while preserving stack and visibility for plugin and consumer defects. Extension authors cannot assume that every stream throw will be retried automatically.</p></div>
+</section>
+
+<section>
+  <h2>3. The DeepSeek adapter classifies HTTP advice, transport breaks, and idle separately</h2>
+  <p>Non-2xx responses map 401/403, 429, 400, and 5xx into stable codes such as <code>AUTH</code>, <code>RATE_LIMIT</code>, <code>INVALID_REQUEST</code>, and <code>SERVER</code>. The adapter also extracts <code>Retry-After</code> in seconds or HTTP-date form and checks two possible request-id headers.<evidence id="FAILURE-DEEPSEEK-HTTP"></evidence></p>
+  <pre><code>Stable snapshot for one stream call
+  connection + credential + user id
+        │
+        ├─ caller abort ───────────────→ ABORTED
+        ├─ no progress on active read ─→ TIMEOUT
+        ├─ other fetch/SSE failure ────→ TRANSPORT
+        └─ HTTP non-2xx ───────────────→ AUTH / RATE_LIMIT / SERVER / ...</code></pre>
+  <p>Each stream call resolves one connection-and-credential snapshot, so an in-flight request cannot mix in the next configuration generation. The idle watchdog counts only while one iterator demand is outstanding. On exit, the adapter aborts its consumer controller and awaits <code>return()</code> for an unexhausted iterator, avoiding “the upper layer recovered while the lower transport kept running.”<evidence id="FAILURE-DEEPSEEK-STREAM"></evidence></p>
+</section>
+
+<section>
+  <h2>4. <code>agent/request-error</code> is a narrow seam: only terminal request failure enters it</h2>
+  <p>A Step opens once, with an internal <code>while (true)</code> rebuilding the request and assembler for each attempt. Only an assembler <code>finish(error|aborted)</code> invokes <code>agent/request-error</code>. The loop continues only when a listener returns <code>{ kind: "retry" }</code>; otherwise it throws a structured <code>LlmError</code>. It writes the sole <code>assistant/message</code> and executes tools only after success.<evidence id="FAILURE-REQUEST-LOOP"></evidence></p>
+  <div class="claim fact"><div class="claim-label">Fact</div><p>Regression tests prove that request-middleware failure is not offered to the recovery listener; two consecutive provider failures followed by success remain Turn 1 / Step 1; cancellation wins even alongside a retry action; and a recovery listener failure closes the Turn instead of prompting another attempt.<evidence id="FAILURE-REQUEST-TEST"></evidence></p></div>
+  <aside class="caveat"><strong>Boundary:</strong> this is model-request recovery, not transactional replay of the whole Step. Tools have not started, so request retry has no tool work to roll back. Once the tool phase begins, a different recovery protocol owns it.</aside>
+</section>
+
+<section>
+  <h2>5. Retry policy belongs to the provider route; the executor only carries out a resolved decision</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Mode</th><th>Eligibility</th><th>Budget</th><th>Downstream composition</th></tr></thead>
+    <tbody>
+      <tr><td><code>normal</code></td><td>Only configured codes; defaults include EMPTY_RESPONSE, RATE_LIMIT, SERVER, TIMEOUT, TRANSPORT</td><td>Default: at most 2 after the first request; 500ms initial, 10s cap, 0.1 jitter</td><td>Delegate on mismatch, exhaustion, or over-cap provider delay</td></tr>
+      <tr><td><code>always</code></td><td>Every model-request failure</td><td>Unbounded until success, cancellation, or disposal</td><td>Ask downstream first; accept its retry, log its failure, otherwise use local policy</td></tr>
+    </tbody>
+  </table></div>
+  <p>The resolver rejects unknown keys, invalid bounds, and empty or duplicate code lists, then produces a frozen route policy. The execution plugin has no retry-policy configuration of its own, preventing global executor settings from silently rewriting one provider.<evidence id="FAILURE-RETRY-POLICY"></evidence></p>
+  <p>At execution time it finds prior retries with the same turn/step/provider/policyKey before selecting a delay. A valid provider <code>Retry-After</code> at or below the cap is used verbatim; an over-cap value delegates in normal mode and falls back to local backoff in always mode. <code>llm/retry</code> is appended before waiting, while <code>llm/retry-started</code> is appended only after the wait. Cancellation and plugin disposal can stop that wait, and disposal drains captured recovery work.<evidence id="FAILURE-RETRY-EXECUTOR"></evidence></p>
+</section>
+
+<section>
+  <h2>6. Retry retains raw chunks from failed attempts without committing a message or tool side effect</h2>
+  <p>Unit tests leave failed partial text/tool-call chunks in the Step's event history while proving that they are not sources for an <code>assistant/message</code>, generate no <code>tool/call</code>, and execute the dangerous tool zero times. Only the successful attempt commits the Step's sole assistant message. The tests also pin retry scheduling recorded before the wait, exponential backoff, and error closure after exhaustion.<evidence id="FAILURE-RETRY-SEMANTICS-TEST"></evidence></p>
+  <p>Real HTTP/SSE tests additionally cover a refused connection whose endpoint starts during backoff, stream disconnect, partial disconnect, empty completion, and a stalled body. The resent body is identical and stays in the same Step. One important counterexample is a validly ending partial EOF: it is classified <code>STREAM_CLOSED</code>, which is outside the default retry-code set, so it is not blindly retried merely because it looks network-like.<evidence id="FAILURE-WIRE-RECOVERY-TEST"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Tradeoff</div><p>Retaining raw chunks preserves forensic evidence while the derived transcript exposes only complete messages. Retry can still add latency, provider quota use, or billing. The Harness prevents duplicated tool side effects here, but it cannot undo a model request the provider already accepted.</p></div>
+</section>
+
+<section>
+  <h2>7. Documentation drift: the current implementation retries within the same Turn and Step</h2>
+  <div class="claim fact"><div class="claim-label">Drift</div><p><code>packages/llm/llm-retry/README.md</code> still says that every retry opens a freshly numbered Turn and that the loop closes the failed Turn before opening a retry Turn. That conflicts with the current Step-local loop and with unit and wire tests proving every attempt remains Turn 1 / Step 1.<evidence id="FAILURE-RETRY-DOC-DRIFT"></evidence></p></div>
+  <p>At pinned commit <code>47f943859bef60e4160492346772ded9b24f765a</code>, source and executable tests are authoritative: retry events keep the same coordinates, the Step writes one start/end pair, and only one successful assistant message is written. The README should be treated as stale semantics, not evidence of two implementation modes.</p>
+</section>
+
+<section>
+  <h2>8. Tool timeout is a cooperative deadline, not a Promise race or hard kill</h2>
+  <p>The timeout policy wraps only tools that declare <code>timeoutMs</code>. It fuses the caller signal with a local deadline, temporarily substitutes <code>exec.signal</code> during dispatch, and restores the original afterward. Most importantly, it <em>awaits the downstream tool</em>, replacing the final result with <code>TOOL_TIMEOUT</code> only when its own timeout code won first. It never abandons the still-running Promise.<evidence id="FAILURE-TOOL-TIMEOUT"></evidence></p>
+  <div class="claim fact"><div class="claim-label">Fact</div><p>The underlying deadline documentation explicitly says the signal only notifies and callers must stop their own work. <code>AbortSignal.any</code> preserves the first reason, while code-scoped <code>timeoutOf()</code> separates this layer's timeout from an outer cancellation. The idle watchdog likewise arms a timer only during an outstanding demand.<evidence id="FAILURE-TIMEOUT-SIGNAL"></evidence></p></div>
+  <p>Tests cover three races: a cooperative tool returning after abort, a tool throwing an abort error, and caller abort arriving before or after timeout. When timeout wins, the Promise remains pending until the tool's cleanup gate is released. When caller abort wins, the ordinary abort remains and is not mislabeled as timeout.<evidence id="FAILURE-TIMEOUT-TEST"></evidence></p>
+  <aside class="caveat"><strong>Open limit:</strong> a tool without a declared timeout is untouched, and an in-process tool that declares one but ignores its signal can still run forever. Hard isolation must come from a process, container, or remote-capability boundary, not from treating a JavaScript abort signal as forcible termination.</aside>
+</section>
+
+<section>
+  <h2>9. Parallel-tool cancellation: stop replenishment, drain starts, complete the shape for skipped calls</h2>
+  <p>After abort, the parallel pool stops starting new calls but waits for every already-dispatched call to converge, committing results and additional context in model order. It then writes an ordered synthetic aborted-before-dispatch call/result for each model call that never started. A scheduler failure also <code>allSettled</code>s in-flight dispatches but does not fabricate successful recovery results.<evidence id="FAILURE-TOOL-DRAIN"></evidence></p>
+  <div class="claim fact"><div class="claim-label">Fact</div><p>A test that cancels from an <code>assistant/message</code> observer proves that the dangerous tool body never executes, yet the log contains a matching <code>tool/call</code> and <code>TOOL_ABORTED_BEFORE_DISPATCH</code> result; the next model request can replay that provider-valid pair.<evidence id="FAILURE-CANCEL-TOOL-TEST"></evidence></p></div>
+  <div class="claim assessment"><div class="claim-label">Inference</div><p>The goal is not “make cancel return fastest.” It is to leave no anonymous background work after cancellation and retain a result for every assistant tool request. Quiescence is part of recovery correctness.</p></div>
+</section>
+
+<section>
+  <h2>10. Agent cancellation is a state transition; cancel returning does not mean activity ended</h2>
+  <p>By default, <code>cancel()</code> clears unclaimed Inbox work and aborts the current phase; <code>keepInbox</code> preserves only unclaimed work. Waking input arriving in the abort-to-idle window is reclassified to the next Turn and sets a wake latch. The old driver reaches idle after <code>turn/end(aborted)</code> and then starts it. The driver contains already reported errors, and consecutive Turns receive fresh AbortControllers.<evidence id="FAILURE-AGENT-CANCEL"></evidence></p>
+  <p>Tests verify that post-abort wakes are not lost, default cancel clears queue and latch together, removing a latched message suppresses empty replay, slow convergence still accepts a latch, and a disposal cause never latches new work. Another test pins the default behavior of dropping the queued tail on mid-turn cancellation.<evidence id="FAILURE-CANCEL-TEST"></evidence></p>
+  <aside class="caveat"><strong>Boundary:</strong> cancellation governs current live activity and unclaimed queue items. An operation already accepted by an external system still requires tool semantics, an idempotency key, or an external-state check to choose the next action.</aside>
+</section>
+
+<section>
+  <h2>11. Disposal is a shared quiescence point: cancel, drain, then unwind resources in reverse</h2>
+  <p>The Agent lifecycle fuses caller, owner, and factory cancellation into one setup signal. Its memoized disposer runs once: issue a disposed-cause cancel, await <code>whenIdle()</code>, dispose the private scope, and only then detach from agent/session registries and release ownership bookkeeping. Every concurrent caller awaits the same Promise.<evidence id="FAILURE-AGENT-DISPOSAL"></evidence></p>
+  <div class="claim fact"><div class="claim-label">Fact</div><p>Lifecycle tests verify that turn/end precedes unregistration, concurrent owner unload and handle disposal share one quiescence, the old ID remains occupied until asynchronous scope cleanup completes, and a replacement with the same ID is permitted only afterward.<evidence id="FAILURE-DISPOSAL-TEST"></evidence></p></div>
+  <div class="claim assessment"><div class="claim-label">Tradeoff</div><p>This teardown can be slower than deleting a map entry and returning immediately. It prevents a new instance from overlapping old same-named resources and prevents tests from passing while production still has a timer, listener, tool, or transport alive.</p></div>
+</section>
+
+<section>
+  <h2>12. Write-behind explicitly separates “event admitted” from “event durable”</h2>
+  <p>Each live Session owns a pending queue, fixed batching deadline, active write, and shared flush barrier. Enqueue clones the event and returns immediately. Flush cancels the timer, awaits overlapping work, then drains until the queue is quiescent. On write failure, the batch is prepended in original order and automatic work pauses; a background failure is reported, while an explicit barrier rejects.<evidence id="FAILURE-WRITE-BEHIND"></evidence></p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Moment</th><th>What can be claimed</th><th>What cannot be claimed</th></tr></thead>
+    <tbody>
+      <tr><td>Session append / enqueue returns</td><td>The live event entered persistence-owned memory</td><td>The disk has fsynced it</td></tr>
+      <tr><td>Background batch succeeds</td><td>The backend confirmed that stable prefix durable</td><td>Events that arrived later are also written</td></tr>
+      <tr><td>Flush resolves</td><td>The queue observed by the barrier drained to quiescence</td><td>External tool side effects completed</td></tr>
+      <tr><td>Flush rejects</td><td>The failed batch is retained and retryable</td><td>The caller may safely dispatch the side effect</td></tr>
+    </tbody>
+  </table></div>
+  <p>The coordinator uses reverse teardown to close event admission before the final flush, wait every per-session chain, and close the backend last. Session retirement likewise flushes before releasing exact-lifecycle state, and a close error cannot mask an earlier drain error.<evidence id="FAILURE-PERSISTENCE-WIRING"></evidence></p>
+</section>
+
+<section>
+  <h2>13. Semantic checkpoints put recoverable intent before irreversible side effects</h2>
+  <pre><code>model path: turn/start → claim → step/start → user/message → flush → adapter dispatch
+tool path: assistant/message → tool/call → flush → tool body
+next Step: previous response/result batch → pre-step flush → new request</code></pre>
+  <p>The Agent records its Turn/Step, input messages, and request header/context before constructing the session-tagged request and entering the stream.<evidence id="FAILURE-CHECKPOINT-AGENT-ORDER"></evidence><evidence id="FAILURE-CHECKPOINT-REQUEST-PREFIX"></evidence> The <code>llm/stream</code> wrapper delays constructing the downstream stream until that request prefix is flushed. The tool path appends <code>tool/call</code> before scheduler dispatch, and dispatch must traverse the <code>tools/execute</code> waterfall before reaching the body.<evidence id="FAILURE-CHECKPOINT-TOOL-INTENT"></evidence><evidence id="FAILURE-CHECKPOINT-TOOL-WRAPPER"></evidence> The checkpoint policy flushes a top-level call in that waterfall; an abort during the checkpoint returns the canonical aborted-before-dispatch result. Pre-step also flushes the preceding Step's response/result batch. Every checkpoint failure is fail-closed: neither adapter nor tool body runs.<evidence id="FAILURE-CHECKPOINT-POLICY"></evidence></p>
+  <div class="claim fact"><div class="claim-label">Fact</div><p>Unit tests prove that flush completes before the adapter or tool body runs, flush rejection prevents the side effect, cancellation during a checkpoint produces the structured not-dispatched result, and nested tools reuse the outer checkpoint. Those tests call <code>llm.stream</code>/<code>tools.execute</code> directly; they do not independently prove the upstream event-recording order.<evidence id="FAILURE-CHECKPOINT-TEST"></evidence></p></div>
+  <div class="claim assessment"><div class="claim-label">Inference</div><p>A checkpoint establishes a happens-before relation: before a side effect occurs, recovery can at least see its intent. It is not an exactly-once promise for a provider or tool. The process can still crash after the side effect and before result fsync—the unknown-outcome window in the next section.</p></div>
+</section>
+
+<section>
+  <h2>14. Hard-crash recovery protects the byte prefix first, then repairs event semantics</h2>
+  <p>A separate-child E2E sends <code>SIGKILL</code> at model-dispatch and tool-side-effect boundaries. The child waits forever after the adapter receives the request or the tool writes its external-effect marker; the parent hard-kills it after observing that marker. After recovery, the first scenario retains the complete model-request prefix. The second proves <code>tool/call</code> was durable before the external marker and recovers a started tool without a result as <code>TOOL_OUTCOME_UNKNOWN</code>. Both 2/2 cases passed in this review.<evidence id="FAILURE-CRASH-FIXTURE"></evidence><evidence id="FAILURE-CRASH-E2E"></evidence></p>
+  <p>The raw JSONL scanner commits only newline-terminated, successfully decoded records with contiguous sequence numbers. The Zstd scanner lists only structurally complete frames and marks a final frame interrupted by EOF as torn.<evidence id="FAILURE-JSONL-RAW-SCAN"></evidence><evidence id="FAILURE-JSONL-ZSTD-SCAN"></evidence> The loader turns those complete boundaries into a stable prefix. For a torn tail, it preserves complete records and produces an opaque truncation marker; repair truncates first, then appends recovered events and synthetic closers.<evidence id="FAILURE-JSONL-PREFIX"></evidence></p>
+  <p>Initial materialization uses a synced temporary file and a non-overwriting publish: POSIX publishes through <code>link()</code> and fsyncs the parent directory, while Windows uses non-replacing <code>MoveFileExW(..., MOVEFILE_WRITE_THROUGH)</code>. Later append writes and fsyncs; a write/sync failure closes the handle, truncates to the old length, and fsyncs again so retry cannot duplicate a sequence. Repair truncation is fsynced too.<evidence id="FAILURE-JSONL-ATOMICITY"></evidence><evidence id="FAILURE-JSONL-WIN32"></evidence></p>
+  <div class="claim fact"><div class="claim-label">Fact</div><p>JSONL regression tests cover a torn partial line, preservation of complete open events, synthetic step/turn closers, unchanged committed bytes, and a retry without sequence gaps after fsync failure rollback.<evidence id="FAILURE-JSONL-TEST"></evidence></p></div>
+</section>
+
+<section>
+  <h2>15. Crash repair fixes transcript truth, not external side-effect truth</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Last provable pre-crash shape</th><th>Synthetic result</th><th>Safe continuation</th></tr></thead>
+    <tbody>
+      <tr><td>Assistant requested a tool, but no <code>tool/call</code></td><td><code>TOOL_NOT_STARTED</code></td><td>Retry if still needed</td></tr>
+      <tr><td><code>tool/call</code> exists, but no durable result</td><td><code>TOOL_OUTCOME_UNKNOWN</code></td><td>Retry only read-only/idempotent work; otherwise verify external state or ask the user</td></tr>
+      <tr><td>A Step is open</td><td>Append <code>step/end</code>; then close its open Turn with <code>turn/end(interrupted)</code></td><td>Resume from a provider-valid transcript</td></tr>
+      <tr><td>A Turn is open, but no Step is open</td><td>Append only <code>turn/end(interrupted)</code></td><td>Resume from the Turn boundary</td></tr>
+      <tr><td>The log is balanced</td><td>Generate no events</td><td>Leave existing facts unchanged</td></tr>
+    </tbody>
+  </table></div>
+  <p>The repairer reuses the last real timestamp and consecutive sequence numbers, synthesizes results for dangling tool calls first, then closes Step and Turn. “Started” is determined solely by a durable <code>tool/call</code>. Its model-facing recovery text explicitly forbids blind retry of possible side effects.<evidence id="FAILURE-CRASH-REPAIR"></evidence></p>
+  <p>A backend-agnostic shared contract defines recovery for interrupted Turns, not-started tools, and unknown-outcome tools. The in-memory, JSONL, and SQLite backend suites each instantiate that contract, so those semantics are not bound only to JSONL.<evidence id="FAILURE-CRASH-CONTRACT"></evidence><evidence id="FAILURE-CRASH-CONTRACT-MEMORY"></evidence><evidence id="FAILURE-CRASH-CONTRACT-JSONL"></evidence><evidence id="FAILURE-CRASH-CONTRACT-SQLITE"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Tradeoff</div><p><code>UNKNOWN</code> may feel less seamless than automatic recovery, but it preserves the information boundary honestly. Automation should come from tool idempotency keys, query endpoints, or compensating actions; a log repairer must not invent reality it could not observe.</p></div>
+</section>
+
+<section>
+  <h2>16. Misconfiguration is not one failure class: boot, hot update, and missing credentials use three strategies</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Scenario</th><th>Strategy</th><th>Reason</th></tr></thead>
+    <tbody>
+      <tr><td>Invalid initial-composition structure/bounds</td><td>Fail loud before registration</td><td>No previous safe generation exists</td></tr>
+      <tr><td>Invalid live-settings candidate</td><td>Retain the complete last-good snapshot and log</td><td>Prevent cross-generation mixtures such as old endpoint plus new key</td></tr>
+      <tr><td>Missing credential</td><td>Keep route/catalog discoverable; each request returns <code>MISSING_CREDENTIAL</code></td><td>The next request recovers after a key arrives, without restart</td></tr>
+      <tr><td>Top-level config/user-patch hot-update failure</td><td>Reject candidate, retain running tree; accept a later valid edit</td><td>Transactional replacement avoids half-applied state</td></tr>
+    </tbody>
+  </table></div>
+  <p>DeepSeek configuration has both schema and explicit-resolver validation. The first <code>options()</code> runs before adapter publication; a failing live snapshot returns the whole <code>lastGood</code> generation.<evidence id="FAILURE-CONFIG-RESOLUTION"></evidence> Credentials resolve lazily from that request's same connection snapshot. Retry policy is the registration-captured exception, so it updates through synchronous <code>replace</code> to avoid publishing an empty-route window.<evidence id="FAILURE-CREDENTIAL-ROUTE"></evidence></p>
+  <div class="claim fact"><div class="claim-label">Fact</div><p>Dynamic-configuration tests prove that the next request sees both a new endpoint and key; a keyless first request fails then succeeds after key insertion; policy replacement never makes the provider disappear; and an invalid generation containing a new URL leaks none of it before a later valid generation recovers.<evidence id="FAILURE-DYNAMIC-CONFIG-TEST"></evidence></p></div>
+  <p>The application watcher explicitly fails loud for a present-but-invalid patch and hands a new patch set to one entry update; transactional loader semantics preserve the previous running tree.<evidence id="FAILURE-HMR-WATCH"></evidence> Tests cover last-good behavior after parse/validation failure and the next valid refresh.<evidence id="FAILURE-HMR-CONFIG-TEST"></evidence> Another suite covers the full user-patch sequence add → apply failure → parse failure → recovery → removal.<evidence id="FAILURE-HMR-USER-PATCH-TEST"></evidence></p>
+</section>
+
+<section>
+  <h2>17. Public-contract comparison with Codex: resuming interaction and constraining authority do not prove side-effect outcomes</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Dimension</th><th>DeepSeek Harness (chapter source)</th><th>Codex (public documentation only)</th></tr></thead>
+    <tbody>
+      <tr><td>Recovery unit</td><td>Durable event-log prefix plus Turn/Step/tool closers</td><td><code>codex resume</code> / <code>/resume</code> continues a saved chat; transcript and recorded working directory resume while files come from the current working tree</td></tr>
+      <tr><td>Execution safety</td><td>Checkpoints, cooperative abort, scope quiescence</td><td>The sandbox sets technical boundaries; approval policy decides when to stop and ask the user</td></tr>
+      <tr><td>Unknown side effects</td><td>Explicit <code>TOOL_OUTCOME_UNKNOWN</code> with idempotency-aware verification</td><td>The cited public pages do not specify a dangling-tool-outcome crash-repair protocol</td></tr>
+      <tr><td>Comparable conclusion</td><td>Application recovery protocol is verifiable from source and tests</td><td>Publicly confirmable contracts cover interaction continuation and authority boundaries; private internals are not inferred</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Public fact</div><p>Codex documentation describes continuing a saved session with the <a href="https://learn.chatgpt.com/docs/developer-commands?surface=cli#cli-codex-resume" target="_blank" rel="noreferrer">resume command</a>. <a href="https://learn.chatgpt.com/docs/projects.md" target="_blank" rel="noreferrer">Projects and chats</a> further states that the transcript and recorded working directory resume while files come from the current working tree. <a href="https://learn.chatgpt.com/docs/agent-approvals-security.md" target="_blank" rel="noreferrer">Agent approvals &amp; security</a> and <a href="https://learn.chatgpt.com/docs/sandboxing.md" target="_blank" rel="noreferrer">Sandboxing</a> describe sandbox and approval as complementary controls (retrieved 2026-08-13).</p></div>
+  <aside class="caveat"><strong>Comparison boundary:</strong> “can resume a chat” does not imply “can automatically determine whether an external tool completed after a process crash.” Sandbox authority also does not replace durable intent. No inference is made here about Codex's non-public persistence, retry, or cleanup implementation.</aside>
+</section>
+
+<section>
+  <h2>18. Guarantees, tradeoffs, and gaps left to higher layers</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>This layer can guarantee</th><th>When</th><th>Still owned above it</th></tr></thead>
+    <tbody>
+      <tr><td>Transient model failures can retry boundedly or continuously</td><td>Failure enters adapter terminal protocol, policy permits, no cancel/disposal</td><td>Cost budget, global backoff, business SLA</td></tr>
+      <tr><td>Failed partial output cannot trigger a tool</td><td>Only a complete successful attempt becomes an assistant message</td><td>Provider-side cost and request deduplication</td></tr>
+      <tr><td>Tool timeout has a stable classification</td><td>The tool declares a timeout and honors its signal</td><td>Hard isolation for uncooperative code</td></tr>
+      <tr><td>In-process quiescence follows cancellation/disposal</td><td>Adapters, tools, and listeners honor their async contracts</td><td>Side effects already accepted by external services</td></tr>
+      <tr><td>A crash log becomes a provider-valid transcript</td><td>At least one complete durable prefix exists</td><td>Verification, idempotency, or compensation for unknown outcomes</td></tr>
+      <tr><td>Failed live config does not contaminate last-good generation</td><td>Updates use the managed transactional seam</td><td>Health monitoring for silently expired external secrets/endpoints</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">Inference</div><p>The reusable design is not one error code but three rules: establish who owns the failure facts; record the recovery decision at the same coordinates as the failure; persist intent before irreversible effects and preserve unknown when the outcome cannot be proven.</p></div>
+</section>
+
+<section>
+  <h2>19. Verification scope for this chapter</h2>
+  <p>Every repository claim targets pinned upstream commit <code>47f943859bef60e4160492346772ded9b24f765a</code>. This review ran 13 focused source-level test files with 407 cases, then separately ran the hard-crash file under the E2E configuration with 2 cases. All 409 tests across 14 files passed.</p>
+  <pre><code>13 focused source-level files  → 407 passed
+1 hard-crash E2E file          →   2 passed
+total                          → 409 passed</code></pre>
+  <p>Coverage spans the provider adapter, request recovery, retry and real HTTP/SSE transport, timeout/cancel/disposal, checkpoint/JSONL repair, dynamic DeepSeek configuration, and application-config hot reload. These tests establish the boundary behavior described here; load, performance, cross-machine power loss, and live third-party API availability are not presented as verified.</p>
+</section>
