@@ -6,7 +6,7 @@
 <body data-page="failure-recovery" data-baseline="47f943859bef60e4160492346772ded9b24f765a" data-lang="zh">
   <header class="topbar"><button class="icon-button nav-toggle" type="button" data-nav-toggle aria-label="打开章节目录" aria-expanded="false">☰</button>
     <a class="brand" href="../index.html"><span class="brand-mark">DS</span><span>Harness 系统拆解</span></a>
-    <span class="topbar-meta">固定基线 47f943859b · 26 已复核 / 1 撰写中 / 36 章</span>
+    <span class="topbar-meta">固定基线 47f943859b · 27 已复核 / 1 撰写中 / 36 章</span>
     <div class="topbar-actions"><a class="language-switch" href="../../pages/failure-recovery.html" lang="en" aria-label="阅读本章英文版">English</a><button class="icon-button" type="button" data-theme-toggle aria-label="切换明暗主题">◐</button></div></header>
   <div class="layout"><aside class="sidebar" data-sidebar aria-label="章节目录"><input class="filter" data-chapter-filter type="search" placeholder="筛选章节……" aria-label="筛选章节"><section class="nav-part" data-part><h2 class="part-title">导论</h2>
     <a class="chapter-link" data-chapter-item href="../pages/reading-guide.html">
@@ -45,7 +45,7 @@
       <span class="chapter-number">25</span><span>Workflow 与 Ralph</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link" data-chapter-item href="../pages/inbox-steering-continuation.html">
       <span class="chapter-number">26</span><span>Inbox、Steering 与 Continuation</span><span class="status-dot verified" title="已复核"></span></a></section><section class="nav-part" data-part><h2 class="part-title">可靠性与产品面</h2>
     <a class="chapter-link current" data-chapter-item href="../pages/failure-recovery.html">
-      <span class="chapter-number">27</span><span>重试、错误、取消与恢复</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/observability.html">
+      <span class="chapter-number">27</span><span>重试、错误、取消与恢复</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link" data-chapter-item href="../pages/observability.html">
       <span class="chapter-number">28</span><span>可观测、Telemetry 与轨迹</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/api-sdk-acp.html">
       <span class="chapter-number">29</span><span>API、SDK、JSON-RPC 与 ACP</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/web-ui.html">
       <span class="chapter-number">30</span><span>Web UI 插件架构</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/security-trust.html">
@@ -56,10 +56,216 @@
       <span class="chapter-number">34</span><span>缺口、限制与待验证问题</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/glossary-evidence.html">
       <span class="chapter-number">35</span><span>术语、证据目录与源码索引</span><span class="status-dot queued" title="待研究"></span></a></section></aside>
     <main class="main"><div class="page-shell"><article class="article" data-article><header><div class="page-kicker"><span>可靠性与产品面</span><span>·</span><span>第 27 章</span></div>
-      <h1>重试、错误、取消与恢复</h1><p class="subtitle">失败发生在不同边界时，哪一层拥有决定权</p><div class="page-meta"><span class="status queued">待研究</span><span>上游 47f943859b</span><span>范围: 分析 provider retry、request-error recovery、tool timeout、abort、cleanup、misconfiguration 和 crash-safe persistence。</span></div></header>
-      <section class="placeholder"><p class="eyebrow">研究队列</p><h2>本章尚未进入结论状态</h2>
-    <p><strong>当前范围:</strong> 分析 provider retry、request-error recovery、tool timeout、abort、cleanup、misconfiguration 和 crash-safe persistence。</p><p>页面已经纳入全量研究地图，但尚未完成源码控制流复核。以下是升级为“已复核”之前必须覆盖的检查面：</p>
-    <ul class="placeholder-checks"><li>实际 bundle / profile 装配入口</li><li>公开类型、事件与配置 schema</li><li>正常控制流与状态突变时机</li><li>并发、scope、所有权与 cleanup</li><li>错误、取消、重试和降级分支</li><li>持久化、projection 与 replay 语义</li><li>生产路径测试与运行时不变量</li><li>优势、代价、限制与待验证问题</li></ul></section><section class="learning-notes" aria-labelledby="learning-notes-title"><h2 id="learning-notes-title">我的学习体会</h2>
+      <h1>重试、错误、取消与恢复</h1><p class="subtitle">失败发生在不同边界时，哪一层拥有决定权</p><div class="page-meta"><span class="status verified">已复核</span><span>上游 47f943859b</span><span>范围: 分析 provider retry、request-error recovery、tool timeout、abort、cleanup、misconfiguration 和 crash-safe persistence。</span></div></header>
+      <section>
+  <h2>结论：失败恢复是一组分层提交协议，不是一个万能的 <code>retry</code></h2>
+  <div class="thesis"><p>DeepSeek Harness 把失败恢复拆在五条边界上：adapter 把 provider 故障归一化为可记录事实；Agent 只在模型请求失败接缝内决定是否重试；工具超时和取消等待已启动工作收敛；checkpoint 在外部副作用之前强制持久化意图；恢复器只修补可证明的日志结构，不猜测进程崩溃时外部世界发生了什么。</p></div>
+  <p>这套设计最重要的性质是<strong>不把不同的不确定性混成同一种错误</strong>。请求可以重放，已启动的写工具却可能只能标成“结果未知”；超时可以发出取消信号，却不能把不合作的 Promise 变成已停止；内存 append 可以表示已接纳，但只有 flush/fsync 才表示进入持久化前缀。理解这些提交点，比背错误码更接近真实恢复模型。</p>
+</section>
+
+<section>
+  <h2>1. 失败所有权地图：每一层只恢复自己能证明的事情</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>层</th><th>拥有的事实</th><th>允许的恢复动作</th><th>明确不负责</th></tr></thead>
+    <tbody>
+      <tr><td>Provider adapter</td><td>HTTP、SSE、idle、caller abort</td><td>形成稳定 failure snapshot，关闭 transport</td><td>决定业务重试次数</td></tr>
+      <tr><td>Request recovery</td><td>当前 Turn/Step、provider policy、失败历史</td><td>等待后重发同一模型请求</td><td>吞掉 middleware、consumer 或 cleanup bug</td></tr>
+      <tr><td>Tool runtime</td><td>哪些 call 已启动、是否观察到 abort</td><td>停止补充 dispatch，drain 已启动 call，补齐有序结果</td><td>强杀不合作的进程内工具</td></tr>
+      <tr><td>Persistence/checkpoint</td><td>哪些事件已经 durable</td><td>副作用前 flush；写失败回滚并保留 batch</td><td>证明外部副作用结果</td></tr>
+      <tr><td>Crash repair</td><td>最后一个完整可解析前缀</td><td>截断 torn tail，合成 tool/step/turn closer</td><td>臆测未持久化的工具结果</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">推论</div><p>恢复能力来自所有权边界，而不是 try/catch 数量。越过边界替另一层猜答案，会把可诊断失败变成重复副作用、伪造成功或不可回放日志。</p></div>
+</section>
+
+<section>
+  <h2>2. Adapter 只把自己拥有的失败降格为终止 chunk</h2>
+  <p>直接调用未 prepared 的 <code>ctx.llm.stream()</code> 时，最终 adapter 边界拥有 adapter 选择、异步 exact-model 解析、dispatch、iterator 构造与消费；这些步骤的异常会变成唯一的 terminal <code>finish(error|aborted)</code>。Agent 主路径则先在 <code>buildRequest()</code> 调用 <code>prepareCall()</code>：除 <code>NO_ADAPTER</code> 回退外，选择或配置解析错误会在 stream 边界之前抛出，由 Turn 记录为 error，而不会进入 <code>agent/request-error</code>。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/agent.ts#L302-L458" title="Agent prepared-call 与 request-error 边界: Agent 在 buildRequest 先 prepareCall；非 NO_ADAPTER 解析错误在 stream 前抛出并直接关闭 Turn，只有 terminal failure chunk 才分派 agent/request-error。" aria-label="证据 FAILURE-AGENT-PREPARE-BOUNDARY">FAILURE-AGENT-PREPARE-BOUNDARY</a>准备成功后，adapter dispatch 与 iterator 错误仍会变成 terminal chunk。middleware、下游 consumer 与 iterator cleanup 错误保持抛出；consumer 提前停止时，边界会 await <code>iterator.return()</code>。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/llm/llm/src/index.ts#L838-L938" title="最终 adapter 失败边界: 未 prepared 的直接 stream 路径在最终边界内完成选择、解析、dispatch 与迭代；prepared 路径的 dispatch/迭代也由该边界转为 terminal finish，middleware/consumer/cleanup 错误保持抛出。" aria-label="证据 FAILURE-ADAPTER-BOUNDARY">FAILURE-ADAPTER-BOUNDARY</a></p>
+  <div class="claim fact"><div class="claim-label">事实</div><p><code>normalizeLlmFailure()</code> 仅在 Error 暴露相互匹配的自有 data descriptor <code>failure</code> 与 <code>code</code> 时信任携带快照；随后在 <code>try</code> 内读取并校验快照字段，但不要求这些内部字段本身也是自有属性。message/code 必须非空，status、Retry-After 与 requestId 必须满足类型和范围。单独出现、没有匹配 failure snapshot 的第三方 SDK code 不会直接进入 Harness taxonomy，而是降为 <code>UNKNOWN</code>。快照被复制并冻结，不把活的 Error 对象塞进事件流。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/llm/llm/src/adapter-failure.ts#L16-L104" title="可序列化且冻结的 failure snapshot: 仅当 Error 的自有 data descriptor failure/code 匹配时才信任携带快照；内部字段在 try 中读取并校验但不要求为自有属性，快照复制并冻结。" aria-label="证据 FAILURE-SNAPSHOT">FAILURE-SNAPSHOT</a></p></div>
+  <div class="claim assessment"><div class="claim-label">取舍</div><p>窄边界让 provider 故障可由同一协议恢复，同时保留插件与消费端缺陷的堆栈和失败可见性。代价是扩展作者不能期待“任何 stream 抛错都会自动重试”。</p></div>
+</section>
+
+<section>
+  <h2>3. DeepSeek adapter 把 HTTP 建议、transport 中断和 idle 分开分类</h2>
+  <p>非 2xx 响应会把 401/403、429、400、5xx 映射为稳定的 <code>AUTH</code>、<code>RATE_LIMIT</code>、<code>INVALID_REQUEST</code>、<code>SERVER</code> 等代码；同时提取秒数或 HTTP-date 形式的 <code>Retry-After</code>，以及两个可能的 request-id header。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/llm/llm-deepseek/src/adapter.ts#L117-L338" title="DeepSeek HTTP 错误、Retry-After 与 request id: 解析秒数或 HTTP-date Retry-After、两个 request-id header，并把非 2xx status/body 映射为稳定 failure code 与事实。" aria-label="证据 FAILURE-DEEPSEEK-HTTP">FAILURE-DEEPSEEK-HTTP</a></p>
+  <pre><code>一次 stream call 的稳定快照
+  connection + credential + user id
+        │
+        ├─ caller abort ───────────────→ ABORTED
+        ├─ outstanding read 无进展 ───→ TIMEOUT
+        ├─ 其他 fetch/SSE 故障 ───────→ TRANSPORT
+        └─ HTTP 非 2xx ───────────────→ AUTH / RATE_LIMIT / SERVER / ...</code></pre>
+  <p>每次 stream 调用只解析一份连接与凭据快照，进行中的请求不会混入下一代配置。idle watchdog 只在一次 iterator demand 未完成时计时；退出时 adapter abort consumer controller，并在 iterator 未耗尽时等待 <code>return()</code>，避免“上层已经恢复、底层 transport 还在跑”。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/llm/llm-deepseek/src/adapter.ts#L214-L268" title="每请求配置快照、idle watchdog 与 transport 清理: 一次 stream 固定连接与凭据；区分 TIMEOUT、ABORTED、TRANSPORT，并在 finally abort consumer、等待未耗尽 iterator.return。" aria-label="证据 FAILURE-DEEPSEEK-STREAM">FAILURE-DEEPSEEK-STREAM</a></p>
+</section>
+
+<section>
+  <h2>4. <code>agent/request-error</code> 是窄接缝：只有终止失败才进入</h2>
+  <p>一个 Step 只打开一次，内部 <code>while (true)</code> 为每次尝试重新构造 request 与 assembler。只有 assembler 收到 <code>finish(error|aborted)</code> 才调用 <code>agent/request-error</code>；listener 返回 <code>{ kind: "retry" }</code> 才继续循环，否则抛出结构化 <code>LlmError</code>。成功后才写唯一的 <code>assistant/message</code> 并执行工具。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/agent.ts#L332-L400" title="同一 Step 内的模型请求恢复循环: 每次 attempt 重建 request/assembler；只有 terminal error/aborted finish 进入 request-error，retry action 继续同一 Step，成功后才提交 assistant message 与工具。" aria-label="证据 FAILURE-REQUEST-LOOP">FAILURE-REQUEST-LOOP</a></p>
+  <div class="claim fact"><div class="claim-label">事实</div><p>回归测试证明：request middleware 失败不会进入恢复 listener；连续两次 provider 失败再成功仍处于 Turn 1 / Step 1；取消即使与 retry action 同时发生也优先；恢复 listener 自己失败会关闭 Turn，而不是再尝试一次。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/tests/request-error.spec.ts#L30-L141" title="Request-error 窄接缝与取消优先测试: 证明 middleware 失败不进入恢复、连续失败维持 Turn 1/Step 1、取消胜过 retry action、恢复 listener 失败关闭 Turn。" aria-label="证据 FAILURE-REQUEST-TEST">FAILURE-REQUEST-TEST</a></p></div>
+  <aside class="caveat"><strong>边界：</strong>这是“模型请求级恢复”，不是整个 Step 的事务重跑。工具根本尚未开始，因此 request retry 不需要回滚工具；一旦进入工具阶段，就切换到另一套恢复协议。</aside>
+</section>
+
+<section>
+  <h2>5. Retry policy 属于 provider route；executor 只执行已经解析的决定</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>模式</th><th>资格</th><th>预算</th><th>下游组合</th></tr></thead>
+    <tbody>
+      <tr><td><code>normal</code></td><td>只匹配配置的错误码；默认含 EMPTY_RESPONSE、RATE_LIMIT、SERVER、TIMEOUT、TRANSPORT</td><td>默认首次请求后最多 2 次；500ms 起步、10s 上限、0.1 jitter</td><td>不匹配、耗尽或 provider 延迟越界时交给下游</td></tr>
+      <tr><td><code>always</code></td><td>所有模型请求失败</td><td>无次数上限，直到成功、取消或 disposal</td><td>先询问下游；其 retry 优先，失败则记录并回落本地策略</td></tr>
+    </tbody>
+  </table></div>
+  <p>解析器拒绝未知 key、非法边界、空或重复错误码，并生成冻结的 route policy。执行插件本身没有可配置重试策略，避免同一个 provider 被全局 executor 配置暗中改写。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/llm/llm/src/retry-policy.ts#L14-L191" title="Provider-owned retry policy 默认值与验证: 定义 normal/always、默认次数/延迟/jitter/错误码，拒绝未知键、越界、空与重复 code，并返回冻结 policy。" aria-label="证据 FAILURE-RETRY-POLICY">FAILURE-RETRY-POLICY</a></p>
+  <p>执行时先按同一 turn/step/provider/policyKey 查找历史 retry 次数，再决定 delay。合法且不超过上限的 provider <code>Retry-After</code> 原样采用；normal 模式遇到超上限建议则放弃本地恢复，always 模式改用本地 backoff。<code>llm/retry</code> 在等待之前写入，等待完成才写 <code>llm/retry-started</code>；取消与插件 disposal 都能终止等待，disposal 还会 drain 已捕获的 recovery。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/llm/llm-retry/src/index.ts#L99-L225" title="Retry 执行、持久化计划与 disposal drain: 按坐标/policyKey 计数，先写 retry 计划再等待，处理 provider delay 上限与 always 下游组合，并在 disposal 终止且 drain active recovery。" aria-label="证据 FAILURE-RETRY-EXECUTOR">FAILURE-RETRY-EXECUTOR</a></p>
+</section>
+
+<section>
+  <h2>6. 重试保留失败尝试的原始 chunk，但不把它提交成消息或工具副作用</h2>
+  <p>单元测试把失败尝试的 partial text/tool-call chunks 留在 Step 的事件历史中，同时验证它们不成为 <code>assistant/message</code> 的 source、不会产生 <code>tool/call</code>，危险工具的执行次数仍为零；成功尝试才提交该 Step 唯一的 assistant message。测试也固定了重试计划先落事件、指数退避和耗尽后的错误关闭。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/llm/llm-retry/tests/retry.spec.ts#L175-L344" title="Retry 调度、partial chunk 隔离与预算测试: 验证 retry 事件先落、同一 Step 成功、EMPTY_RESPONSE、失败 partial chunks 不形成 message/tool side effect，以及有界指数退避耗尽。" aria-label="证据 FAILURE-RETRY-SEMANTICS-TEST">FAILURE-RETRY-SEMANTICS-TEST</a></p>
+  <p>真实 HTTP/SSE 测试进一步覆盖拒绝连接后端点上线、stream disconnect、partial disconnect、空完成与 stalled body；重发 body 保持一致，且仍是同一 Step。一个重要反例是“合法结束但 partial EOF”：它被分类为 <code>STREAM_CLOSED</code>，不在默认 retry code 集合里，因此不会因为“看起来像网络问题”而盲重试。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/llm/llm-retry/tests/transport-recovery.spec.ts#L85-L219" title="真实 DeepSeek HTTP/SSE transport 恢复测试: 覆盖 refused connection、stream/partial disconnect、empty response、clean partial EOF 与 stalled body，固定同 request body、同 Step 与默认 retry 分类。" aria-label="证据 FAILURE-WIRE-RECOVERY-TEST">FAILURE-WIRE-RECOVERY-TEST</a></p>
+  <div class="claim assessment"><div class="claim-label">取舍</div><p>保留 raw chunks 提供取证能力，而 derived transcript 只暴露完整消息。重试仍可能增加时延、provider 配额或计费；Harness 能避免重复工具副作用，却不能撤销 provider 已经接收的一次模型请求。</p></div>
+</section>
+
+<section>
+  <h2>7. 文档漂移：当前实现是在同一 Turn、同一 Step 内 retry</h2>
+  <div class="claim fact"><div class="claim-label">漂移</div><p><code>packages/llm/llm-retry/README.md</code> 仍写着“每次 retry 打开新的编号 Turn”以及“先关闭失败 Turn，再打开 retry Turn”。这与当前 loop 的 Step 内循环，以及证明所有尝试均为 Turn 1 / Step 1 的单元和 wire 测试冲突。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/llm/llm-retry/README.md#L1-L13" title="Retry README 的新 Turn 描述漂移: README 声称每次 retry 关闭失败 Turn 并打开新编号 Turn，与当前 Step 内循环和测试冲突。" aria-label="证据 FAILURE-RETRY-DOC-DRIFT">FAILURE-RETRY-DOC-DRIFT</a></p></div>
+  <p>在固定提交 <code>47f943859bef60e4160492346772ded9b24f765a</code> 上，应以源码和可执行测试为准：retry event 仍带同一坐标，Step 只写一次 start/end，成功 assistant message 也只写一次。README 描述应视为尚未同步的旧语义，而不是实现存在两种模式。</p>
+</section>
+
+<section>
+  <h2>8. 工具 timeout 是协作式 deadline，不是 Promise race 或 hard kill</h2>
+  <p>timeout policy 只包装声明了 <code>timeoutMs</code> 的工具。它把 caller signal 与本地 deadline 融合，dispatch 期间临时替换 <code>exec.signal</code>，随后恢复原 signal；最关键的是它 <em>await downstream tool</em>，仅当自己的 timeout code 先赢时才把最终结果替换成 <code>TOOL_TIMEOUT</code>。它不会提前放弃仍在运行的 Promise。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/guard/timeout-policy/src/index.ts#L18-L80" title="协作式工具 timeout policy: 只包装声明 timeoutMs 的工具，临时替换 signal，等待下游收敛，仅在本层 timer 获胜时返回 TOOL_TIMEOUT，且不 abandon Promise。" aria-label="证据 FAILURE-TOOL-TIMEOUT">FAILURE-TOOL-TIMEOUT</a></p>
+  <div class="claim fact"><div class="claim-label">事实</div><p>底层 deadline 文档明确说 signal 只负责通知，调用方必须自行停止工作；<code>AbortSignal.any</code> 保留第一个原因，带 code 的 <code>timeoutOf()</code> 用来区分本层 timeout 与外层取消。idle watchdog 同样只在 outstanding demand 时武装计时器。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/util/timeout/src/index.ts#L57-L190" title="Deadline 与 idle watchdog 的信号合同: Signal 只通知、调用方必须停止；first abort reason 获胜，code-scoped timeoutOf 区分外层取消，watchdog 仅在 outstanding demand 时计时。" aria-label="证据 FAILURE-TIMEOUT-SIGNAL">FAILURE-TIMEOUT-SIGNAL</a></p></div>
+  <p>测试覆盖三类竞态：合作工具收到 abort 后返回、工具以 abort error 抛出、caller abort 与 timeout 先后到达。timeout 先到时，Promise 会一直等到工具的清理 gate 放行才完成；caller 先到则保留普通 abort，而不会误报 timeout。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/guard/timeout-policy/tests/timeout-policy.spec.ts#L97-L193" title="工具 timeout 与 caller abort 竞态测试: 覆盖合作返回、abort throw、caller-first 与 timeout-first，并证明 timeout 仍等待工具清理 gate 后才完成。" aria-label="证据 FAILURE-TIMEOUT-TEST">FAILURE-TIMEOUT-TEST</a></p>
+  <aside class="caveat"><strong>开放限制：</strong>未声明 timeout 的工具不受此策略约束；声明了却忽略 signal 的进程内工具也可能无限运行。需要 hard isolation 时，应由进程、容器或远端 capability 边界提供终止能力，而不是把 JavaScript abort signal 当成强杀。</aside>
+</section>
+
+<section>
+  <h2>9. 并行工具取消：停止补充、排空已启动、为未启动项补齐结构</h2>
+  <p>并行池在 abort 后不再启动新 call，但会等待所有已经 dispatch 的 call 收敛，按模型顺序提交其 result 和 additional context；随后给尚未启动的每个模型 call 写入有序的 synthetic aborted-before-dispatch call/result。scheduler 自身失败也会 <code>allSettled</code> 已在途 dispatch，但不会伪造成功恢复结果。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/tool-calls.ts#L112-L255" title="并行工具 abort 与 scheduler failure drain: Abort 停止新 dispatch、等待并按序提交 started calls，再为 skipped calls 合成结果；scheduler failure allSettled 已在途工作。" aria-label="证据 FAILURE-TOOL-DRAIN">FAILURE-TOOL-DRAIN</a></p>
+  <div class="claim fact"><div class="claim-label">事实</div><p>从 <code>assistant/message</code> observer 触发取消的测试证明：危险工具 body 完全未执行，但日志仍出现匹配的 <code>tool/call</code> 和 <code>TOOL_ABORTED_BEFORE_DISPATCH</code> result；下一次模型请求可以回放这个 provider-valid 对。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/tests/cancel.spec.ts#L405-L458" title="Assistant message 后取消的 replay 完整性测试: 取消使工具 body 零执行，但记录匹配 call 与 TOOL_ABORTED_BEFORE_DISPATCH result，后续请求能回放有效 tool pair。" aria-label="证据 FAILURE-CANCEL-TOOL-TEST">FAILURE-CANCEL-TOOL-TEST</a></p></div>
+  <div class="claim assessment"><div class="claim-label">推论</div><p>这里的目标不是“取消返回得最快”，而是让取消之后没有匿名后台工作，并让 transcript 在每个 assistant tool request 后仍有对应结果。quiescence 是恢复正确性的组成部分。</p></div>
+</section>
+
+<section>
+  <h2>10. Agent cancellation 是状态转换；cancel 返回不等于活动已结束</h2>
+  <p>默认 <code>cancel()</code> 清空未 claim Inbox 并 abort 当前 phase；<code>keepInbox</code> 只保留未 claim 工作。abort-to-idle 窗口中新到达的 waking input 会被重分类到 next Turn 并设置 wake latch，旧 driver 在 <code>turn/end(aborted)</code> 后回到 idle 再启动它。driver 容纳已报告错误，连续 Turn 则各自换新的 AbortController。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/agent.ts#L113-L329" title="Agent cancel、wake latch 与 Turn containment: 定义默认清 Inbox/abort、post-abort waking input 重分类与 latch、whenIdle 替换活动跟随、turn/end 平衡和下一 Turn 新 AbortController。" aria-label="证据 FAILURE-AGENT-CANCEL">FAILURE-AGENT-CANCEL</a></p>
+  <p>测试验证 post-abort wake 不丢失、默认 cancel 会同时清队列和 latch、删除已 latch 消息会抑制空重放、慢收敛期间仍能 latch，而 disposal 原因永不 latch 新工作。另一个测试固定了“中途取消丢掉 queued tail”的默认语义。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/tests/cancel.spec.ts#L129-L403" title="Abort-to-idle latch 与 queued-tail 取消测试: 验证 latch replay/clear/removal/慢收敛/disposal 边界，并固定 mid-step 默认取消丢弃所有 queued tail。" aria-label="证据 FAILURE-CANCEL-TEST">FAILURE-CANCEL-TEST</a></p>
+  <aside class="caveat"><strong>边界：</strong>取消只影响当前 live activity 和尚未认领的队列。已经被外部系统接收的操作仍需依赖工具语义、幂等键或状态核验来决定后续动作。</aside>
+</section>
+
+<section>
+  <h2>11. Disposal 是共享的静止点：先 cancel，再 drain，再逆序拆资源</h2>
+  <p>Agent 生命周期把 caller、owner 和 factory 三个取消来源融合到同一个 setup signal。memoized disposer 只执行一次：发出 disposed-cause cancel，await <code>whenIdle()</code>，dispose 私有 scope，最后才从 agent/session registry detach 并释放 ownership 记账。所有并发调用方等待同一个 Promise。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/index.ts#L459-L530" title="Memoized Agent 生命周期 disposal: 融合 caller/owner/factory 取消；共享 disposer 依次 cancel(disposed)、whenIdle、scope.dispose，最后 detach registries 与 ownership。" aria-label="证据 FAILURE-AGENT-DISPOSAL">FAILURE-AGENT-DISPOSAL</a></p>
+  <div class="claim fact"><div class="claim-label">事实</div><p>生命周期测试验证 turn/end 先于 unregister、并发 owner unload 与 handle disposal 共享同一 quiescence、异步 scope cleanup 完成前旧 ID 仍被占用，完成后才允许同 ID 创建替代实例。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/tests/scope-lifecycle.spec.ts#L921-L1051" title="Agent teardown 顺序、共享静止点与 ID 复用测试: 证明 turn/end 先于 unregister、并发 disposal 等待同一边界、scope cleanup 完成前 ID 不可复用。" aria-label="证据 FAILURE-DISPOSAL-TEST">FAILURE-DISPOSAL-TEST</a></p></div>
+  <div class="claim assessment"><div class="claim-label">取舍</div><p>这种 teardown 可能比“删 map 后立即返回”更慢，但它避免新实例与旧资源同名并存，也避免测试通过而生产进程仍残留 timer、listener、tool 或 transport。</p></div>
+</section>
+
+<section>
+  <h2>12. Write-behind 把“事件已接纳”和“事件已 durable”明确拆开</h2>
+  <p>每个 live Session 有独立 pending queue、固定 batching deadline、active write 和共享 flush barrier。enqueue 会 clone event 并立即返回；flush 取消 timer，等待重叠写，再一直 drain 到队列静止。写失败时 batch 按原顺序放回队首，自动路径暂停；后台失败只报告，显式 barrier 则 reject。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-persistence/src/write-behind.ts#L18-L158" title="Per-session write-behind 与 flush barrier: Enqueue clone event；flush 共享 barrier 并 drain 到静止；失败 batch 原序放回队首且自动路径暂停，显式 barrier reject。" aria-label="证据 FAILURE-WRITE-BEHIND">FAILURE-WRITE-BEHIND</a></p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>时刻</th><th>可以声称</th><th>不能声称</th></tr></thead>
+    <tbody>
+      <tr><td>Session append / enqueue 返回</td><td>live event 已进入持久化拥有的内存队列</td><td>磁盘已经 fsync</td></tr>
+      <tr><td>后台 batch 成功</td><td>该稳定前缀已由 backend 确认 durable</td><td>随后到达的事件也已写入</td></tr>
+      <tr><td>flush resolve</td><td>flush barrier 观察到的队列已 drain 到静止点</td><td>外部工具副作用已经完成</td></tr>
+      <tr><td>flush reject</td><td>失败 batch 仍保留、可再次尝试</td><td>调用方可以继续 dispatch 副作用</td></tr>
+    </tbody>
+  </table></div>
+  <p>协调器利用逆序 teardown 先关闭 event admission，再做最终 flush、等待所有 session chain，最后关闭 backend；session retirement 也先 flush，之后才释放精确 lifecycle state，且 close error 不会遮蔽更早的 drain error。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-persistence/src/coordinator.ts#L1084-L1161" title="Persistence admission、最终 drain 与 retirement 顺序: 逆序 teardown 先关闭 event admission，再 flush/等待 chains/close backend；session retirement 先 flush 后释放精确 lifecycle state。" aria-label="证据 FAILURE-PERSISTENCE-WIRING">FAILURE-PERSISTENCE-WIRING</a></p>
+</section>
+
+<section>
+  <h2>13. Semantic checkpoint 把可恢复意图放在不可逆副作用之前</h2>
+  <pre><code>模型路径：turn/start → claim → step/start → user/message → flush → adapter dispatch
+工具路径：assistant/message → tool/call → flush → tool body
+下一 Step：上一轮 response/result batch → pre-step flush → 新请求</code></pre>
+  <p>Agent 先记录 Turn/Step、输入消息、request header/context，再构造带 session id 的请求并进入 stream。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/agent.ts#L225-L350" title="Agent request 前缀与 stream 调用顺序: Agent 记录 turn/start，claim Inbox 输入，再记录 step/start 与输入消息；构造 request 后才进入 stream，并把返回 chunk 继续记入会话。" aria-label="证据 FAILURE-CHECKPOINT-AGENT-ORDER">FAILURE-CHECKPOINT-AGENT-ORDER</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/agent.ts#L403-L494" title="Request header/context 在 stream 前记录: buildRequest 在返回带 sessionId 的冻结请求前追加 request/header 与必要的 request/context。" aria-label="证据 FAILURE-CHECKPOINT-REQUEST-PREFIX">FAILURE-CHECKPOINT-REQUEST-PREFIX</a> <code>llm/stream</code> wrapper 延迟构造下游 stream，直到该 request prefix flush。工具路径先 append <code>tool/call</code>，再进入 scheduler dispatch；dispatch 通过 <code>tools/execute</code> waterfall 才能抵达 body。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/tool-calls.ts#L164-L175" title="Tool intent 在 scheduler dispatch 前记录: 每个已启动调用先 append tool/call，再 prepare 并进入 scheduler dispatch。" aria-label="证据 FAILURE-CHECKPOINT-TOOL-INTENT">FAILURE-CHECKPOINT-TOOL-INTENT</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L1569-L1577" title="Scheduler dispatch 经过 tools/execute waterfall: scheduled dispatch 先进入 tools/execute waterfall，其最终 next 才调用 tool body。" aria-label="证据 FAILURE-CHECKPOINT-TOOL-WRAPPER">FAILURE-CHECKPOINT-TOOL-WRAPPER</a> checkpoint policy 在这个 waterfall 中 flush 顶层 call；abort 若在 checkpoint 中发生则返回 canonical aborted-before-dispatch result。pre-step 还会 flush 前一 Step 的 response/result batch。checkpoint 失败全部 fail-closed，不调用 adapter 或工具 body。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-checkpoint-policy/src/index.ts#L20-L82" title="模型与工具副作用前的 semantic checkpoint: 有 live session 时在 downstream model stream 前 flush；顶层 tool body 前 flush，pre-step 也 flush；失败 fail-closed，checkpoint 中取消返回未 dispatch 结果。" aria-label="证据 FAILURE-CHECKPOINT-POLICY">FAILURE-CHECKPOINT-POLICY</a></p>
+  <div class="claim fact"><div class="claim-label">事实</div><p>单元测试证明 flush 完成后才调用 adapter 或工具 body、flush rejection 会阻止副作用、checkpoint 期间取消生成结构化未 dispatch 结果，并区分 nested tool 复用 outer checkpoint 的路径；这些测试直接调用 <code>llm.stream</code>/<code>tools.execute</code>，不单独证明上游事件记录顺序。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-checkpoint-policy/tests/session-checkpoint-policy.spec.ts#L62-L238" title="Checkpoint 顺序、拒绝与取消测试: 验证 adapter/tool dispatch 在 flush 后，checkpoint reject 阻止副作用，取消生成 canonical 未 dispatch 结果，nested tool 复用 outer checkpoint。" aria-label="证据 FAILURE-CHECKPOINT-TEST">FAILURE-CHECKPOINT-TEST</a></p></div>
+  <div class="claim assessment"><div class="claim-label">推论</div><p>checkpoint 建立的是“发生副作用前，恢复者至少能看到意图”的 happens-before；它不是对 provider 或工具的 exactly-once 承诺。进程可能在副作用完成后、结果 fsync 前崩溃，这正是下一节的 unknown-outcome 窗口。</p></div>
+</section>
+
+<section>
+  <h2>14. 硬崩溃恢复先保护字节前缀，再修补事件语义</h2>
+  <p>独立子进程 E2E 在模型 dispatch 和工具 side-effect 边界收到 <code>SIGKILL</code>。子进程分别在 adapter 收到请求及工具写出外部副作用 marker 后永久等待；父进程观察 marker 后硬杀它。恢复后，第一个场景仍保有完整模型请求前缀；第二个场景证明 <code>tool/call</code> 在外部 marker 之前 durable，而没有结果的已启动工具被恢复为 <code>TOOL_OUTCOME_UNKNOWN</code>。本次复核中该文件 2/2 用例通过。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-checkpoint-policy/tests/fixtures/crash-child.ts#L21-L60" title="模型 dispatch 与工具副作用 failpoint: 子进程在 adapter 收到请求或工具写出外部副作用 marker 后永久等待，为父进程 SIGKILL 提供精确边界。" aria-label="证据 FAILURE-CRASH-FIXTURE">FAILURE-CRASH-FIXTURE</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-checkpoint-policy/tests/crash-recovery.e2e.ts#L39-L110" title="SIGKILL 模型与工具边界恢复 E2E: 自定义硬杀子进程，证明模型 dispatch 前完整请求 durable，以及工具副作用前 call durable、缺结果恢复为 TOOL_OUTCOME_UNKNOWN。" aria-label="证据 FAILURE-CRASH-E2E">FAILURE-CRASH-E2E</a></p>
+  <p>原始 JSONL scanner 只提交以换行结束、成功解码且 sequence 连续的记录；Zstd scanner 只列出结构完整的 frame，并把 EOF 中断的最后一帧标为 torn。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-persistence-jsonl/src/format.ts#L272-L377" title="原始 JSONL 完整记录 scanner: 仅提交换行结束、可解码且 sequence 连续的事件记录；未结束 fragment 不进入 committedBytes。" aria-label="证据 FAILURE-JSONL-RAW-SCAN">FAILURE-JSONL-RAW-SCAN</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-persistence-jsonl/src/zstd.ts#L48-L103" title="完整 Zstd frame scanner: 逐帧校验 header/block/checksum 边界，只返回完整 frame，并把 EOF 中断的最后一帧起点标为 tornStart。" aria-label="证据 FAILURE-JSONL-ZSTD-SCAN">FAILURE-JSONL-ZSTD-SCAN</a> Loader 把这些完整边界变成稳定前缀；发现 torn tail 时保留完整记录并生成 opaque truncation marker，repair 先截断，再追加可恢复事件和 synthetic closers。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-persistence-jsonl/src/index.ts#L306-L444" title="JSONL/Zstd 稳定前缀与 torn-tail repair marker: Loader 使用 scanner 的 committed/torn 边界构造稳定事件前缀与 truncation/recovered-events marker，并通过 commitRepair 落修复。" aria-label="证据 FAILURE-JSONL-PREFIX">FAILURE-JSONL-PREFIX</a></p>
+  <p>首次 materialize 使用已 fsync 落盘的临时文件和不会覆盖已有目标的 publish：POSIX 通过 <code>link()</code> 发布并 fsync 父目录，Windows 则用不允许替换的 <code>MoveFileExW(..., MOVEFILE_WRITE_THROUGH)</code>。后续 append 写入并 fsync；write/sync 失败会关闭 handle、截回原长度并再次 fsync，避免同一 sequence 在重试时重复。repair 的 truncate 也会 fsync。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-persistence-jsonl/src/index.ts#L511-L701" title="JSONL materialize、append rollback 与 fsync: 首次写用 synced temp 与不覆盖 publish；POSIX 通过 link 发布并 fsync 父目录；append write/sync 失败截回旧长度并 fsync，repair truncate 也 fsync。" aria-label="证据 FAILURE-JSONL-ATOMICITY">FAILURE-JSONL-ATOMICITY</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-persistence-jsonl/src/win32.ts#L109-L120" title="Windows write-through durable publish: Windows 用未设置 replace 或跨卷 copy fallback flag 的 MoveFileExW MOVEFILE_WRITE_THROUGH 把 staging path 发布到 final path。" aria-label="证据 FAILURE-JSONL-WIN32">FAILURE-JSONL-WIN32</a></p>
+  <div class="claim fact"><div class="claim-label">事实</div><p>JSONL 回归测试覆盖 torn partial line、保留完整开放事件、合成 step/turn closer、已提交字节不变，以及 fsync 失败回滚后无 sequence gap 的再次写入。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-persistence-jsonl/tests/jsonl.spec.ts#L585-L674" title="JSONL torn tail、append-only 与 fsync rollback 测试: 覆盖 torn partial line、开放事件保留和 closer、已提交前缀字节不变、fsync 失败回滚后无 seq gap 重试。" aria-label="证据 FAILURE-JSONL-TEST">FAILURE-JSONL-TEST</a></p></div>
+</section>
+
+<section>
+  <h2>15. Crash repair 修的是 transcript truth，不是 external side-effect truth</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>崩溃前最后可证明的形状</th><th>合成结果</th><th>安全后续</th></tr></thead>
+    <tbody>
+      <tr><td>assistant 要求工具，但没有 <code>tool/call</code></td><td><code>TOOL_NOT_STARTED</code></td><td>仍需要时可以重试</td></tr>
+      <tr><td>已有 <code>tool/call</code>，没有 durable result</td><td><code>TOOL_OUTCOME_UNKNOWN</code></td><td>只对只读/幂等操作重试；否则先核验外部状态或询问用户</td></tr>
+      <tr><td>Step 开放</td><td>补 <code>step/end</code>；其所在开放 Turn 再补 <code>turn/end(interrupted)</code></td><td>从 provider-valid transcript 恢复</td></tr>
+      <tr><td>Turn 开放，但没有开放 Step</td><td>只补 <code>turn/end(interrupted)</code></td><td>从 Turn 边界恢复</td></tr>
+      <tr><td>日志已平衡</td><td>不生成任何事件</td><td>保持原事实不变</td></tr>
+    </tbody>
+  </table></div>
+  <p>修复器使用最后一个真实事件的时间戳和连续 sequence，先为 dangling tool calls 合成 result，再关闭 Step 和 Turn；是否“已启动”只由 durable <code>tool/call</code> 事实决定。其模型面对的恢复文本也明确禁止盲重试潜在副作用。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/session/src/repair.ts#L18-L132" title="Interrupted Turn 的确定性语义修复: 区分 TOOL_NOT_STARTED 与 TOOL_OUTCOME_UNKNOWN，先补 dangling tool result 再关闭 Step/Turn，并在恢复文本中要求副作用风险核验。" aria-label="证据 FAILURE-CRASH-REPAIR">FAILURE-CRASH-REPAIR</a></p>
+  <p>backend-agnostic shared contract 定义了 interrupted Turn、未开始工具与结果未知工具的恢复行为；该 contract 分别由内存、JSONL 与 SQLite backend 的测试套件实例化，因此这些语义不只绑定在 JSONL 实现上。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-persistence/tests/contract.ts#L118-L265" title="Backend-agnostic crash-repair shared contract: 固定 interrupted Turn 保留与关闭、未开始工具的可重试 result、已记录工具的 unknown-outcome 风险提示和可回放 transcript。" aria-label="证据 FAILURE-CRASH-CONTRACT">FAILURE-CRASH-CONTRACT</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-persistence/tests/persistence.spec.ts#L240-L249" title="内存 backend 实例化 shared contract: 内存 persistence 测试套件调用 runPersistenceContract。" aria-label="证据 FAILURE-CRASH-CONTRACT-MEMORY">FAILURE-CRASH-CONTRACT-MEMORY</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-persistence-jsonl/tests/jsonl.spec.ts#L102-L115" title="JSONL backend 实例化 shared contract: 真实 JSONL backend 测试套件调用 runPersistenceContract。" aria-label="证据 FAILURE-CRASH-CONTRACT-JSONL">FAILURE-CRASH-CONTRACT-JSONL</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-persistence-sqlite/tests/sqlite.spec.ts#L51-L60" title="SQLite backend 实例化 shared contract: 真实 SQLite backend 测试套件调用同一个 runPersistenceContract。" aria-label="证据 FAILURE-CRASH-CONTRACT-SQLITE">FAILURE-CRASH-CONTRACT-SQLITE</a></p>
+  <div class="claim assessment"><div class="claim-label">取舍</div><p><code>UNKNOWN</code> 看起来不如自动恢复“顺滑”，但它诚实保存了信息边界。若业务要求自动化，应让工具暴露幂等键、查询接口或补偿动作；日志修复器不应伪造它无法观察的现实。</p></div>
+</section>
+
+<section>
+  <h2>16. Misconfiguration 不是一类故障：启动、热更新和缺凭据采用三种策略</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>场景</th><th>策略</th><th>理由</th></tr></thead>
+    <tbody>
+      <tr><td>首次 composition 的结构/边界非法</td><td>注册前 fail loud</td><td>没有可安全继续服务的 previous generation</td></tr>
+      <tr><td>live settings candidate 非法</td><td>完整保留 last-good snapshot 并记录错误</td><td>避免旧 endpoint 与新 key 等跨 generation 混配</td></tr>
+      <tr><td>缺少 credential</td><td>route/catalog 仍可发现；每次请求返回 <code>MISSING_CREDENTIAL</code></td><td>密钥稍后加入后，下一请求可恢复，无需重启</td></tr>
+      <tr><td>顶层配置/用户 patch 热更新失败</td><td>拒绝 candidate，保留 running tree；后续合法 edit 可恢复</td><td>transactional replacement 优于半应用状态</td></tr>
+    </tbody>
+  </table></div>
+  <p>DeepSeek 配置有 schema 和显式 resolver 两层验证；首次 <code>options()</code> 在 adapter publication 前执行，而 live snapshot 失败时返回整个 <code>lastGood</code>。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/llm/llm-deepseek/src/index.ts#L91-L256" title="DeepSeek 配置双层验证与 last-good generation: Schema 加显式 resolver 复核 catalog/bounds/reasoning/timeout/retry；首次失败阻止注册，live invalid snapshot 完整回落 lastGood。" aria-label="证据 FAILURE-CONFIG-RESOLUTION">FAILURE-CONFIG-RESOLUTION</a>凭据则从该请求的同一 connection snapshot 延迟解析；retry policy 是注册时捕获的例外，因此用同步 <code>replace</code> 更新，避免发布空 route 窗口。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/llm/llm-deepseek/src/index.ts#L225-L275" title="每请求 credential 恢复与 retry-policy 原位替换: 凭据从同一请求 snapshot 延迟解析，缺失抛 MISSING_CREDENTIAL；route 先注册，policy 变化用同步 replace 避免空 registry 窗口。" aria-label="证据 FAILURE-CREDENTIAL-ROUTE">FAILURE-CREDENTIAL-ROUTE</a></p>
+  <div class="claim fact"><div class="claim-label">事实</div><p>动态配置测试证明：下一请求同时看到新 endpoint 和 key；keyless 首次请求失败，加入 key 后成功；policy 替换期间 provider 从未消失；包含新 URL 的非法 generation 完全不泄漏，随后合法 generation 可恢复。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/llm/llm-deepseek/tests/dynamic-config.spec.ts#L61-L186" title="DeepSeek 动态 endpoint/key/policy/last-good 测试: 验证下一请求读取新 endpoint/key、keyless 后补 key 恢复、policy 原位更新，以及 rejected generation 不泄漏 URL/key 并可后续恢复。" aria-label="证据 FAILURE-DYNAMIC-CONFIG-TEST">FAILURE-DYNAMIC-CONFIG-TEST</a></p></div>
+  <p>应用层 watcher 对 present-but-invalid patch 明确 fail loud，并把新 patch 交给一次 entry update；配置 loader 的事务语义负责保留上一棵可用树。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/boot/app-boot/src/index.ts#L225-L338" title="用户 patch watcher 与 present-invalid fail-loud: Watcher 重读完整 patch generation 并一次 entry.update；存在但不可读、不可解析或非数组的 patch 明确抛错而非静默跳过。" aria-label="证据 FAILURE-HMR-WATCH">FAILURE-HMR-WATCH</a>测试覆盖 parse/validation 失败后的 last-good 与下一次合法 refresh。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/boot/app-boot/tests/config-reload.spec.ts#L61-L84" title="无效配置 refresh 的 last-good 与后续恢复测试: Parse failure 和空配置 validation failure 都保留 last-good running tree，下一次合法 edit 成功替换。" aria-label="证据 FAILURE-HMR-CONFIG-TEST">FAILURE-HMR-CONFIG-TEST</a>另一组测试覆盖用户 patch 的 add → apply failure → parse failure → recovery → removal 全链路。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/boot/app-boot/tests/user-patches.spec.ts#L315-L356" title="用户 patch HMR 的失败、恢复与删除测试: 覆盖 add、apply failure、parse failure、recovery 与 removal；失败 candidate 不替换当前 live 配置。" aria-label="证据 FAILURE-HMR-USER-PATCH-TEST">FAILURE-HMR-USER-PATCH-TEST</a></p>
+</section>
+
+<section>
+  <h2>17. 与 Codex 的公开合同比较：恢复会话与约束权限，不等于证明副作用结果</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>维度</th><th>DeepSeek Harness（本章源码）</th><th>Codex（仅公开文档）</th></tr></thead>
+    <tbody>
+      <tr><td>恢复单位</td><td>事件日志的 durable prefix、Turn/Step/tool closer</td><td><code>codex resume</code> / <code>/resume</code> 继续保存的 chat；恢复 transcript 与记录的工作目录，文件取自当前 working tree</td></tr>
+      <tr><td>执行安全</td><td>checkpoint、合作式 abort、scope quiescence</td><td>sandbox 规定技术边界，approval policy 决定何时停下请求用户授权</td></tr>
+      <tr><td>未知副作用</td><td>显式 <code>TOOL_OUTCOME_UNKNOWN</code>，要求按幂等性核验</td><td>所引公开页面没有给出 dangling tool outcome 的 crash-repair 协议</td></tr>
+      <tr><td>可比较结论</td><td>应用内恢复协议可从源码和测试验证</td><td>公开可确认的是交互续接与权限边界，不推断其私有实现</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">公开事实</div><p>Codex 文档说明可用 <a href="https://learn.chatgpt.com/docs/developer-commands?surface=cli#cli-codex-resume" target="_blank" rel="noreferrer">resume 命令</a>继续保存的会话；<a href="https://learn.chatgpt.com/docs/projects.md" target="_blank" rel="noreferrer">Projects and chats</a> 进一步说明恢复 transcript 与记录的工作目录，而文件来自当前 working tree。<a href="https://learn.chatgpt.com/docs/agent-approvals-security.md" target="_blank" rel="noreferrer">Agent approvals &amp; security</a> 与 <a href="https://learn.chatgpt.com/docs/sandboxing.md" target="_blank" rel="noreferrer">Sandboxing</a> 把 sandbox 和 approval 描述为互补控制（检索于 2026-08-13）。</p></div>
+  <aside class="caveat"><strong>比较边界：</strong>“能够 resume chat”不能推出“进程崩溃后自动判定外部工具是否完成”；“sandbox 限权”也不能替代 durable intent。这里不对 Codex 的非公开持久化、重试或清理实现作任何推断。</aside>
+</section>
+
+<section>
+  <h2>18. 保证、取舍和仍需上层解决的空白</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>本层可以保证</th><th>成立条件</th><th>仍需上层处理</th></tr></thead>
+    <tbody>
+      <tr><td>瞬态模型失败可有界或持续重试</td><td>失败进入 adapter terminal protocol，policy 允许，未取消/未 disposal</td><td>成本预算、全局退避、业务 SLA</td></tr>
+      <tr><td>失败 partial output 不触发工具</td><td>只有完整成功 attempt 才形成 assistant message</td><td>provider 已产生的成本和请求去重</td></tr>
+      <tr><td>工具 timeout 有稳定分类</td><td>工具声明 timeout 且遵守 signal</td><td>不合作代码的 hard isolation</td></tr>
+      <tr><td>取消/disposal 后达到进程内 quiescence</td><td>adapter、工具、listener 都遵守异步合同</td><td>外部服务已经接受的副作用</td></tr>
+      <tr><td>崩溃日志恢复为 provider-valid transcript</td><td>至少有一个完整 durable prefix</td><td>unknown outcome 的核验、幂等或补偿</td></tr>
+      <tr><td>live 配置失败不污染 last-good generation</td><td>更新走受管理的 transactional seam</td><td>静默失效的外部 secret/endpoint 健康监控</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">推论</div><p>最值得复用的设计不是某个错误码，而是三条规则：先确定谁拥有失败事实；把恢复决定记录在与失败相同的坐标；在不可逆副作用前持久化意图，在无法证明结果时保留 unknown。</p></div>
+</section>
+
+<section>
+  <h2>19. 本章复核范围</h2>
+  <p>所有仓库内结论均针对上游固定提交 <code>47f943859bef60e4160492346772ded9b24f765a</code>。本次聚焦验证运行 13 个 source-level 测试文件，共 407 个用例；另以 E2E 配置独立运行 hard-crash 文件 2 个用例。合计 14 个文件、409 个测试全部通过。</p>
+  <pre><code>13 focused source-level files  → 407 passed
+1 hard-crash E2E file          →   2 passed
+total                          → 409 passed</code></pre>
+  <p>测试覆盖 provider adapter、request recovery、retry 与真实 HTTP/SSE transport、timeout/cancel/disposal、checkpoint/JSONL repair、动态 DeepSeek 配置和应用配置热更新。它们证明这里描述的边界行为；没有把 load、性能、跨机器断电或真实第三方 API 可用性包装成已经验证的结论。</p>
+</section>
+<section class="learning-notes" aria-labelledby="learning-notes-title"><h2 id="learning-notes-title">我的学习体会</h2>
     <p class="privacy">内容仅自动保存到当前浏览器，不上传、不进入仓库。你可以导出 Markdown 自行归档。</p><textarea data-learning-notes aria-label="我的学习体会" placeholder="记录你的理解、疑问、反例和可迁移原则……"></textarea>
     <div class="note-footer"><span data-note-saved>本地草稿</span><button type="button" data-note-export>导出 Markdown</button>
     <button type="button" class="danger" data-note-clear>清空</button><span data-note-count>0 字符</span></div></section><nav class="pagination" aria-label="章节翻页"><a href="../pages/inbox-steering-continuation.html"><small>← 上一章 · 26</small><strong>Inbox、Steering 与 Continuation</strong></a><a class="next" href="../pages/observability.html"><small>下一章 · 28 →</small><strong>可观测、Telemetry 与轨迹</strong></a></nav></article>
