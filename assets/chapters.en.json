@@ -1,0 +1,326 @@
+[
+  {
+    "id": "00",
+    "slug": "reading-guide",
+    "part": "Introduction",
+    "title": "Reading Guide and Research Map",
+    "subtitle": "How to navigate the study, current progress, and the complete question space",
+    "status": "drafting",
+    "text": "Developer Preview source archaeology · pinned baseline Not a feature list, but a verifiable map of system semantics DeepSeek Harness looks like a coding-agent product. The more interesting subject is its attempt to decompose an Agent product into a network of composable, disposable, and replayable capabilities. This report starts from real entry points, mutations, failure branches, and persistence boundaries to explain how it actually runs. Analysis baseline 47f943859bef60e4160492346772ded9b24f765a Open the pinned source What this dissection must answer Runtime How does the plugin tree start? Who drives Agents, turns, steps, model requests, and tool batches? At exactly which points are events appended? Context How do the system prompt, tool schemas, dynamic context, message history, Skills, and compaction summaries jointly determine what the model sees? Durability What does an internal session actually store? What do JSONL, SQLite, projection caches, checkpoints, forks, resume, and replay each guarantee? Execution and governance Which interception layers does a tool cross between schema and execution? How do parallelism, approval, monotonic guards, sandboxes, file observation, and timeouts compose? Orchestration How do multi-Agent providers, continuation, background jobs, workflow workers, and the Ralph loop share underlying primitives? Tradeoffs What does “everything is a plugin” actually solve, and what cognitive, configuration, validation, and compatibility costs does it create? Start with three invariants Source fact Model adapters, the tool registry, the session log, and the agent loop all mount as plugins on a shared Cordis context. The repository explicitly says there is no privileged core that extensions must patch. Source fact Anything that truly enters a model request must be reconstructable from the session log. The log therefore serves not only UI rendering, but also model context, recovery, forking, telemetry, and replay as a shared source of truth. Mechanism-level deduction The effective “core” of DeepSeek Harness is not one immutable loop class. It is a set of harder-to-replace invariants: scope, event ordering, reversible registration, logging of model-visible input, and closure among capability definitions, providers, and consumers. Plugins are replaceable; these composition semantics are the de facto architectural constitution. Suggested reading paths First pass: Design Philosophy → Turn/Step/Loop → Prompt Assembly → Session Events → Tool Pipeline. Agent-platform focus: Persistence → Checkpoints → Compaction → Plan/Goal/Todo → Multi-Agent → Workflow. Secure-execution focus: Tool Primitives → Permission and Approval → Sandbox/FS → Shell/Terminal/Jobs → Security Model. Engineering-quality focus: Observability and Replay → API/SDK/ACP → Tests and Invariants → Tradeoffs. How to interpret chapter status Status Meaning Safe to cite as a conclusion? Queued The scope is mapped, but the body may still be only a question list. No In progress Some source facts and deductions exist, but the coverage audit is incomplete. Only local facts with pinned evidence Verified Entry points, control flow, state, failures, persistence, and key tests have passed targeted or exhaustive review. Yes, with the pinned baseline attached"
+  },
+  {
+    "id": "01",
+    "slug": "methodology",
+    "part": "Introduction",
+    "title": "Baseline, Method, and Evidence Rules",
+    "subtitle": "Separating source facts, mechanism-level deductions, and design assessments",
+    "status": "verified",
+    "text": "Why the commit must be pinned Repository policy DeepSeek Harness explicitly describes itself as pre-first-tag software: sound foundations take precedence over compatibility shims; the SQLite schema moves monotonically, while the session format remains version 0 without a compatibility promise. “How current master works” is therefore a high-drift statement. Every fact in this report is bound to a complete SHA. A future update will add a baseline-diff edition instead of silently replacing an old conclusion with a new implementation. Evidence strength 1 Production source and effective configuration The strongest evidence. Construction, callers, mutations, failures, and disposal all matter. 2 Behavioral tests and snapshots They prove observable behavior for particular inputs, but only after verifying that the fixture traverses the production assembly path. 3 Generated documentation Source-gated tool catalogs, module graphs, and event diagrams are excellent coverage maps, but they do not replace detailed control-flow analysis. 4 Manually maintained documentation Useful for intent and vocabulary. When it conflicts with code, the pinned source baseline wins. 5 Plans and discussions Evidence of direction and problem awareness, not proof of implemented runtime behavior. Keep three kinds of statements separate Source fact Example: “A tool call is appended as tool/call before execution, and the final result is appended as tool/result .” Production control flow and the generated sequence can prove this directly. Mechanism-level deduction Example: “The UI may show a pending tool card before completion, while final model history still derives from durable events.” This conclusion joins event ordering, presentation events, and history derivation. Design assessment Example: “Event sourcing reduces divergence among product surfaces but moves compatibility pressure into event vocabulary and projections.” This is an evaluation and must state benefits, costs, and assumptions together. The standard dissection template Product role: Which user or runtime need does this module own? Entry and assembly: Which bundle/profile mounts it, and which services does it require? Types and data: Public interfaces, events, schemas, branded IDs, and durable representations. Real control flow: Happy path, branch conditions, and exact mutation points. Concurrency and lifecycle: Scope, owner, cancellation, disposal, cleanup, and races. Error semantics: Who classifies, retries, degrades, and preserves the original error? Replay and observability: Which facts are durable, which are live-only, and how recovery works. Verification: Unit, integration, snapshot, runtime invariant, and remaining evidence gaps. Assessment: Benefits, costs, constraints, operating boundaries, and transferable principles. Completion gate for a chapter A chapter moves from In progress to Verified only after it covers the entry point, core types, principal state machine, durable facts, error paths, and key tests, followed by at least one end-to-end review from entry to side effect. Failure to find a counterexample is not completion. Broad claims without direct evidence remain explicit open questions."
+  },
+  {
+    "id": "02",
+    "slug": "design-philosophy",
+    "part": "Introduction",
+    "title": "Design Philosophy",
+    "subtitle": "The runtime worldview behind “everything is a plugin”",
+    "status": "drafting",
+    "text": "One-sentence conclusion The central philosophy of DeepSeek Harness is not to give the Agent more built-in powers, but to decompose the product into a network of capabilities that are composition-configurable, scope-isolated, reversibly mounted, and event-traceable . Complex features should remain plugins outside the loop and participate through stable service and event seams. That sentence mixes facts with synthesis. This chapter separates them. Principle 1: no privileged core, but an architectural constitution Source fact A Cordis context accepts services, typed events, and reversible effects. Model adapters, tool registries, session logs, and even the agent loop are assembled as plugins; extensions mount peer plugins instead of patching a privileged core. Mechanism-level deduction “No privileged core” does not mean “no core.” What cannot be casually replaced is the composition protocol: context scopes, event order, effect disposal, waterfall delegation, session-event compatibility, and the definition/provider/consumer relationship. Replacement implementations must still obey this protocol. Design assessment The benefit is that features need not continuously inject branches into one giant loop, and profiles or per-Agent presets can compose plugins. The cost is that correctness moves from local class logic into the global properties of a plugin graph, event ordering, and configuration layers. Principle 2: registration is a reversible lifecycle effect Repository policy Contributions must register through ctx.effect() or ctx.on() , registry register() calls return disposers, and a waterfall listener must explicitly call next() to yield control downstream. Mechanism-level deduction A plugin's presence is not a permanent process fact; it is a lease bound to a Cordis scope. Disposing that scope must retract services, tools, listeners, and providers. This enables per-session and per-Agent composition plus runtime self-modification, while making every side-channel registration an architectural violation. Principle 3: composition over hidden defaults Source fact A running dsh tree begins as an empty entry list and applies bundles, the profile patch, the home-level patch, and command-line overlays in order. Patches address rows by ID and replace the row's entire config or insert a new row. Repository policy Cross-package defaults must be resolved explicitly by the implementation that owns the semantics. Deployment tunables become validated configuration, and invalid configuration should fail at the earliest decidable point. Design assessment Explicit layers make the effective runtime tree printable, overridable, and auditable. Yet wholesale config replacement is not deep merge: an upper patch must understand the complete lower configuration shape or risk dropping fields while changing only one value. Predictability is purchased with author discipline. Principle 4: what the model sees must become a durable fact Source fact The session log is the source of truth for model history, and deriveMessages() projects model messages from events. Raw assistant/chunk events remain available for replay and UI fidelity. Any newly model-visible input requires a session event and is checked by runtime invariants. Mechanism-level deduction This rule turns prompt engineering into event modeling. A plugin cannot secretly concatenate a string immediately before dispatch; if content affects model behavior, the log must reconstruct it. Resume, fork, telemetry, snapshots, and UI state no longer need independent stories for “what the model saw.” Design assessment This is one of the most valuable and expensive constraints in the design. It greatly improves audit and replay, but every dynamic context source needs event semantics, compatible readers, and derivation rules instead of one-off middleware state. Principle 5: a capability is a closed three-role seam, not merely an interface Source fact The repository describes a replaceable capability through three roles: a Service Definition declares the contract, a Service Provider implements it, and a Consumer uses it—often through a model-visible tool. A single role does not form a complete seam. This prevents the presence of an interface from being mistaken for replaceable architecture. Filesystem capability requires not only ctx.fs , but also local/sandbox/E2B providers, model-facing consumers, observation policy, an error vocabulary, and consistency with the process execution world. Principle 6: simplify inside trusted static boundaries; validate real trust boundaries Repository policy Same-process values already constrained by static types are not repeatedly subjected to hostile runtime checks. Parsed configuration, queued data, model/tool JSON, persisted files, workers, processes, and wire protocols must be validated. Cross-boundary IDs use branded types rather than plain strings. Design assessment The principle is not “more validation is always safer,” but “spend validation effort where a value may be forged, drifted, or distorted.” Internal code stays readable; the risk is that misclassifying external data as a trusted typed value removes a defense entirely. Working model of the philosophy Composition unit Plugin Capability boundary Service seam Coordination Typed events / waterfall Lifecycle Scope + reversible effects Source of truth Append-only session log Product assembly Profile + bundle + patch layers Safety posture Boundary validation + fail loud Extension strategy Plugins, not loop changes Not final: this is the first synthesis from architecture documents and repository policy. Later chapters test whether these principles remain consistent in prompts, tool parallelism, compaction, checkpoints, multi-Agent orchestration, workflows, and the UI. Counterexamples will revise this model rather than be hidden to preserve theoretical neatness."
+  },
+  {
+    "id": "03",
+    "slug": "module-atlas",
+    "part": "Introduction",
+    "title": "An Atlas of 219 Packages",
+    "subtitle": "Package groups, roles, dependency direction, and runtime placement",
+    "status": "drafting",
+    "text": "Correcting the first scale illusion The root architecture diagram shows only dozens of central services, but the pinned packages/ tree contains 49 groups and 219 npm workspace packages . They are not 219 peer “business modules.” Some declare services, some implement providers, some expose capabilities only as model tools, and many are host/client/UI surfaces, composition bundles, test support, or zero-dependency utilities. Source fact The official package map requires extension plugins to depend on Service Definitions instead of concrete providers. A capability splits into packages when definitions, providers, and consumers need to evolve independently, and UI, hooks, and tools depend on the abstract agent service rather than a concrete loop. Mechanism-level deduction DeepSeek Harness cannot be understood by reading directories in isolation. The more effective unit is a capability closure: definition → one or more providers → model/host consumer → bundle assembly → session-event/UI projection → invariant and real-composition tests. Six research planes Product spine core , llm , session , context , and compaction define how one Agent step actually happens. Execution world subprocess , shell , terminal , fs , sandbox , code-runtime , lsp , web , and e2b ground tools in local or remote execution environments. Collaboration and orchestration interaction , plan , goal , todo , jobs , subagent , workflow , skill , and mcp manage human-Agent and Agent-Agent coordination state. Composition and data boot , bundle , preset , settings , credentials , storage , workspace , and attachment determine runtime trees and ownership of non-session data. Product surfaces api , typert , sdk , acp , host , and client expose one runtime to the Web, stdio JSON-RPC, and automation protocols. Proof and support runtime-diagnostics , test-support , guard , session-query , feedback , util , and examples supply invariants, test assemblies, diagnostics, and low-level primitives. Classification note: these six planes are cross-sections introduced by this report, not an official upstream hierarchy. One package group may span several planes. Why every package has an invariant Repository policy Every package must own ./invariant : packages with runtime relationships register checkable event/data relations, while pure installation packages state a package-specific reason for an empty check. Registry contributions also require disposal tests proving that a contribution disappears when its fiber unmounts. Design assessment This directly addresses a common weakness of plugin architecture. Type checking proves local package interfaces, not that the final composition mounted exactly one provider, consumer, and coherent event relationship. Per-package invariants move part of “still correct after composition” into the runtime. The cost is additional installer and relationship-assertion maintenance across 219 packages. Complete package inventory at the pinned baseline The data below is generated by reading every packages/*/*/package.json and file tree at the pinned commit. Counts include only TypeScript/TSX source and test files inside packages; file counts are not treated as complexity metrics. Descriptions come from upstream manifests and will be verified against production control flow in later module chapters."
+  },
+  {
+    "id": "04",
+    "slug": "boot-profiles-bundles",
+    "part": "Core Runtime",
+    "title": "Boot, Profiles, Bundles, and Configuration Layers",
+    "subtitle": "How a running dsh process is composed into an ordered plugin tree",
+    "status": "verified",
+    "text": "Conclusion: the launcher evaluates a configuration program The primary product of a dsh launch is not a hard-coded Application object. It is a plugin tree evaluated from an empty root, ordered patch layers, service dependencies, and Cordis lifecycle semantics. This distinction matters. A Profile chooses bundles; bundles provide large capability sets; user and command-line overlays modify the result; Loader activates plugins as their required services become available. Configuration is not merely a collection of startup parameters here—it is the product architecture. 1. The CLI owns a deliberately narrow boundary Production control flow apps/cli/src/bin.ts parses argv into three modes and dynamically imports the corresponding implementation: normal profile launch, plugin package management, or configuration dump. The profile branch passes only a frozen environment snapshot, the profile name, --patch files in argv order, and remaining application arguments. “CLI arguments” are intentionally split into two ownership classes: Input Owner How it enters the tree Recomputed during live updates? --profile , --patch Outer launcher Select a profile and form patch layers Patch contents are reread; the file list is fixed Remaining arguments Plugins inside the tree Provided through cmdlineArgs , not encoded into patches No; they live for this invocation Environment Launcher freezes provenance Environment snapshot is provided before mounting; !!js may also read process environment The launch-time snapshot is fixed Mechanism-level deduction Command-line product behavior does not invade generic boot. Web, headless, and future surfaces can mount their argument interpreters as ordinary providers. The launcher owns only “which configuration program” and “how the process terminates safely.” 2. A Profile is a writable composition workspace Production source A Profile name must be one path segment and cannot be . , .. , or node_modules . On first use, the built-in web template initializes as base + web-app , while headless initializes as base + headless . Initialization creates only missing package.json , cordis.patch.yml , and pnpm-workspace.yaml files and never overwrites existing user data. Profile file Responsibility Mutability and risk package.json Declares the ordered dsh.profile.bundles list and profile-private plugin dependencies Changes both the product capability set and module-resolution closure cordis.patch.yml User override layer for this profile Watched live; may configure, disable, or insert plugins pnpm-workspace.yaml Fixes the hoisted linker and peer policy needed by out-of-tree plugins Lets a profile install plugins while sharing Cordis and service-definition instances cordis.yml A real include anchor required by Loader Rewritten to an empty list on every launch; not user-maintained Empty-root invariant The launcher rewrites cordis.yml to an empty entry list on every launch. This prevents a Loader write-back of the current runtime tree from being combined again with bundle inserts on the next launch. The file exists only to anchor resolution at the Profile directory. 3. The exact six-level precedence stack The final entry list starts empty and applies the following layers. Later layers have higher precedence: 1 Bundle patches Concatenated strictly in dsh.profile.bundles manifest order—normally base followed by a surface bundle. 2 Profile user patch $DSH_HOME/profiles/&lt;name&gt;/cordis.patch.yml , scoped to one Profile. 3 Home user patch $DSH_HOME/cordis.patch.yml , a machine-level preference across Profiles, so it outranks the Profile layer. 4 CLI overlays All --patch files in their argv order. 5 Launcher assembly overlay If an agent-presets row exists, the launcher injects the read-only preset root shipped with the installation. 6 Telemetry hard-disable Any non-empty DSH_TELEMETRY_DISABLED value adds a final overlay that disables the row. A privacy switch prefers accidental off over accidental on. Production control flow allPatches() flattens bundle, profile, home, and launcher overlays. composeProfile() first indexes rows from the initial user-selectable layers, then appends the preset and telemetry overrides whose semantics belong exclusively to the launcher. Isomorphic composition Configuration dump, flag derivation, and real boot all share the same applyEntryPatches([], ...) semantics. A listed package without a dsh.bundle.patch declaration fails immediately instead of becoming a silent empty layer. 4. Patch semantics: address a row, replace config wholesale Configuration fact dsh-base performs one large insert over the empty root. Later patches address rows by id , with the last write winning. On a matching row, config is replaced wholesale rather than recursively deep-merged. File order does not encode load order; service availability drives activation. Operation Effect Frequent misreading { id, config } Replace the target row's complete config Writing one field does not retain other base fields { id, disabled } Change whether the row may mount Disable is not deletion; a later layer may explicitly override it { insert: [...] } Add new plugin rows Insertion position helps readers but is not a dependency-order mechanism Target a missing id Loader emits a skipped-patch warning This permits cross-surface overlays, but a misspelled ID may also remain only a warning Design assessment Wholesale replacement makes ownership and the final shape of one row deterministic, avoiding implicit rules for merging arrays, deleting fields, or combining expressions. The cost is repetition: an upper layer must restate the complete configuration. It fits small deployment overrides better than huge, fast-evolving nested objects exposed directly to ordinary users. 5. Module resolution: installation first, Profile extension second Production source Bundle resolution tries the dsh installation anchor before the Profile's own package.json . Before launch, a breadth-first traversal of the application's dependencies + peerDependencies closure creates flat links under $DSH_HOME/profiles/node_modules . Node's parent-directory fallback from a Profile-private node_modules can then find installation-owned packages. This produces two coexisting resolution worlds: Installation-owned official bundles / providers / definitions Profile-owned user-installed out-of-tree plugins Mechanism-level deduction The flat fallback does more than make packages discoverable. It helps an out-of-tree plugin and official packages resolve the same Cordis and service-definition instances. If each side loads its own framework copy, types may look identical while runtime context keys and registry identity no longer meet. 6. Boot is a commit protocol, not best-effort mounting Production control flow boot() creates the root Context, provides the dsh home, installs Loader, and runs host prepare . It then mounts the root Include, waits for Loader settlement, and audits that every entry activated. Any failure first disposes the partial root and then throws a diagnostic containing the phase, wrapper chain, and deepest plugin stack. Stage Visible state Failure ownership Context + Loader No configuration-tree plugins exist yet Reported as host preparation failure Host prepare Frozen environment and argv facts have been provided A failure disposes the entire root Include mount / settle Plugins activate progressively as dependencies resolve Transactional Loader wraps the failure; the root rolls back uniformly Activation audit Only a settled, live tree may return Missing fibers and never-activating entries reject startup Runtime A signal or surface may dispose the root Single-shot root-fiber disposal retracts effects Design assessment This protocol separates “declared in configuration” from “actually available at runtime.” The commit point is Loader completion plus the activation audit. Partial-service startup flexibility is traded for refusing to serve from a silently half-mounted tree. 7. Live configuration preserves the last valid tree Production control flow When either Profile or home patch changes, the launcher rereads both user files in the same generation and recomposes them between fixed bundles and higher-priority overlays. Every generation receives a new deep clone so Include's in-place mutation of inserted rows cannot contaminate the next composition. The result is applied transactionally through the root Include's entry.update() . Failure-path test An integration-level test writes a valid configuration, a plugin-startup failure, a syntax error, a recovered configuration, and finally removes the file. Both failures broadcast an error and retain the previous valid tree; recovery applies the new tree, and deletion restores the application-owned layer. The Web bundle currently disables shared module HMR, but the launcher does not let the configuration hot-reload contract disappear. If no HMR service exists, it mounts a timer and a watch-only HMR instance with no module roots solely for the two user patch files. 8. Base, Headless, and Web: one spine, different product planes Base The base bundle directly assembles the shared spine: LLM registry, sessions, Typert API, Agent service, jobs, retry, settings, credentials, multiple provider adapters, and JSONL persistence. Later rows continue with tools, compaction, multi-Agent capabilities, and the loop. Surface Additions over base Agent-capability ownership Lifecycle Headless Code runtime, launch-argument provider, and one-shot runner; no Host, HTTP, Web, or browser Process-level Agent plane from base Requests bounded exit when the task finishes Web Host, storage, projection cache, HTTP/API, browser module roster, and UI Disables per-Agent base rows and remounts them inside each session's preset realm Long-lived, with concurrent sessions Headless evidence The headless bundle explicitly mounts no Web or HTTP surface. An ordinary provider interprets the positional task, and its runner creates an Agent through the core registry. Web evidence Web disables base rows belonging to one Agent—tools, prompt contributors, compaction, and delegation—and rebuilds them through per-session presets. Cross-session registries or services read by host RPC, including jobs, goals, token metering, and subagent state, remain in the host plane. Ownership deduction Whether a capability belongs in a preset cannot be inferred from its name. One must trace its readers, whether a registry spans sessions, whether provider names are globally unique, and which context a host RPC uses to resolve the service. The long Web-patch commentary is effectively a struct-lifetime audit: process state misplaced in session scope produces missing browser services, broken cross-session queries, or duplicate registration collisions. 9. Benefits, costs, and concrete risks Design choice What it buys What it costs Empty root + patch composition An exportable, overridable, live-updatable tree without hard-coded products Configuration is code and can affect any plugin lifecycle Wholesale replacement by ID Deterministic override results and simple deletion semantics Upper configurations can drift when they fail to restate newly added fields Service-driven activation Declaration order decouples from dependency order YAML alone does not reveal the actual activation topology Two-anchor resolution Official installation and user plugins can compose into one Profile Peer identity, symlinks, and package-manager behavior become runtime correctness concerns Transactional boot/HMR No half-valid tree; failures retain the last known-good state Loader and effect disposal must be exceptionally reliable, and diagnostics become deeper Web per-session presets Capability and trust configuration can be isolated per session The host/session ownership boundary is complex and every new plugin requires another audit Chapter assessment DeepSeek Harness unifies deployment, product surfaces, Agent capabilities, and user extension under one patchable plugin-tree language. That unity is powerful: configuration dump, boot, hot reload, and per-session presets share underlying semantics. It does not remove complexity; it concentrates complexity in stable entry IDs, scope ownership, service dependencies, module identity, and transactional lifecycle. The design stays maintainable only when runtime invariants, composition tests, and observable effective configuration accompany it. Chapter verification checklist Traced CLI profile dispatch through runProfile() . Verified the actual order of bundle, profile, home, CLI, and launcher overlays. Verified wholesale config replacement and service-driven rather than row-driven activation. Verified installation and Profile anchors plus the breadth-first module fallback. Traced boot commit points, failure cleanup, signal handling, and exit races. Used failure/recovery tests to verify last-known-good HMR semantics. Audited base, headless, Web, and the host/Agent-plane ownership boundary separately."
+  },
+  {
+    "id": "05",
+    "slug": "agent-object-lifecycle",
+    "part": "Core Runtime",
+    "title": "Agent Objects, Registry, and Lifecycle",
+    "subtitle": "Creation, resumption, inboxes, state, and shutdown",
+    "status": "queued",
+    "text": "Research queue This chapter has not reached a conclusion state Current scope: Trace the Agent interface, registry, create/resume transactions, live handles, initiators, and cancellation semantics. This page is part of the complete research map, but its source-level control-flow audit is not complete. It must cover all of the following before it can be marked Verified: Actual bundle and profile assembly entry points Public types, events, and configuration schemas Normal control flow and exact mutation points Concurrency, scope, ownership, and cleanup Error, cancellation, retry, and degradation branches Persistence, projections, and replay semantics Production-path tests and runtime invariants Benefits, costs, limitations, and open questions"
+  },
+  {
+    "id": "06",
+    "slug": "turn-step-loop",
+    "part": "Core Runtime",
+    "title": "The Turn / Step / Loop State Machine",
+    "subtitle": "From input claims through model calls and tools to turn stop points",
+    "status": "queued",
+    "text": "Research queue This chapter has not reached a conclusion state Current scope: Trace durable turns, steps, waterfalls, empty steps, failures, and next-step input branch by branch. This page is part of the complete research map, but its source-level control-flow audit is not complete. It must cover all of the following before it can be marked Verified: Actual bundle and profile assembly entry points Public types, events, and configuration schemas Normal control flow and exact mutation points Concurrency, scope, ownership, and cleanup Error, cancellation, retry, and degradation branches Persistence, projections, and replay semantics Production-path tests and runtime invariants Benefits, costs, limitations, and open questions"
+  },
+  {
+    "id": "07",
+    "slug": "prompt-context",
+    "part": "Core Runtime",
+    "title": "Prompt Assembly and Context Injection",
+    "subtitle": "Section registry, ordering, scope, tool schemas, and dynamic context",
+    "status": "queued",
+    "text": "Research queue This chapter has not reached a conclusion state Current scope: Analyze the system-prompt registry, section ordering, per-step rebuilds, agent.inject, and context plugins. This page is part of the complete research map, but its source-level control-flow audit is not complete. It must cover all of the following before it can be marked Verified: Actual bundle and profile assembly entry points Public types, events, and configuration schemas Normal control flow and exact mutation points Concurrency, scope, ownership, and cleanup Error, cancellation, retry, and degradation branches Persistence, projections, and replay semantics Production-path tests and runtime invariants Benefits, costs, limitations, and open questions"
+  },
+  {
+    "id": "08",
+    "slug": "llm-adapters",
+    "part": "Core Runtime",
+    "title": "LLM Adapters and Conversation Protocol Translation",
+    "subtitle": "How internal messages project into DeepSeek, Pi AI, and replay adapters",
+    "status": "queued",
+    "text": "Research queue This chapter has not reached a conclusion state Current scope: Analyze internal messages and streams, adapter registration and selection, tool calls, reasoning, usage, and error normalization. This page is part of the complete research map, but its source-level control-flow audit is not complete. It must cover all of the following before it can be marked Verified: Actual bundle and profile assembly entry points Public types, events, and configuration schemas Normal control flow and exact mutation points Concurrency, scope, ownership, and cleanup Error, cancellation, retry, and degradation branches Persistence, projections, and replay semantics Production-path tests and runtime invariants Benefits, costs, limitations, and open questions"
+  },
+  {
+    "id": "09",
+    "slug": "session-event-model",
+    "part": "Sessions and Persistence",
+    "title": "Internal Sessions and the Event Model",
+    "subtitle": "How append-only SessionEvents become the source of truth for model context",
+    "status": "queued",
+    "text": "Research queue This chapter has not reached a conclusion state Current scope: Catalog envelopes, event types, sequence numbers, scopes, origin links, format versions, and model-visible invariants. This page is part of the complete research map, but its source-level control-flow audit is not complete. It must cover all of the following before it can be marked Verified: Actual bundle and profile assembly entry points Public types, events, and configuration schemas Normal control flow and exact mutation points Concurrency, scope, ownership, and cleanup Error, cancellation, retry, and degradation branches Persistence, projections, and replay semantics Production-path tests and runtime invariants Benefits, costs, limitations, and open questions"
+  },
+  {
+    "id": "10",
+    "slug": "log-replay",
+    "part": "Sessions and Persistence",
+    "title": "Logs, Derived History, Replay, and Forking",
+    "subtitle": "From raw chunks to reconstructable model input and UI state",
+    "status": "queued",
+    "text": "Research queue This chapter has not reached a conclusion state Current scope: Trace append, deriveMessages, raw chunks, fork boundaries, resume, transcripts, and replay fidelity. This page is part of the complete research map, but its source-level control-flow audit is not complete. It must cover all of the following before it can be marked Verified: Actual bundle and profile assembly entry points Public types, events, and configuration schemas Normal control flow and exact mutation points Concurrency, scope, ownership, and cleanup Error, cancellation, retry, and degradation branches Persistence, projections, and replay semantics Production-path tests and runtime invariants Benefits, costs, limitations, and open questions"
+  },
+  {
+    "id": "11",
+    "slug": "persistence-database",
+    "part": "Sessions and Persistence",
+    "title": "Persistence and Database Design",
+    "subtitle": "JSONL, SQLite, generic Storage, and data ownership",
+    "status": "queued",
+    "text": "Research queue This chapter has not reached a conclusion state Current scope: Analyze session persistence, SQLite schemas and migrations, JSONL, KV storage, domain forms, attachments, and workspaces. This page is part of the complete research map, but its source-level control-flow audit is not complete. It must cover all of the following before it can be marked Verified: Actual bundle and profile assembly entry points Public types, events, and configuration schemas Normal control flow and exact mutation points Concurrency, scope, ownership, and cleanup Error, cancellation, retry, and degradation branches Persistence, projections, and replay semantics Production-path tests and runtime invariants Benefits, costs, limitations, and open questions"
+  },
+  {
+    "id": "12",
+    "slug": "projections-checkpoints",
+    "part": "Sessions and Persistence",
+    "title": "Projections, Checkpoints, and Cold Start",
+    "subtitle": "Which disposable acceleration state exists beyond the complete event log",
+    "status": "queued",
+    "text": "Research queue This chapter has not reached a conclusion state Current scope: Distinguish semantic checkpoints, projection caches, watermarks, write-behind, tail replay, and recovery thresholds. This page is part of the complete research map, but its source-level control-flow audit is not complete. It must cover all of the following before it can be marked Verified: Actual bundle and profile assembly entry points Public types, events, and configuration schemas Normal control flow and exact mutation points Concurrency, scope, ownership, and cleanup Error, cancellation, retry, and degradation branches Persistence, projections, and replay semantics Production-path tests and runtime invariants Benefits, costs, limitations, and open questions"
+  },
+  {
+    "id": "13",
+    "slug": "compaction",
+    "part": "Context Governance",
+    "title": "Compaction and Context Pressure",
+    "subtitle": "The distinct semantics of tool-result pruning, summary replacement, and overflow recovery",
+    "status": "queued",
+    "text": "Research queue This chapter has not reached a conclusion state Current scope: Verify compaction levels, triggers, token metering, pruners, summaries, surface generation, manual compaction, and failure recovery. This page is part of the complete research map, but its source-level control-flow audit is not complete. It must cover all of the following before it can be marked Verified: Actual bundle and profile assembly entry points Public types, events, and configuration schemas Normal control flow and exact mutation points Concurrency, scope, ownership, and cleanup Error, cancellation, retry, and degradation branches Persistence, projections, and replay semantics Production-path tests and runtime invariants Benefits, costs, limitations, and open questions"
+  },
+  {
+    "id": "14",
+    "slug": "memory-knowledge",
+    "part": "Context Governance",
+    "title": "Memory and Knowledge: Capabilities and Deliberate Omissions",
+    "subtitle": "Boundaries among session logs, summaries, skills, session query, and long-term semantic memory",
+    "status": "queued",
+    "text": "Research queue This chapter has not reached a conclusion state Current scope: Separate working context, durable logs, session references, query, skills, and genuine cross-session memory. This page is part of the complete research map, but its source-level control-flow audit is not complete. It must cover all of the following before it can be marked Verified: Actual bundle and profile assembly entry points Public types, events, and configuration schemas Normal control flow and exact mutation points Concurrency, scope, ownership, and cleanup Error, cancellation, retry, and degradation branches Persistence, projections, and replay semantics Production-path tests and runtime invariants Benefits, costs, limitations, and open questions"
+  },
+  {
+    "id": "15",
+    "slug": "plan-goal-todo",
+    "part": "Collaborative State",
+    "title": "Plan, Goal, and Todo",
+    "subtitle": "Three similar-looking primitives with different lifecycles",
+    "status": "queued",
+    "text": "Research queue This chapter has not reached a conclusion state Current scope: Analyze logged plan mode, goal revisions and continuation, todo projections, permissions, and UI presentation. This page is part of the complete research map, but its source-level control-flow audit is not complete. It must cover all of the following before it can be marked Verified: Actual bundle and profile assembly entry points Public types, events, and configuration schemas Normal control flow and exact mutation points Concurrency, scope, ownership, and cleanup Error, cancellation, retry, and degradation branches Persistence, projections, and replay semantics Production-path tests and runtime invariants Benefits, costs, limitations, and open questions"
+  },
+  {
+    "id": "16",
+    "slug": "tool-primitives",
+    "part": "Tool System",
+    "title": "Tool Definition Primitives and the Execution Pipeline",
+    "subtitle": "Schemas, scope, execution modes, presentation, and waterfalls",
+    "status": "queued",
+    "text": "Research queue This chapter has not reached a conclusion state Current scope: Dissect ToolDefinition, registry snapshots, pre/guard/around/post/finalize/result, and Code Mode subcalls. This page is part of the complete research map, but its source-level control-flow audit is not complete. It must cover all of the following before it can be marked Verified: Actual bundle and profile assembly entry points Public types, events, and configuration schemas Normal control flow and exact mutation points Concurrency, scope, ownership, and cleanup Error, cancellation, retry, and degradation branches Persistence, projections, and replay semantics Production-path tests and runtime invariants Benefits, costs, limitations, and open questions"
+  },
+  {
+    "id": "17",
+    "slug": "tool-catalog",
+    "part": "Tool System",
+    "title": "Complete Tool Catalog and Capability Taxonomy",
+    "subtitle": "Inputs, outputs, policy, and UI intent for every model-visible tool",
+    "status": "queued",
+    "text": "Research queue This chapter has not reached a conclusion state Current scope: Enumerate tool names, provider packages, schemas, parallel modes, risk surfaces, and backend seams from generated catalogs and source. This page is part of the complete research map, but its source-level control-flow audit is not complete. It must cover all of the following before it can be marked Verified: Actual bundle and profile assembly entry points Public types, events, and configuration schemas Normal control flow and exact mutation points Concurrency, scope, ownership, and cleanup Error, cancellation, retry, and degradation branches Persistence, projections, and replay semantics Production-path tests and runtime invariants Benefits, costs, limitations, and open questions"
+  },
+  {
+    "id": "18",
+    "slug": "tool-parallelism",
+    "part": "Tool System",
+    "title": "Tool Parallelism and Result Ordering",
+    "subtitle": "Barriers, rolling windows, reclassification, and model-order settlement",
+    "status": "queued",
+    "text": "Research queue This chapter has not reached a conclusion state Current scope: Trace executionMode classification, concurrency pools, barriers, pre-start reclassification, settlement, and additional-context ordering. This page is part of the complete research map, but its source-level control-flow audit is not complete. It must cover all of the following before it can be marked Verified: Actual bundle and profile assembly entry points Public types, events, and configuration schemas Normal control flow and exact mutation points Concurrency, scope, ownership, and cleanup Error, cancellation, retry, and degradation branches Persistence, projections, and replay semantics Production-path tests and runtime invariants Benefits, costs, limitations, and open questions"
+  },
+  {
+    "id": "19",
+    "slug": "permission-approval",
+    "part": "Tool System",
+    "title": "Permission Analysis, Approval, and Monotonic Guards",
+    "subtitle": "Who proposes risk, who may permit, and who may only deny",
+    "status": "queued",
+    "text": "Research queue This chapter has not reached a conclusion state Current scope: Analyze pre-execute policy, approval waterfalls, fail-closed absence, monotonic guards, presets, and per-call authorization. This page is part of the complete research map, but its source-level control-flow audit is not complete. It must cover all of the following before it can be marked Verified: Actual bundle and profile assembly entry points Public types, events, and configuration schemas Normal control flow and exact mutation points Concurrency, scope, ownership, and cleanup Error, cancellation, retry, and degradation branches Persistence, projections, and replay semantics Production-path tests and runtime invariants Benefits, costs, limitations, and open questions"
+  },
+  {
+    "id": "20",
+    "slug": "sandbox-filesystem",
+    "part": "Execution Environment",
+    "title": "Sandbox, Filesystem, and Observation Policy",
+    "subtitle": "How processes and files share one execution world and root policy",
+    "status": "queued",
+    "text": "Research queue This chapter has not reached a conclusion state Current scope: Analyze sandbox seams and backends, policy, filesystem providers, write/edit intent, read-before-edit, E2B, and cross-platform behavior. This page is part of the complete research map, but its source-level control-flow audit is not complete. It must cover all of the following before it can be marked Verified: Actual bundle and profile assembly entry points Public types, events, and configuration schemas Normal control flow and exact mutation points Concurrency, scope, ownership, and cleanup Error, cancellation, retry, and degradation branches Persistence, projections, and replay semantics Production-path tests and runtime invariants Benefits, costs, limitations, and open questions"
+  },
+  {
+    "id": "21",
+    "slug": "shell-terminal-jobs",
+    "part": "Execution Environment",
+    "title": "Shell, PTY, Terminal, and Background Jobs",
+    "subtitle": "Short-lived processes, persistent sessions, retained output, and ownership",
+    "status": "queued",
+    "text": "Research queue This chapter has not reached a conclusion state Current scope: Trace subprocesses, shell executors, terminal ownership, job registries, spill, signals, and kill escalation. This page is part of the complete research map, but its source-level control-flow audit is not complete. It must cover all of the following before it can be marked Verified: Actual bundle and profile assembly entry points Public types, events, and configuration schemas Normal control flow and exact mutation points Concurrency, scope, ownership, and cleanup Error, cancellation, retry, and degradation branches Persistence, projections, and replay semantics Production-path tests and runtime invariants Benefits, costs, limitations, and open questions"
+  },
+  {
+    "id": "22",
+    "slug": "web-lsp-mcp-skill",
+    "part": "Execution Environment",
+    "title": "Web, LSP, MCP, and Skills",
+    "subtitle": "Stable tool names, replaceable providers, and progressive capability disclosure",
+    "status": "queued",
+    "text": "Research queue This chapter has not reached a conclusion state Current scope: Analyze web-provider registries, LSP normalization, MCP client mounting, skill catalog/load, and prompt exposure. This page is part of the complete research map, but its source-level control-flow audit is not complete. It must cover all of the following before it can be marked Verified: Actual bundle and profile assembly entry points Public types, events, and configuration schemas Normal control flow and exact mutation points Concurrency, scope, ownership, and cleanup Error, cancellation, retry, and degradation branches Persistence, projections, and replay semantics Production-path tests and runtime invariants Benefits, costs, limitations, and open questions"
+  },
+  {
+    "id": "23",
+    "slug": "code-mode-self-modification",
+    "part": "Execution Environment",
+    "title": "Code Mode, Self-Modification, and Dynamic Plugins",
+    "subtitle": "How the model orchestrates tools and can inspect or mount its own runtime",
+    "status": "queued",
+    "text": "Research queue This chapter has not reached a conclusion state Current scope: Analyze run_code transport, worker runtimes, serialized subcalls, Cordis inspect/define, VM boundaries, and disposal. This page is part of the complete research map, but its source-level control-flow audit is not complete. It must cover all of the following before it can be marked Verified: Actual bundle and profile assembly entry points Public types, events, and configuration schemas Normal control flow and exact mutation points Concurrency, scope, ownership, and cleanup Error, cancellation, retry, and degradation branches Persistence, projections, and replay semantics Production-path tests and runtime invariants Benefits, costs, limitations, and open questions"
+  },
+  {
+    "id": "24",
+    "slug": "multi-agent",
+    "part": "Orchestration",
+    "title": "Multi-Agent Coordination",
+    "subtitle": "In-process, fork, ACP, Codex, Claude Code, and SDK backends behind one seam",
+    "status": "queued",
+    "text": "Research queue This chapter has not reached a conclusion state Current scope: Analyze provider registries, spawn/fork, context inheritance, continuation activation, controls, reporting, and job integration. This page is part of the complete research map, but its source-level control-flow audit is not complete. It must cover all of the following before it can be marked Verified: Actual bundle and profile assembly entry points Public types, events, and configuration schemas Normal control flow and exact mutation points Concurrency, scope, ownership, and cleanup Error, cancellation, retry, and degradation branches Persistence, projections, and replay semantics Production-path tests and runtime invariants Benefits, costs, limitations, and open questions"
+  },
+  {
+    "id": "25",
+    "slug": "workflow-ralph",
+    "part": "Orchestration",
+    "title": "Workflow and Ralph",
+    "subtitle": "How model-authored JavaScript orchestration bridges to Agent calls",
+    "status": "queued",
+    "text": "Research queue This chapter has not reached a conclusion state Current scope: Analyze the worker-thread engine, agent() bridge, fan-out, aggregation, events, errors, and the fixed Ralph loop. This page is part of the complete research map, but its source-level control-flow audit is not complete. It must cover all of the following before it can be marked Verified: Actual bundle and profile assembly entry points Public types, events, and configuration schemas Normal control flow and exact mutation points Concurrency, scope, ownership, and cleanup Error, cancellation, retry, and degradation branches Persistence, projections, and replay semantics Production-path tests and runtime invariants Benefits, costs, limitations, and open questions"
+  },
+  {
+    "id": "26",
+    "slug": "inbox-steering-continuation",
+    "part": "Orchestration",
+    "title": "Inbox, Steering, and Continuation",
+    "subtitle": "How mid-run input is queued, claimed, injected, or routed to child Agents",
+    "status": "queued",
+    "text": "Research queue This chapter has not reached a conclusion state Current scope: Analyze message classes, wake and next-step behavior, claims, steer, follow-up, activation, and turn boundaries. This page is part of the complete research map, but its source-level control-flow audit is not complete. It must cover all of the following before it can be marked Verified: Actual bundle and profile assembly entry points Public types, events, and configuration schemas Normal control flow and exact mutation points Concurrency, scope, ownership, and cleanup Error, cancellation, retry, and degradation branches Persistence, projections, and replay semantics Production-path tests and runtime invariants Benefits, costs, limitations, and open questions"
+  },
+  {
+    "id": "27",
+    "slug": "failure-recovery",
+    "part": "Reliability and Product Surfaces",
+    "title": "Retries, Errors, Cancellation, and Recovery",
+    "subtitle": "Which layer owns the decision when failures cross different boundaries",
+    "status": "queued",
+    "text": "Research queue This chapter has not reached a conclusion state Current scope: Analyze provider retry, request-error recovery, tool timeouts, abort, cleanup, misconfiguration, and crash-safe persistence. This page is part of the complete research map, but its source-level control-flow audit is not complete. It must cover all of the following before it can be marked Verified: Actual bundle and profile assembly entry points Public types, events, and configuration schemas Normal control flow and exact mutation points Concurrency, scope, ownership, and cleanup Error, cancellation, retry, and degradation branches Persistence, projections, and replay semantics Production-path tests and runtime invariants Benefits, costs, limitations, and open questions"
+  },
+  {
+    "id": "28",
+    "slug": "observability",
+    "part": "Reliability and Product Surfaces",
+    "title": "Observability, Telemetry, and Trajectories",
+    "subtitle": "The division of labor among event logs, projections, redaction, OTel, and UI traces",
+    "status": "queued",
+    "text": "Research queue This chapter has not reached a conclusion state Current scope: Analyze session telemetry capture/redaction/handoff, OTel logs, stats, trace query, raw events, and operational logs. This page is part of the complete research map, but its source-level control-flow audit is not complete. It must cover all of the following before it can be marked Verified: Actual bundle and profile assembly entry points Public types, events, and configuration schemas Normal control flow and exact mutation points Concurrency, scope, ownership, and cleanup Error, cancellation, retry, and degradation branches Persistence, projections, and replay semantics Production-path tests and runtime invariants Benefits, costs, limitations, and open questions"
+  },
+  {
+    "id": "29",
+    "slug": "api-sdk-acp",
+    "part": "Reliability and Product Surfaces",
+    "title": "API, SDK, JSON-RPC, and ACP",
+    "subtitle": "How browsers, automation, and external clients drive the same Agent runtime",
+    "status": "queued",
+    "text": "Research queue This chapter has not reached a conclusion state Current scope: Analyze Host remotes, Typert, WebSocket, stdio SDK, ACP mappings, event subscriptions, and protocol-boundary validation. This page is part of the complete research map, but its source-level control-flow audit is not complete. It must cover all of the following before it can be marked Verified: Actual bundle and profile assembly entry points Public types, events, and configuration schemas Normal control flow and exact mutation points Concurrency, scope, ownership, and cleanup Error, cancellation, retry, and degradation branches Persistence, projections, and replay semantics Production-path tests and runtime invariants Benefits, costs, limitations, and open questions"
+  },
+  {
+    "id": "30",
+    "slug": "web-ui",
+    "part": "Reliability and Product Surfaces",
+    "title": "The Web UI Plugin Architecture",
+    "subtitle": "Client-side Cordis, slots, SessionRuntime, and conversation projections",
+    "status": "queued",
+    "text": "Research queue This chapter has not reached a conclusion state Current scope: Analyze dual host/browser plugins, module loading, slots, conversation nodes, tool presentation, reconnects, and state ownership. This page is part of the complete research map, but its source-level control-flow audit is not complete. It must cover all of the following before it can be marked Verified: Actual bundle and profile assembly entry points Public types, events, and configuration schemas Normal control flow and exact mutation points Concurrency, scope, ownership, and cleanup Error, cancellation, retry, and degradation branches Persistence, projections, and replay semantics Production-path tests and runtime invariants Benefits, costs, limitations, and open questions"
+  },
+  {
+    "id": "31",
+    "slug": "security-trust",
+    "part": "Reliability and Product Surfaces",
+    "title": "Security Model and Trust Boundaries",
+    "subtitle": "How a local Agent product constrains broad execution with explicit policy",
+    "status": "queued",
+    "text": "Research queue This chapter has not reached a conclusion state Current scope: Build a threat model spanning configuration trust, model input, tool JSON, approval, sandboxes, paths, credentials, remotes, and self-modification. This page is part of the complete research map, but its source-level control-flow audit is not complete. It must cover all of the following before it can be marked Verified: Actual bundle and profile assembly entry points Public types, events, and configuration schemas Normal control flow and exact mutation points Concurrency, scope, ownership, and cleanup Error, cancellation, retry, and degradation branches Persistence, projections, and replay semantics Production-path tests and runtime invariants Benefits, costs, limitations, and open questions"
+  },
+  {
+    "id": "32",
+    "slug": "testing-invariants",
+    "part": "Reliability and Product Surfaces",
+    "title": "Tests, Snapshots, and Runtime Invariants",
+    "subtitle": "How the system proves that plugin composition still satisfies its semantics",
+    "status": "queued",
+    "text": "Research queue This chapter has not reached a conclusion state Current scope: Analyze the 100% per-file gate, keyless snapshots, invariant registries, generated-document checks, configuration closure, and platform matrices. This page is part of the complete research map, but its source-level control-flow audit is not complete. It must cover all of the following before it can be marked Verified: Actual bundle and profile assembly entry points Public types, events, and configuration schemas Normal control flow and exact mutation points Concurrency, scope, ownership, and cleanup Error, cancellation, retry, and degradation branches Persistence, projections, and replay semantics Production-path tests and runtime invariants Benefits, costs, limitations, and open questions"
+  },
+  {
+    "id": "33",
+    "slug": "tradeoffs",
+    "part": "Synthesis",
+    "title": "Strengths, Costs, and Design Tradeoffs",
+    "subtitle": "Which complexity buys real composability, and which complexity remains debt",
+    "status": "queued",
+    "text": "Research queue This chapter has not reached a conclusion state Current scope: Synthesize only from verified chapters instead of repeating the project’s own claims. This page is part of the complete research map, but its source-level control-flow audit is not complete. It must cover all of the following before it can be marked Verified: Actual bundle and profile assembly entry points Public types, events, and configuration schemas Normal control flow and exact mutation points Concurrency, scope, ownership, and cleanup Error, cancellation, retry, and degradation branches Persistence, projections, and replay semantics Production-path tests and runtime invariants Benefits, costs, limitations, and open questions"
+  },
+  {
+    "id": "34",
+    "slug": "open-questions",
+    "part": "Synthesis",
+    "title": "Gaps, Limitations, and Open Questions",
+    "subtitle": "Semantics and evidence that remain incomplete during Developer Preview",
+    "status": "queued",
+    "text": "Research queue This chapter has not reached a conclusion state Current scope: Record missing behavior, weak guarantees, documentation/code drift, platform differences, and required runtime experiments. This page is part of the complete research map, but its source-level control-flow audit is not complete. It must cover all of the following before it can be marked Verified: Actual bundle and profile assembly entry points Public types, events, and configuration schemas Normal control flow and exact mutation points Concurrency, scope, ownership, and cleanup Error, cancellation, retry, and degradation branches Persistence, projections, and replay semantics Production-path tests and runtime invariants Benefits, costs, limitations, and open questions"
+  },
+  {
+    "id": "35",
+    "slug": "glossary-evidence",
+    "part": "Synthesis",
+    "title": "Glossary, Evidence Catalog, and Source Index",
+    "subtitle": "Navigate from concepts and claims back to the pinned source baseline",
+    "status": "queued",
+    "text": "Research queue This chapter has not reached a conclusion state Current scope: Collect terminology, every evidence record, package/symbol/event indexes, and citation coverage. This page is part of the complete research map, but its source-level control-flow audit is not complete. It must cover all of the following before it can be marked Verified: Actual bundle and profile assembly entry points Public types, events, and configuration schemas Normal control flow and exact mutation points Concurrency, scope, ownership, and cleanup Error, cancellation, retry, and degradation branches Persistence, projections, and replay semantics Production-path tests and runtime invariants Benefits, costs, limitations, and open questions"
+  }
+]

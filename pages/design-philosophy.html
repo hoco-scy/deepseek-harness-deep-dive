@@ -1,344 +1,125 @@
 <!doctype html>
-<html lang="zh-CN" data-root="../">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Everything is a plugin 背后的运行时观">
-  <link rel="canonical" href="https://hoco-scy.github.io/dpsk-harness-analysis/pages/design-philosophy.html">
-  <link rel="stylesheet" href="../assets/site.css">
-  <title>设计哲学总论 · DeepSeek Harness 系统拆解</title>
-</head>
-<body data-page="design-philosophy" data-baseline="47f943859bef60e4160492346772ded9b24f765a">
-  <header class="topbar">
-    <button class="icon-button nav-toggle" type="button" data-nav-toggle aria-label="打开章节目录" aria-expanded="false">☰</button>
-    <a class="brand" href="../index.html"><span class="brand-mark">DS</span><span>Harness 系统拆解</span></a>
-    <span class="topbar-meta">固定基线 47f943859b · 1 已复核 / 3 撰写中 / 36 章</span>
-    <div class="topbar-actions"><button class="icon-button" type="button" data-theme-toggle aria-label="切换明暗主题">◐</button></div>
-  </header>
-  <div class="layout">
-    <aside class="sidebar" data-sidebar aria-label="章节目录">
-      <input class="filter" data-chapter-filter type="search" placeholder="筛选章节……" aria-label="筛选章节">
-
-    <section class="nav-part" data-part>
-      <h2 class="part-title">导论</h2>
-
-        <a class="chapter-link" data-chapter-item href="../pages/reading-guide.html">
-          <span class="chapter-number">00</span>
-          <span>阅读入口与研究地图</span>
-          <span class="status-dot drafting" title="撰写中"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/methodology.html">
-          <span class="chapter-number">01</span>
-          <span>基线、方法与证据规则</span>
-          <span class="status-dot verified" title="已复核"></span>
-        </a>
-        <a class="chapter-link current" data-chapter-item href="../pages/design-philosophy.html">
-          <span class="chapter-number">02</span>
-          <span>设计哲学总论</span>
-          <span class="status-dot drafting" title="撰写中"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/module-atlas.html">
-          <span class="chapter-number">03</span>
-          <span>219 个包的模块地图</span>
-          <span class="status-dot drafting" title="撰写中"></span>
-        </a>
-    </section>
-    <section class="nav-part" data-part>
-      <h2 class="part-title">核心运行时</h2>
-
-        <a class="chapter-link" data-chapter-item href="../pages/boot-profiles-bundles.html">
-          <span class="chapter-number">04</span>
-          <span>启动、Profile、Bundle 与配置叠层</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/agent-object-lifecycle.html">
-          <span class="chapter-number">05</span>
-          <span>Agent 对象、注册表与生命周期</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/turn-step-loop.html">
-          <span class="chapter-number">06</span>
-          <span>Turn / Step / Loop 状态机</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/prompt-context.html">
-          <span class="chapter-number">07</span>
-          <span>提示词组装与上下文注入</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/llm-adapters.html">
-          <span class="chapter-number">08</span>
-          <span>LLM Adapter 与会话协议转换</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-    </section>
-    <section class="nav-part" data-part>
-      <h2 class="part-title">会话与持久化</h2>
-
-        <a class="chapter-link" data-chapter-item href="../pages/session-event-model.html">
-          <span class="chapter-number">09</span>
-          <span>内部会话结构与事件模型</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/log-replay.html">
-          <span class="chapter-number">10</span>
-          <span>日志、派生历史、重放与 Fork</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/persistence-database.html">
-          <span class="chapter-number">11</span>
-          <span>持久化与数据库设计</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/projections-checkpoints.html">
-          <span class="chapter-number">12</span>
-          <span>Projection、Checkpoint 与冷启动</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-    </section>
-    <section class="nav-part" data-part>
-      <h2 class="part-title">上下文治理</h2>
-
-        <a class="chapter-link" data-chapter-item href="../pages/compaction.html">
-          <span class="chapter-number">13</span>
-          <span>压缩体系与上下文压力</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/memory-knowledge.html">
-          <span class="chapter-number">14</span>
-          <span>记忆与知识：有何能力、又刻意没有什么</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-    </section>
-    <section class="nav-part" data-part>
-      <h2 class="part-title">协作状态</h2>
-
-        <a class="chapter-link" data-chapter-item href="../pages/plan-goal-todo.html">
-          <span class="chapter-number">15</span>
-          <span>Plan、Goal 与 Todo</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-    </section>
-    <section class="nav-part" data-part>
-      <h2 class="part-title">工具系统</h2>
-
-        <a class="chapter-link" data-chapter-item href="../pages/tool-primitives.html">
-          <span class="chapter-number">16</span>
-          <span>工具定义原语与执行管线</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/tool-catalog.html">
-          <span class="chapter-number">17</span>
-          <span>工具全集与能力分类</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/tool-parallelism.html">
-          <span class="chapter-number">18</span>
-          <span>工具并行器与结果顺序</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/permission-approval.html">
-          <span class="chapter-number">19</span>
-          <span>权限分析、审批与单调 Guard</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-    </section>
-    <section class="nav-part" data-part>
-      <h2 class="part-title">执行环境</h2>
-
-        <a class="chapter-link" data-chapter-item href="../pages/sandbox-filesystem.html">
-          <span class="chapter-number">20</span>
-          <span>Sandbox、Filesystem 与观察策略</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/shell-terminal-jobs.html">
-          <span class="chapter-number">21</span>
-          <span>Shell、PTY、Terminal 与后台作业</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/web-lsp-mcp-skill.html">
-          <span class="chapter-number">22</span>
-          <span>Web、LSP、MCP 与 Skill</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/code-mode-self-modification.html">
-          <span class="chapter-number">23</span>
-          <span>Code Mode、自修改与动态插件</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-    </section>
-    <section class="nav-part" data-part>
-      <h2 class="part-title">编排</h2>
-
-        <a class="chapter-link" data-chapter-item href="../pages/multi-agent.html">
-          <span class="chapter-number">24</span>
-          <span>多 Agent 协同</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/workflow-ralph.html">
-          <span class="chapter-number">25</span>
-          <span>Workflow 与 Ralph</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/inbox-steering-continuation.html">
-          <span class="chapter-number">26</span>
-          <span>Inbox、Steering 与 Continuation</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-    </section>
-    <section class="nav-part" data-part>
-      <h2 class="part-title">可靠性与产品面</h2>
-
-        <a class="chapter-link" data-chapter-item href="../pages/failure-recovery.html">
-          <span class="chapter-number">27</span>
-          <span>重试、错误、取消与恢复</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/observability.html">
-          <span class="chapter-number">28</span>
-          <span>可观测、Telemetry 与轨迹</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/api-sdk-acp.html">
-          <span class="chapter-number">29</span>
-          <span>API、SDK、JSON-RPC 与 ACP</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/web-ui.html">
-          <span class="chapter-number">30</span>
-          <span>Web UI 插件架构</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/security-trust.html">
-          <span class="chapter-number">31</span>
-          <span>安全模型与信任边界</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/testing-invariants.html">
-          <span class="chapter-number">32</span>
-          <span>测试、快照与运行时不变量</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-    </section>
-    <section class="nav-part" data-part>
-      <h2 class="part-title">综合结论</h2>
-
-        <a class="chapter-link" data-chapter-item href="../pages/tradeoffs.html">
-          <span class="chapter-number">33</span>
-          <span>优势、代价与设计取舍</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/open-questions.html">
-          <span class="chapter-number">34</span>
-          <span>缺口、限制与待验证问题</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/glossary-evidence.html">
-          <span class="chapter-number">35</span>
-          <span>术语、证据目录与源码索引</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-    </section>
-    </aside>
-    <main class="main">
-      <div class="page-shell">
-        <article class="article" data-article>
-          <header>
-            <div class="page-kicker"><span>导论</span><span>·</span><span>第 02 章</span></div>
-            <h1>设计哲学总论</h1>
-            <p class="subtitle">Everything is a plugin 背后的运行时观</p>
-            <div class="page-meta">
-              <span class="status drafting">撰写中</span>
-              <span>上游 47f943859b</span>
-              <span>范围：分析可替换核心、可逆副作用、组合优先、显式边界和事件溯源。</span>
-            </div>
-          </header>
-          <section>
-  <h2>一句话结论</h2>
-  <div class="thesis">
-    <p>DeepSeek Harness 的核心哲学不是“给 Agent 增加更多内置能力”，而是把产品拆成<strong>可配置组合、作用域隔离、可逆挂载、事件可追溯</strong>的能力网络；复杂功能尽量作为 loop 之外的插件，通过稳定的 service 与 event seam 参与同一条语义主干。</p>
-  </div>
-  <p>这句话包含源码事实，也包含归纳。本页将二者拆开。</p>
+<html lang="en" data-root="../">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="description" content="The runtime worldview behind “everything is a plugin”">
+  <link rel="canonical" href="https://hoco-scy.github.io/dpsk-harness-analysis/pages/design-philosophy.html"><link rel="alternate" hreflang="zh-CN" href="https://hoco-scy.github.io/dpsk-harness-analysis/zh/pages/design-philosophy.html"><link rel="alternate" hreflang="x-default" href="https://hoco-scy.github.io/dpsk-harness-analysis/pages/design-philosophy.html">
+  <link rel="stylesheet" href="../assets/site.css"><title>Design Philosophy · DeepSeek Harness: A Systems Dissection</title></head>
+<body data-page="design-philosophy" data-baseline="47f943859bef60e4160492346772ded9b24f765a" data-lang="en">
+  <header class="topbar"><button class="icon-button nav-toggle" type="button" data-nav-toggle aria-label="Open chapter directory" aria-expanded="false">☰</button>
+    <a class="brand" href="../index.html"><span class="brand-mark">DS</span><span>Harness Systems Dissection</span></a>
+    <span class="topbar-meta">Pinned baseline 47f943859b · 2 verified / 3 in progress / 36 chapters</span>
+    <div class="topbar-actions"><a class="language-switch" href="../zh/pages/design-philosophy.html" lang="zh-CN" aria-label="Read this chapter in Chinese">中文</a><button class="icon-button" type="button" data-theme-toggle aria-label="Toggle light or dark theme">◐</button></div></header>
+  <div class="layout"><aside class="sidebar" data-sidebar aria-label="Chapter directory"><input class="filter" data-chapter-filter type="search" placeholder="Filter chapters…" aria-label="Filter chapters"><section class="nav-part" data-part><h2 class="part-title">Introduction</h2>
+    <a class="chapter-link" data-chapter-item href="../pages/reading-guide.html">
+      <span class="chapter-number">00</span><span>Reading Guide and Research Map</span><span class="status-dot drafting" title="In progress"></span></a><a class="chapter-link" data-chapter-item href="../pages/methodology.html">
+      <span class="chapter-number">01</span><span>Baseline, Method, and Evidence Rules</span><span class="status-dot verified" title="Verified"></span></a><a class="chapter-link current" data-chapter-item href="../pages/design-philosophy.html">
+      <span class="chapter-number">02</span><span>Design Philosophy</span><span class="status-dot drafting" title="In progress"></span></a><a class="chapter-link" data-chapter-item href="../pages/module-atlas.html">
+      <span class="chapter-number">03</span><span>An Atlas of 219 Packages</span><span class="status-dot drafting" title="In progress"></span></a></section><section class="nav-part" data-part><h2 class="part-title">Core Runtime</h2>
+    <a class="chapter-link" data-chapter-item href="../pages/boot-profiles-bundles.html">
+      <span class="chapter-number">04</span><span>Boot, Profiles, Bundles, and Configuration Layers</span><span class="status-dot verified" title="Verified"></span></a><a class="chapter-link" data-chapter-item href="../pages/agent-object-lifecycle.html">
+      <span class="chapter-number">05</span><span>Agent Objects, Registry, and Lifecycle</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/turn-step-loop.html">
+      <span class="chapter-number">06</span><span>The Turn / Step / Loop State Machine</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/prompt-context.html">
+      <span class="chapter-number">07</span><span>Prompt Assembly and Context Injection</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/llm-adapters.html">
+      <span class="chapter-number">08</span><span>LLM Adapters and Conversation Protocol Translation</span><span class="status-dot queued" title="Queued"></span></a></section><section class="nav-part" data-part><h2 class="part-title">Sessions and Persistence</h2>
+    <a class="chapter-link" data-chapter-item href="../pages/session-event-model.html">
+      <span class="chapter-number">09</span><span>Internal Sessions and the Event Model</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/log-replay.html">
+      <span class="chapter-number">10</span><span>Logs, Derived History, Replay, and Forking</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/persistence-database.html">
+      <span class="chapter-number">11</span><span>Persistence and Database Design</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/projections-checkpoints.html">
+      <span class="chapter-number">12</span><span>Projections, Checkpoints, and Cold Start</span><span class="status-dot queued" title="Queued"></span></a></section><section class="nav-part" data-part><h2 class="part-title">Context Governance</h2>
+    <a class="chapter-link" data-chapter-item href="../pages/compaction.html">
+      <span class="chapter-number">13</span><span>Compaction and Context Pressure</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/memory-knowledge.html">
+      <span class="chapter-number">14</span><span>Memory and Knowledge: Capabilities and Deliberate Omissions</span><span class="status-dot queued" title="Queued"></span></a></section><section class="nav-part" data-part><h2 class="part-title">Collaborative State</h2>
+    <a class="chapter-link" data-chapter-item href="../pages/plan-goal-todo.html">
+      <span class="chapter-number">15</span><span>Plan, Goal, and Todo</span><span class="status-dot queued" title="Queued"></span></a></section><section class="nav-part" data-part><h2 class="part-title">Tool System</h2>
+    <a class="chapter-link" data-chapter-item href="../pages/tool-primitives.html">
+      <span class="chapter-number">16</span><span>Tool Definition Primitives and the Execution Pipeline</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/tool-catalog.html">
+      <span class="chapter-number">17</span><span>Complete Tool Catalog and Capability Taxonomy</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/tool-parallelism.html">
+      <span class="chapter-number">18</span><span>Tool Parallelism and Result Ordering</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/permission-approval.html">
+      <span class="chapter-number">19</span><span>Permission Analysis, Approval, and Monotonic Guards</span><span class="status-dot queued" title="Queued"></span></a></section><section class="nav-part" data-part><h2 class="part-title">Execution Environment</h2>
+    <a class="chapter-link" data-chapter-item href="../pages/sandbox-filesystem.html">
+      <span class="chapter-number">20</span><span>Sandbox, Filesystem, and Observation Policy</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/shell-terminal-jobs.html">
+      <span class="chapter-number">21</span><span>Shell, PTY, Terminal, and Background Jobs</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/web-lsp-mcp-skill.html">
+      <span class="chapter-number">22</span><span>Web, LSP, MCP, and Skills</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/code-mode-self-modification.html">
+      <span class="chapter-number">23</span><span>Code Mode, Self-Modification, and Dynamic Plugins</span><span class="status-dot queued" title="Queued"></span></a></section><section class="nav-part" data-part><h2 class="part-title">Orchestration</h2>
+    <a class="chapter-link" data-chapter-item href="../pages/multi-agent.html">
+      <span class="chapter-number">24</span><span>Multi-Agent Coordination</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/workflow-ralph.html">
+      <span class="chapter-number">25</span><span>Workflow and Ralph</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/inbox-steering-continuation.html">
+      <span class="chapter-number">26</span><span>Inbox, Steering, and Continuation</span><span class="status-dot queued" title="Queued"></span></a></section><section class="nav-part" data-part><h2 class="part-title">Reliability and Product Surfaces</h2>
+    <a class="chapter-link" data-chapter-item href="../pages/failure-recovery.html">
+      <span class="chapter-number">27</span><span>Retries, Errors, Cancellation, and Recovery</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/observability.html">
+      <span class="chapter-number">28</span><span>Observability, Telemetry, and Trajectories</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/api-sdk-acp.html">
+      <span class="chapter-number">29</span><span>API, SDK, JSON-RPC, and ACP</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/web-ui.html">
+      <span class="chapter-number">30</span><span>The Web UI Plugin Architecture</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/security-trust.html">
+      <span class="chapter-number">31</span><span>Security Model and Trust Boundaries</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/testing-invariants.html">
+      <span class="chapter-number">32</span><span>Tests, Snapshots, and Runtime Invariants</span><span class="status-dot queued" title="Queued"></span></a></section><section class="nav-part" data-part><h2 class="part-title">Synthesis</h2>
+    <a class="chapter-link" data-chapter-item href="../pages/tradeoffs.html">
+      <span class="chapter-number">33</span><span>Strengths, Costs, and Design Tradeoffs</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/open-questions.html">
+      <span class="chapter-number">34</span><span>Gaps, Limitations, and Open Questions</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/glossary-evidence.html">
+      <span class="chapter-number">35</span><span>Glossary, Evidence Catalog, and Source Index</span><span class="status-dot queued" title="Queued"></span></a></section></aside>
+    <main class="main"><div class="page-shell"><article class="article" data-article><header><div class="page-kicker"><span>Introduction</span><span>·</span><span>Chapter 02</span></div>
+      <h1>Design Philosophy</h1><p class="subtitle">The runtime worldview behind “everything is a plugin”</p><div class="page-meta"><span class="status drafting">In progress</span><span>Upstream 47f943859b</span><span>Scope: Analyze the replaceable core, reversible effects, composition-first design, explicit boundaries, and event sourcing.</span></div></header>
+      <section>
+  <h2>One-sentence conclusion</h2>
+  <div class="thesis"><p>The central philosophy of DeepSeek Harness is not to give the Agent more built-in powers, but to decompose the product into a network of capabilities that are <strong>composition-configurable, scope-isolated, reversibly mounted, and event-traceable</strong>. Complex features should remain plugins outside the loop and participate through stable service and event seams.</p></div>
+  <p>That sentence mixes facts with synthesis. This chapter separates them.</p>
 </section>
 
 <section>
-  <h2>原则一：没有特权核心，但存在架构宪法</h2>
-  <div class="claim fact"><div class="claim-label">源码事实</div><p>Cordis context 接收 service、typed event 与 reversible effect；模型 adapter、工具注册表、session log 和 agent loop 自身都作为插件装配，扩展方式是并列挂载插件。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/docs/architecture.md#L9-L13" title="Cordis 与无特权核心：全部产品部件都是插件；通过共享 context 的 service、typed event 和 reversible effect 组合。" aria-label="证据 ARCH-PLUGIN-CORE">ARCH-PLUGIN-CORE</a></p></div>
-  <div class="claim inference"><div class="claim-label">机制推导</div><p>“没有特权核心”不等于“没有核心”。真正难以随意替换的是组合协议：context scope、event 顺序、effect disposal、waterfall delegation、session event 兼容性，以及 service definition/provider/consumer 三方关系。替换实现必须继续遵守这些协议。</p></div>
-  <div class="claim assessment"><div class="claim-label">设计评价</div><p>优势是功能无需持续向一个巨型 loop 注入条件分支，插件可以按 profile 或 per-agent preset 组合；代价是系统正确性从单类局部逻辑扩散为“插件图 + 事件顺序 + 配置叠层”的全局性质，理解和验证成本显著上升。</p></div>
+  <h2>Principle 1: no privileged core, but an architectural constitution</h2>
+  <div class="claim fact"><div class="claim-label">Source fact</div><p>A Cordis context accepts services, typed events, and reversible effects. Model adapters, tool registries, session logs, and even the agent loop are assembled as plugins; extensions mount peer plugins instead of patching a privileged core. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/docs/architecture.md#L9-L13" title="Cordis and the unprivileged core: Every product component is a plugin composed through services, typed events, and reversible effects on a shared context." aria-label="Evidence ARCH-PLUGIN-CORE">ARCH-PLUGIN-CORE</a></p></div>
+  <div class="claim inference"><div class="claim-label">Mechanism-level deduction</div><p>“No privileged core” does not mean “no core.” What cannot be casually replaced is the composition protocol: context scopes, event order, effect disposal, waterfall delegation, session-event compatibility, and the definition/provider/consumer relationship. Replacement implementations must still obey this protocol.</p></div>
+  <div class="claim assessment"><div class="claim-label">Design assessment</div><p>The benefit is that features need not continuously inject branches into one giant loop, and profiles or per-Agent presets can compose plugins. The cost is that correctness moves from local class logic into the global properties of a plugin graph, event ordering, and configuration layers.</p></div>
 </section>
 
 <section>
-  <h2>原则二：注册是一种可撤销的生命周期副作用</h2>
-  <div class="claim fact"><div class="claim-label">仓库政策</div><p>贡献必须通过 <code>ctx.effect()</code> / <code>ctx.on()</code> 注册，registry 的 <code>register()</code> 返回 disposer；waterfall listener 必须显式调用 <code>next()</code> 才把控制权交给下游。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/AGENTS.md#L91-L100" title="注册即 effect 与 waterfall 语义：贡献通过 effect/on 注册并可处置；waterfall listener 必须调用 next。" aria-label="证据 ROOT-EFFECTS">ROOT-EFFECTS</a></p></div>
-  <div class="claim inference"><div class="claim-label">机制推导</div><p>插件“存在”不是进程级永久事实，而是绑定到某个 Cordis scope 的租约。卸载 scope 必须反向撤销服务、工具、事件 listener 与 provider。这让 per-session / per-agent 组合和运行时自修改成为可能，也要求任何旁路注册都被视为架构违规。</p></div>
+  <h2>Principle 2: registration is a reversible lifecycle effect</h2>
+  <div class="claim fact"><div class="claim-label">Repository policy</div><p>Contributions must register through <code>ctx.effect()</code> or <code>ctx.on()</code>, registry <code>register()</code> calls return disposers, and a waterfall listener must explicitly call <code>next()</code> to yield control downstream. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/AGENTS.md#L91-L100" title="Registration as effects and waterfall semantics: Contributions register through effect/on and are disposable; waterfall listeners must call next." aria-label="Evidence ROOT-EFFECTS">ROOT-EFFECTS</a></p></div>
+  <div class="claim inference"><div class="claim-label">Mechanism-level deduction</div><p>A plugin's presence is not a permanent process fact; it is a lease bound to a Cordis scope. Disposing that scope must retract services, tools, listeners, and providers. This enables per-session and per-Agent composition plus runtime self-modification, while making every side-channel registration an architectural violation.</p></div>
 </section>
 
 <section>
-  <h2>原则三：组合优于隐藏默认</h2>
-  <div class="claim fact"><div class="claim-label">源码事实</div><p>运行中的 dsh 从空 entry list 开始，依次应用 profile 声明的 bundles、profile 自己的 patch、home-level patch 和命令行 overlay；patch 按 row id 定位，并整体替换该 row 的 config 或插入新 row。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/docs/architecture.md#L15-L37" title="Profile、Bundle 与 patch 叠层：运行时插件树按 bundle、profile patch、home patch、CLI overlay 的顺序组合。" aria-label="证据 ARCH-LAYERS">ARCH-LAYERS</a></p></div>
-  <div class="claim fact"><div class="claim-label">仓库政策</div><p>跨 package 的默认值要求在拥有该语义的实现中通过显式 <code>resolve(request): Spec</code> 完成；部署相关 tunable 需要成为可验证配置，错误配置应在可判定的最早位置失败。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/AGENTS.md#L107-L116" title="显式边界与快速失败：跨包默认值显式 resolve，部署参数可配置，错误配置尽早失败，外部 ID 使用 branded 类型。" aria-label="证据 ROOT-BOUNDARIES">ROOT-BOUNDARIES</a></p></div>
-  <div class="claim assessment"><div class="claim-label">设计评价</div><p>显式叠层让最终运行树可打印、可覆盖、可审计，但“整体替换 config”不是深合并：上层 patch 必须理解下层完整配置形状，否则容易在覆盖一个字段时丢失其他字段。这是一种用可预测语义换取使用者谨慎的选择。</p></div>
+  <h2>Principle 3: composition over hidden defaults</h2>
+  <div class="claim fact"><div class="claim-label">Source fact</div><p>A running dsh tree begins as an empty entry list and applies bundles, the profile patch, the home-level patch, and command-line overlays in order. Patches address rows by ID and replace the row's entire config or insert a new row. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/docs/architecture.md#L15-L37" title="Profile, bundle, and patch layers: The runtime plugin tree is composed in bundle, profile patch, home patch, and CLI overlay order." aria-label="Evidence ARCH-LAYERS">ARCH-LAYERS</a></p></div>
+  <div class="claim fact"><div class="claim-label">Repository policy</div><p>Cross-package defaults must be resolved explicitly by the implementation that owns the semantics. Deployment tunables become validated configuration, and invalid configuration should fail at the earliest decidable point. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/AGENTS.md#L107-L116" title="Explicit boundaries and fail-fast behavior: Cross-package defaults resolve explicitly, deployment parameters are configurable, invalid configuration fails early, and external IDs use branded types." aria-label="Evidence ROOT-BOUNDARIES">ROOT-BOUNDARIES</a></p></div>
+  <div class="claim assessment"><div class="claim-label">Design assessment</div><p>Explicit layers make the effective runtime tree printable, overridable, and auditable. Yet wholesale config replacement is not deep merge: an upper patch must understand the complete lower configuration shape or risk dropping fields while changing only one value. Predictability is purchased with author discipline.</p></div>
 </section>
 
 <section>
-  <h2>原则四：模型看到的东西必须成为耐久事实</h2>
-  <div class="claim fact"><div class="claim-label">源码事实</div><p>session log 是模型历史的事实源，<code>deriveMessages()</code> 从事件投影模型消息；原始 <code>assistant/chunk</code> 被保留以支持重放与 UI fidelity。任何进入模型请求的新增输入都必须对应 session event，并由运行时不变量检查。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/docs/architecture.md#L92-L102" title="Session log 与 capability seam：日志是模型上下文事实源；model-visible 必须可从日志重建；seam 包含定义、提供者与消费者。" aria-label="证据 ARCH-LOG">ARCH-LOG</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/AGENTS.md#L99-L104" title="Model-visible 等价于 Logged：任何进入模型请求的输入都需要 session event，可从日志重建。" aria-label="证据 ROOT-MODEL-LOGGED">ROOT-MODEL-LOGGED</a></p></div>
-  <div class="claim inference"><div class="claim-label">机制推导</div><p>这条规则把提示词工程变成了事件建模问题：插件不能只在请求发送前偷偷拼接字符串；若该内容影响模型行为，就必须能从日志重建。于是 resume、fork、telemetry、snapshot 和 UI 不必各自维护一份“当时模型看到了什么”。</p></div>
-  <div class="claim assessment"><div class="claim-label">设计评价</div><p>这是 DeepSeek Harness 最有价值、也最昂贵的约束之一。它显著改善审计与重放，但每类动态上下文都要设计事件语义、兼容读取和派生规则，不能用一次性的 middleware state 草率实现。</p></div>
+  <h2>Principle 4: what the model sees must become a durable fact</h2>
+  <div class="claim fact"><div class="claim-label">Source fact</div><p>The session log is the source of truth for model history, and <code>deriveMessages()</code> projects model messages from events. Raw <code>assistant/chunk</code> events remain available for replay and UI fidelity. Any newly model-visible input requires a session event and is checked by runtime invariants. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/docs/architecture.md#L92-L102" title="Session log and capability seams: The log is the source of truth for model context; model-visible data must be reconstructable, and a seam includes definition, provider, and consumer." aria-label="Evidence ARCH-LOG">ARCH-LOG</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/AGENTS.md#L99-L104" title="Model-visible means logged: Every input entering a model request requires a session event and must be reconstructable from the log." aria-label="Evidence ROOT-MODEL-LOGGED">ROOT-MODEL-LOGGED</a></p></div>
+  <div class="claim inference"><div class="claim-label">Mechanism-level deduction</div><p>This rule turns prompt engineering into event modeling. A plugin cannot secretly concatenate a string immediately before dispatch; if content affects model behavior, the log must reconstruct it. Resume, fork, telemetry, snapshots, and UI state no longer need independent stories for “what the model saw.”</p></div>
+  <div class="claim assessment"><div class="claim-label">Design assessment</div><p>This is one of the most valuable and expensive constraints in the design. It greatly improves audit and replay, but every dynamic context source needs event semantics, compatible readers, and derivation rules instead of one-off middleware state.</p></div>
 </section>
 
 <section>
-  <h2>原则五：能力不是一个接口，而是闭合的三角色 seam</h2>
-  <div class="claim fact"><div class="claim-label">源码事实</div><p>仓库把可替换能力定义为三类角色：Service Definition 声明接口，Service Provider 实现它，Consumer 使用它（通常是模型可见工具）。只有单一角色不能算完整 seam。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/docs/architecture.md#L92-L102" title="Session log 与 capability seam：日志是模型上下文事实源；model-visible 必须可从日志重建；seam 包含定义、提供者与消费者。" aria-label="证据 ARCH-LOG">ARCH-LOG</a></p></div>
-  <p>这个定义避免把“抽了一个 interface”误认为架构已经可替换。例如文件能力不仅有 <code>ctx.fs</code>，还要有 local/sandbox/E2B provider、模型工具 consumer、观察策略、错误词汇与执行世界的一致性。</p>
+  <h2>Principle 5: a capability is a closed three-role seam, not merely an interface</h2>
+  <div class="claim fact"><div class="claim-label">Source fact</div><p>The repository describes a replaceable capability through three roles: a Service Definition declares the contract, a Service Provider implements it, and a Consumer uses it—often through a model-visible tool. A single role does not form a complete seam. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/docs/architecture.md#L92-L102" title="Session log and capability seams: The log is the source of truth for model context; model-visible data must be reconstructable, and a seam includes definition, provider, and consumer." aria-label="Evidence ARCH-LOG">ARCH-LOG</a></p></div>
+  <p>This prevents the presence of an interface from being mistaken for replaceable architecture. Filesystem capability requires not only <code>ctx.fs</code>, but also local/sandbox/E2B providers, model-facing consumers, observation policy, an error vocabulary, and consistency with the process execution world.</p>
 </section>
 
 <section>
-  <h2>原则六：在可信静态边界内简化，在真实不可信边界上验证</h2>
-  <div class="claim fact"><div class="claim-label">仓库政策</div><p>同进程、静态类型已约束的值不重复做敌意运行时校验；解析配置、排队数据、模型/工具 JSON、持久化文件、worker、进程和 wire 边界则必须验证。跨边界 ID 使用 branded 类型而非裸字符串。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/AGENTS.md#L115-L117" title="静态边界和运行时边界的验证哲学：同进程静态类型边界信任 TypeScript；解析、模型 JSON、持久化、进程、worker 与 wire 边界做运行时验证。" aria-label="证据 ROOT-TYPED-TRUST">ROOT-TYPED-TRUST</a></p></div>
-  <div class="claim assessment"><div class="claim-label">设计评价</div><p>这不是“多校验总是更安全”，而是把验证预算放在值可能被伪造、漂移或失真的地方。好处是内部代码不被冗余 guard 淹没；风险是团队必须准确识别边界，一旦把外部数据误当成 typed same-process value，防线会直接缺失。</p></div>
+  <h2>Principle 6: simplify inside trusted static boundaries; validate real trust boundaries</h2>
+  <div class="claim fact"><div class="claim-label">Repository policy</div><p>Same-process values already constrained by static types are not repeatedly subjected to hostile runtime checks. Parsed configuration, queued data, model/tool JSON, persisted files, workers, processes, and wire protocols must be validated. Cross-boundary IDs use branded types rather than plain strings. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/AGENTS.md#L115-L117" title="Validation at static and runtime boundaries: Same-process statically typed values trust TypeScript, while parsing, model JSON, persistence, processes, workers, and wire boundaries receive runtime validation." aria-label="Evidence ROOT-TYPED-TRUST">ROOT-TYPED-TRUST</a></p></div>
+  <div class="claim assessment"><div class="claim-label">Design assessment</div><p>The principle is not “more validation is always safer,” but “spend validation effort where a value may be forged, drifted, or distorted.” Internal code stays readable; the risk is that misclassifying external data as a trusted typed value removes a defense entirely.</p></div>
 </section>
 
 <section>
-  <h2>暂定哲学模型</h2>
+  <h2>Working model of the philosophy</h2>
   <div class="principle-grid">
-    <div><strong>组合单元</strong><span>Plugin</span></div>
-    <div><strong>能力边界</strong><span>Service seam</span></div>
-    <div><strong>协调机制</strong><span>Typed events / waterfall</span></div>
-    <div><strong>生命周期</strong><span>Scope + reversible effects</span></div>
-    <div><strong>事实源</strong><span>Append-only session log</span></div>
-    <div><strong>产品装配</strong><span>Profile + bundle + patch layers</span></div>
-    <div><strong>安全姿态</strong><span>Boundary validation + fail loud</span></div>
-    <div><strong>扩展策略</strong><span>Plugins, not loop changes</span></div>
+    <div><strong>Composition unit</strong><span>Plugin</span></div>
+    <div><strong>Capability boundary</strong><span>Service seam</span></div>
+    <div><strong>Coordination</strong><span>Typed events / waterfall</span></div>
+    <div><strong>Lifecycle</strong><span>Scope + reversible effects</span></div>
+    <div><strong>Source of truth</strong><span>Append-only session log</span></div>
+    <div><strong>Product assembly</strong><span>Profile + bundle + patch layers</span></div>
+    <div><strong>Safety posture</strong><span>Boundary validation + fail loud</span></div>
+    <div><strong>Extension strategy</strong><span>Plugins, not loop changes</span></div>
   </div>
-  <aside class="caveat"><strong>尚未完成：</strong>以上是基于架构文档和仓库政策的第一轮归纳。后续章节会用生产源码验证这些原则是否在提示词、工具并行、压缩、checkpoint、多 Agent、workflow 和 UI 中真正一致；出现反例时，本页会修正而不是维护理论完整性。</aside>
+  <aside class="caveat"><strong>Not final:</strong> this is the first synthesis from architecture documents and repository policy. Later chapters test whether these principles remain consistent in prompts, tool parallelism, compaction, checkpoints, multi-Agent orchestration, workflows, and the UI. Counterexamples will revise this model rather than be hidden to preserve theoretical neatness.</aside>
 </section>
-
-
-    <section class="learning-notes" aria-labelledby="learning-notes-title">
-      <h2 id="learning-notes-title">我的学习体会</h2>
-      <p class="privacy">内容仅自动保存到当前浏览器，不上传、不进入仓库。你可以导出 Markdown 自行归档。</p>
-      <textarea data-learning-notes aria-label="我的学习体会" placeholder="记录你的理解、疑问、反例和可迁移原则……"></textarea>
-      <div class="note-footer">
-        <span data-note-saved>本地草稿</span>
-        <button type="button" data-note-export>导出 Markdown</button>
-        <button type="button" class="danger" data-note-clear>清空</button>
-        <span data-note-count>0 字符</span>
-      </div>
-    </section>
-          <nav class="pagination" aria-label="章节翻页"><a href="../pages/methodology.html"><small>← 上一章 · 01</small><strong>基线、方法与证据规则</strong></a><a class="next" href="../pages/module-atlas.html"><small>下一章 · 03 →</small><strong>219 个包的模块地图</strong></a></nav>
-        </article>
-        <aside class="right-rail" aria-label="页内导航">
-          <h2 class="rail-title">本页目录</h2>
-          <nav class="toc" data-toc></nav>
-          <label class="jump-label" for="chapter-jump">跳转章节</label>
-          <select class="jump-select" id="chapter-jump" data-chapter-jump><option value="reading-guide">00 · 阅读入口与研究地图</option><option value="methodology">01 · 基线、方法与证据规则</option><option value="design-philosophy" selected>02 · 设计哲学总论</option><option value="module-atlas">03 · 219 个包的模块地图</option><option value="boot-profiles-bundles">04 · 启动、Profile、Bundle 与配置叠层</option><option value="agent-object-lifecycle">05 · Agent 对象、注册表与生命周期</option><option value="turn-step-loop">06 · Turn / Step / Loop 状态机</option><option value="prompt-context">07 · 提示词组装与上下文注入</option><option value="llm-adapters">08 · LLM Adapter 与会话协议转换</option><option value="session-event-model">09 · 内部会话结构与事件模型</option><option value="log-replay">10 · 日志、派生历史、重放与 Fork</option><option value="persistence-database">11 · 持久化与数据库设计</option><option value="projections-checkpoints">12 · Projection、Checkpoint 与冷启动</option><option value="compaction">13 · 压缩体系与上下文压力</option><option value="memory-knowledge">14 · 记忆与知识：有何能力、又刻意没有什么</option><option value="plan-goal-todo">15 · Plan、Goal 与 Todo</option><option value="tool-primitives">16 · 工具定义原语与执行管线</option><option value="tool-catalog">17 · 工具全集与能力分类</option><option value="tool-parallelism">18 · 工具并行器与结果顺序</option><option value="permission-approval">19 · 权限分析、审批与单调 Guard</option><option value="sandbox-filesystem">20 · Sandbox、Filesystem 与观察策略</option><option value="shell-terminal-jobs">21 · Shell、PTY、Terminal 与后台作业</option><option value="web-lsp-mcp-skill">22 · Web、LSP、MCP 与 Skill</option><option value="code-mode-self-modification">23 · Code Mode、自修改与动态插件</option><option value="multi-agent">24 · 多 Agent 协同</option><option value="workflow-ralph">25 · Workflow 与 Ralph</option><option value="inbox-steering-continuation">26 · Inbox、Steering 与 Continuation</option><option value="failure-recovery">27 · 重试、错误、取消与恢复</option><option value="observability">28 · 可观测、Telemetry 与轨迹</option><option value="api-sdk-acp">29 · API、SDK、JSON-RPC 与 ACP</option><option value="web-ui">30 · Web UI 插件架构</option><option value="security-trust">31 · 安全模型与信任边界</option><option value="testing-invariants">32 · 测试、快照与运行时不变量</option><option value="tradeoffs">33 · 优势、代价与设计取舍</option><option value="open-questions">34 · 缺口、限制与待验证问题</option><option value="glossary-evidence">35 · 术语、证据目录与源码索引</option></select>
-        </aside>
-      </div>
-      <footer class="footer">独立研究 · 固定源码基线 47f943859bef60e4160492346772ded9b24f765a · 学习笔记默认仅保存在浏览器本地</footer>
-    </main>
-  </div>
-  <script src="../assets/site.js" defer></script>
-</body>
-</html>
+<section class="learning-notes" aria-labelledby="learning-notes-title"><h2 id="learning-notes-title">My Learning Notes</h2>
+    <p class="privacy">Autosaved only in this browser. Nothing is uploaded or committed. Export Markdown whenever you want to keep a copy.</p><textarea data-learning-notes aria-label="My Learning Notes" placeholder="Record your understanding, questions, counterexamples, and transferable principles…"></textarea>
+    <div class="note-footer"><span data-note-saved>Local draft</span><button type="button" data-note-export>Export Markdown</button>
+    <button type="button" class="danger" data-note-clear>Clear</button><span data-note-count>0 characters</span></div></section><nav class="pagination" aria-label="Chapter pagination"><a href="../pages/methodology.html"><small>← Previous chapter · 01</small><strong>Baseline, Method, and Evidence Rules</strong></a><a class="next" href="../pages/module-atlas.html"><small>Next chapter · 03 →</small><strong>An Atlas of 219 Packages</strong></a></nav></article>
+      <aside class="right-rail" aria-label="On this page"><h2 class="rail-title">On this page</h2><nav class="toc" data-toc></nav><label class="jump-label" for="chapter-jump">Jump to chapter</label><select class="jump-select" id="chapter-jump" data-chapter-jump><option value="reading-guide">00 · Reading Guide and Research Map</option><option value="methodology">01 · Baseline, Method, and Evidence Rules</option><option value="design-philosophy" selected>02 · Design Philosophy</option><option value="module-atlas">03 · An Atlas of 219 Packages</option><option value="boot-profiles-bundles">04 · Boot, Profiles, Bundles, and Configuration Layers</option><option value="agent-object-lifecycle">05 · Agent Objects, Registry, and Lifecycle</option><option value="turn-step-loop">06 · The Turn / Step / Loop State Machine</option><option value="prompt-context">07 · Prompt Assembly and Context Injection</option><option value="llm-adapters">08 · LLM Adapters and Conversation Protocol Translation</option><option value="session-event-model">09 · Internal Sessions and the Event Model</option><option value="log-replay">10 · Logs, Derived History, Replay, and Forking</option><option value="persistence-database">11 · Persistence and Database Design</option><option value="projections-checkpoints">12 · Projections, Checkpoints, and Cold Start</option><option value="compaction">13 · Compaction and Context Pressure</option><option value="memory-knowledge">14 · Memory and Knowledge: Capabilities and Deliberate Omissions</option><option value="plan-goal-todo">15 · Plan, Goal, and Todo</option><option value="tool-primitives">16 · Tool Definition Primitives and the Execution Pipeline</option><option value="tool-catalog">17 · Complete Tool Catalog and Capability Taxonomy</option><option value="tool-parallelism">18 · Tool Parallelism and Result Ordering</option><option value="permission-approval">19 · Permission Analysis, Approval, and Monotonic Guards</option><option value="sandbox-filesystem">20 · Sandbox, Filesystem, and Observation Policy</option><option value="shell-terminal-jobs">21 · Shell, PTY, Terminal, and Background Jobs</option><option value="web-lsp-mcp-skill">22 · Web, LSP, MCP, and Skills</option><option value="code-mode-self-modification">23 · Code Mode, Self-Modification, and Dynamic Plugins</option><option value="multi-agent">24 · Multi-Agent Coordination</option><option value="workflow-ralph">25 · Workflow and Ralph</option><option value="inbox-steering-continuation">26 · Inbox, Steering, and Continuation</option><option value="failure-recovery">27 · Retries, Errors, Cancellation, and Recovery</option><option value="observability">28 · Observability, Telemetry, and Trajectories</option><option value="api-sdk-acp">29 · API, SDK, JSON-RPC, and ACP</option><option value="web-ui">30 · The Web UI Plugin Architecture</option><option value="security-trust">31 · Security Model and Trust Boundaries</option><option value="testing-invariants">32 · Tests, Snapshots, and Runtime Invariants</option><option value="tradeoffs">33 · Strengths, Costs, and Design Tradeoffs</option><option value="open-questions">34 · Gaps, Limitations, and Open Questions</option><option value="glossary-evidence">35 · Glossary, Evidence Catalog, and Source Index</option></select></aside></div>
+      <footer class="footer">Independent research · Pinned baseline 47f943859bef60e4160492346772ded9b24f765a · learning notes stay local by default</footer></main></div>
+  <script src="../assets/site.js" defer></script></body></html>

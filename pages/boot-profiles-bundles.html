@@ -1,299 +1,209 @@
 <!doctype html>
-<html lang="zh-CN" data-root="../">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="运行中的 dsh 如何由有序插件树组合出来">
-  <link rel="canonical" href="https://hoco-scy.github.io/dpsk-harness-analysis/pages/boot-profiles-bundles.html">
-  <link rel="stylesheet" href="../assets/site.css">
-  <title>启动、Profile、Bundle 与配置叠层 · DeepSeek Harness 系统拆解</title>
-</head>
-<body data-page="boot-profiles-bundles" data-baseline="47f943859bef60e4160492346772ded9b24f765a">
-  <header class="topbar">
-    <button class="icon-button nav-toggle" type="button" data-nav-toggle aria-label="打开章节目录" aria-expanded="false">☰</button>
-    <a class="brand" href="../index.html"><span class="brand-mark">DS</span><span>Harness 系统拆解</span></a>
-    <span class="topbar-meta">固定基线 47f943859b · 1 已复核 / 3 撰写中 / 36 章</span>
-    <div class="topbar-actions"><button class="icon-button" type="button" data-theme-toggle aria-label="切换明暗主题">◐</button></div>
-  </header>
-  <div class="layout">
-    <aside class="sidebar" data-sidebar aria-label="章节目录">
-      <input class="filter" data-chapter-filter type="search" placeholder="筛选章节……" aria-label="筛选章节">
+<html lang="en" data-root="../">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="description" content="How a running dsh process is composed into an ordered plugin tree">
+  <link rel="canonical" href="https://hoco-scy.github.io/dpsk-harness-analysis/pages/boot-profiles-bundles.html"><link rel="alternate" hreflang="zh-CN" href="https://hoco-scy.github.io/dpsk-harness-analysis/zh/pages/boot-profiles-bundles.html"><link rel="alternate" hreflang="x-default" href="https://hoco-scy.github.io/dpsk-harness-analysis/pages/boot-profiles-bundles.html">
+  <link rel="stylesheet" href="../assets/site.css"><title>Boot, Profiles, Bundles, and Configuration Layers · DeepSeek Harness: A Systems Dissection</title></head>
+<body data-page="boot-profiles-bundles" data-baseline="47f943859bef60e4160492346772ded9b24f765a" data-lang="en">
+  <header class="topbar"><button class="icon-button nav-toggle" type="button" data-nav-toggle aria-label="Open chapter directory" aria-expanded="false">☰</button>
+    <a class="brand" href="../index.html"><span class="brand-mark">DS</span><span>Harness Systems Dissection</span></a>
+    <span class="topbar-meta">Pinned baseline 47f943859b · 2 verified / 3 in progress / 36 chapters</span>
+    <div class="topbar-actions"><a class="language-switch" href="../zh/pages/boot-profiles-bundles.html" lang="zh-CN" aria-label="Read this chapter in Chinese">中文</a><button class="icon-button" type="button" data-theme-toggle aria-label="Toggle light or dark theme">◐</button></div></header>
+  <div class="layout"><aside class="sidebar" data-sidebar aria-label="Chapter directory"><input class="filter" data-chapter-filter type="search" placeholder="Filter chapters…" aria-label="Filter chapters"><section class="nav-part" data-part><h2 class="part-title">Introduction</h2>
+    <a class="chapter-link" data-chapter-item href="../pages/reading-guide.html">
+      <span class="chapter-number">00</span><span>Reading Guide and Research Map</span><span class="status-dot drafting" title="In progress"></span></a><a class="chapter-link" data-chapter-item href="../pages/methodology.html">
+      <span class="chapter-number">01</span><span>Baseline, Method, and Evidence Rules</span><span class="status-dot verified" title="Verified"></span></a><a class="chapter-link" data-chapter-item href="../pages/design-philosophy.html">
+      <span class="chapter-number">02</span><span>Design Philosophy</span><span class="status-dot drafting" title="In progress"></span></a><a class="chapter-link" data-chapter-item href="../pages/module-atlas.html">
+      <span class="chapter-number">03</span><span>An Atlas of 219 Packages</span><span class="status-dot drafting" title="In progress"></span></a></section><section class="nav-part" data-part><h2 class="part-title">Core Runtime</h2>
+    <a class="chapter-link current" data-chapter-item href="../pages/boot-profiles-bundles.html">
+      <span class="chapter-number">04</span><span>Boot, Profiles, Bundles, and Configuration Layers</span><span class="status-dot verified" title="Verified"></span></a><a class="chapter-link" data-chapter-item href="../pages/agent-object-lifecycle.html">
+      <span class="chapter-number">05</span><span>Agent Objects, Registry, and Lifecycle</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/turn-step-loop.html">
+      <span class="chapter-number">06</span><span>The Turn / Step / Loop State Machine</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/prompt-context.html">
+      <span class="chapter-number">07</span><span>Prompt Assembly and Context Injection</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/llm-adapters.html">
+      <span class="chapter-number">08</span><span>LLM Adapters and Conversation Protocol Translation</span><span class="status-dot queued" title="Queued"></span></a></section><section class="nav-part" data-part><h2 class="part-title">Sessions and Persistence</h2>
+    <a class="chapter-link" data-chapter-item href="../pages/session-event-model.html">
+      <span class="chapter-number">09</span><span>Internal Sessions and the Event Model</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/log-replay.html">
+      <span class="chapter-number">10</span><span>Logs, Derived History, Replay, and Forking</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/persistence-database.html">
+      <span class="chapter-number">11</span><span>Persistence and Database Design</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/projections-checkpoints.html">
+      <span class="chapter-number">12</span><span>Projections, Checkpoints, and Cold Start</span><span class="status-dot queued" title="Queued"></span></a></section><section class="nav-part" data-part><h2 class="part-title">Context Governance</h2>
+    <a class="chapter-link" data-chapter-item href="../pages/compaction.html">
+      <span class="chapter-number">13</span><span>Compaction and Context Pressure</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/memory-knowledge.html">
+      <span class="chapter-number">14</span><span>Memory and Knowledge: Capabilities and Deliberate Omissions</span><span class="status-dot queued" title="Queued"></span></a></section><section class="nav-part" data-part><h2 class="part-title">Collaborative State</h2>
+    <a class="chapter-link" data-chapter-item href="../pages/plan-goal-todo.html">
+      <span class="chapter-number">15</span><span>Plan, Goal, and Todo</span><span class="status-dot queued" title="Queued"></span></a></section><section class="nav-part" data-part><h2 class="part-title">Tool System</h2>
+    <a class="chapter-link" data-chapter-item href="../pages/tool-primitives.html">
+      <span class="chapter-number">16</span><span>Tool Definition Primitives and the Execution Pipeline</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/tool-catalog.html">
+      <span class="chapter-number">17</span><span>Complete Tool Catalog and Capability Taxonomy</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/tool-parallelism.html">
+      <span class="chapter-number">18</span><span>Tool Parallelism and Result Ordering</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/permission-approval.html">
+      <span class="chapter-number">19</span><span>Permission Analysis, Approval, and Monotonic Guards</span><span class="status-dot queued" title="Queued"></span></a></section><section class="nav-part" data-part><h2 class="part-title">Execution Environment</h2>
+    <a class="chapter-link" data-chapter-item href="../pages/sandbox-filesystem.html">
+      <span class="chapter-number">20</span><span>Sandbox, Filesystem, and Observation Policy</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/shell-terminal-jobs.html">
+      <span class="chapter-number">21</span><span>Shell, PTY, Terminal, and Background Jobs</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/web-lsp-mcp-skill.html">
+      <span class="chapter-number">22</span><span>Web, LSP, MCP, and Skills</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/code-mode-self-modification.html">
+      <span class="chapter-number">23</span><span>Code Mode, Self-Modification, and Dynamic Plugins</span><span class="status-dot queued" title="Queued"></span></a></section><section class="nav-part" data-part><h2 class="part-title">Orchestration</h2>
+    <a class="chapter-link" data-chapter-item href="../pages/multi-agent.html">
+      <span class="chapter-number">24</span><span>Multi-Agent Coordination</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/workflow-ralph.html">
+      <span class="chapter-number">25</span><span>Workflow and Ralph</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/inbox-steering-continuation.html">
+      <span class="chapter-number">26</span><span>Inbox, Steering, and Continuation</span><span class="status-dot queued" title="Queued"></span></a></section><section class="nav-part" data-part><h2 class="part-title">Reliability and Product Surfaces</h2>
+    <a class="chapter-link" data-chapter-item href="../pages/failure-recovery.html">
+      <span class="chapter-number">27</span><span>Retries, Errors, Cancellation, and Recovery</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/observability.html">
+      <span class="chapter-number">28</span><span>Observability, Telemetry, and Trajectories</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/api-sdk-acp.html">
+      <span class="chapter-number">29</span><span>API, SDK, JSON-RPC, and ACP</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/web-ui.html">
+      <span class="chapter-number">30</span><span>The Web UI Plugin Architecture</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/security-trust.html">
+      <span class="chapter-number">31</span><span>Security Model and Trust Boundaries</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/testing-invariants.html">
+      <span class="chapter-number">32</span><span>Tests, Snapshots, and Runtime Invariants</span><span class="status-dot queued" title="Queued"></span></a></section><section class="nav-part" data-part><h2 class="part-title">Synthesis</h2>
+    <a class="chapter-link" data-chapter-item href="../pages/tradeoffs.html">
+      <span class="chapter-number">33</span><span>Strengths, Costs, and Design Tradeoffs</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/open-questions.html">
+      <span class="chapter-number">34</span><span>Gaps, Limitations, and Open Questions</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/glossary-evidence.html">
+      <span class="chapter-number">35</span><span>Glossary, Evidence Catalog, and Source Index</span><span class="status-dot queued" title="Queued"></span></a></section></aside>
+    <main class="main"><div class="page-shell"><article class="article" data-article><header><div class="page-kicker"><span>Core Runtime</span><span>·</span><span>Chapter 04</span></div>
+      <h1>Boot, Profiles, Bundles, and Configuration Layers</h1><p class="subtitle">How a running dsh process is composed into an ordered plugin tree</p><div class="page-meta"><span class="status verified">Verified</span><span>Upstream 47f943859b</span><span>Scope: Trace the CLI into Loader, profile and bundle patch order, isolation domains, replacement semantics, and disposal.</span></div></header>
+      <section>
+  <h2>Conclusion: the launcher evaluates a configuration program</h2>
+  <div class="thesis"><p>The primary product of a <code>dsh</code> launch is not a hard-coded Application object. It is a plugin tree evaluated from an empty root, ordered patch layers, service dependencies, and Cordis lifecycle semantics.</p></div>
+  <p>This distinction matters. A Profile chooses bundles; bundles provide large capability sets; user and command-line overlays modify the result; Loader activates plugins as their required services become available. Configuration is not merely a collection of startup parameters here—it is the product architecture.</p>
+</section>
 
-    <section class="nav-part" data-part>
-      <h2 class="part-title">导论</h2>
+<section>
+  <h2>1. The CLI owns a deliberately narrow boundary</h2>
+  <div class="claim fact"><div class="claim-label">Production control flow</div><p><code>apps/cli/src/bin.ts</code> parses argv into three modes and dynamically imports the corresponding implementation: normal profile launch, plugin package management, or configuration dump. The profile branch passes only a frozen environment snapshot, the profile name, <code>--patch</code> files in argv order, and remaining application arguments. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/apps/cli/src/bin.ts#L27-L52" title="CLI launch-mode dispatch: After parsing, the CLI dispatches only profile, plugin, and dump-config modes; the profile path receives the environment snapshot, profile, patches, and inner arguments." aria-label="Evidence CLI-PROFILE-DISPATCH">CLI-PROFILE-DISPATCH</a></p></div>
+  <p>“CLI arguments” are intentionally split into two ownership classes:</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Input</th><th>Owner</th><th>How it enters the tree</th><th>Recomputed during live updates?</th></tr></thead>
+    <tbody>
+      <tr><td><code>--profile</code>, <code>--patch</code></td><td>Outer launcher</td><td>Select a profile and form patch layers</td><td>Patch contents are reread; the file list is fixed</td></tr>
+      <tr><td>Remaining arguments</td><td>Plugins inside the tree</td><td>Provided through <code>cmdlineArgs</code>, not encoded into patches</td><td>No; they live for this invocation</td></tr>
+      <tr><td>Environment</td><td>Launcher freezes provenance</td><td>Environment snapshot is provided before mounting; <code>!!js</code> may also read process environment</td><td>The launch-time snapshot is fixed</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim inference"><div class="claim-label">Mechanism-level deduction</div><p>Command-line product behavior does not invade generic boot. Web, headless, and future surfaces can mount their argument interpreters as ordinary providers. The launcher owns only “which configuration program” and “how the process terminates safely.”</p></div>
+</section>
 
-        <a class="chapter-link" data-chapter-item href="../pages/reading-guide.html">
-          <span class="chapter-number">00</span>
-          <span>阅读入口与研究地图</span>
-          <span class="status-dot drafting" title="撰写中"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/methodology.html">
-          <span class="chapter-number">01</span>
-          <span>基线、方法与证据规则</span>
-          <span class="status-dot verified" title="已复核"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/design-philosophy.html">
-          <span class="chapter-number">02</span>
-          <span>设计哲学总论</span>
-          <span class="status-dot drafting" title="撰写中"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/module-atlas.html">
-          <span class="chapter-number">03</span>
-          <span>219 个包的模块地图</span>
-          <span class="status-dot drafting" title="撰写中"></span>
-        </a>
-    </section>
-    <section class="nav-part" data-part>
-      <h2 class="part-title">核心运行时</h2>
+<section>
+  <h2>2. A Profile is a writable composition workspace</h2>
+  <div class="claim fact"><div class="claim-label">Production source</div><p>A Profile name must be one path segment and cannot be <code>.</code>, <code>..</code>, or <code>node_modules</code>. On first use, the built-in <code>web</code> template initializes as <code>base + web-app</code>, while <code>headless</code> initializes as <code>base + headless</code>. Initialization creates only missing <code>package.json</code>, <code>cordis.patch.yml</code>, and <code>pnpm-workspace.yaml</code> files and never overwrites existing user data. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/boot/app-boot/src/profile.ts#L104-L168" title="Profile directories and built-in templates: Profile-name validation, web/headless bundle templates, the default base bundle, and idempotent initialization of three files." aria-label="Evidence PROFILE-TEMPLATES">PROFILE-TEMPLATES</a></p></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Profile file</th><th>Responsibility</th><th>Mutability and risk</th></tr></thead>
+    <tbody>
+      <tr><td><code>package.json</code></td><td>Declares the ordered <code>dsh.profile.bundles</code> list and profile-private plugin dependencies</td><td>Changes both the product capability set and module-resolution closure</td></tr>
+      <tr><td><code>cordis.patch.yml</code></td><td>User override layer for this profile</td><td>Watched live; may configure, disable, or insert plugins</td></tr>
+      <tr><td><code>pnpm-workspace.yaml</code></td><td>Fixes the hoisted linker and peer policy needed by out-of-tree plugins</td><td>Lets a profile install plugins while sharing Cordis and service-definition instances</td></tr>
+      <tr><td><code>cordis.yml</code></td><td>A real include anchor required by Loader</td><td>Rewritten to an empty list on every launch; not user-maintained</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Empty-root invariant</div><p>The launcher rewrites <code>cordis.yml</code> to an empty entry list on every launch. This prevents a Loader write-back of the current runtime tree from being combined again with bundle inserts on the next launch. The file exists only to anchor resolution at the Profile directory. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/apps/cli/src/profile-boot.ts#L59-L103" title="Empty root and profile preparation: Every launch rewrites an empty cordis.yml; patches define the entire real tree and prevent Loader write-back from baking in composed rows." aria-label="Evidence PROFILE-ROOT">PROFILE-ROOT</a></p></div>
+</section>
 
-        <a class="chapter-link current" data-chapter-item href="../pages/boot-profiles-bundles.html">
-          <span class="chapter-number">04</span>
-          <span>启动、Profile、Bundle 与配置叠层</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/agent-object-lifecycle.html">
-          <span class="chapter-number">05</span>
-          <span>Agent 对象、注册表与生命周期</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/turn-step-loop.html">
-          <span class="chapter-number">06</span>
-          <span>Turn / Step / Loop 状态机</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/prompt-context.html">
-          <span class="chapter-number">07</span>
-          <span>提示词组装与上下文注入</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/llm-adapters.html">
-          <span class="chapter-number">08</span>
-          <span>LLM Adapter 与会话协议转换</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-    </section>
-    <section class="nav-part" data-part>
-      <h2 class="part-title">会话与持久化</h2>
-
-        <a class="chapter-link" data-chapter-item href="../pages/session-event-model.html">
-          <span class="chapter-number">09</span>
-          <span>内部会话结构与事件模型</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/log-replay.html">
-          <span class="chapter-number">10</span>
-          <span>日志、派生历史、重放与 Fork</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/persistence-database.html">
-          <span class="chapter-number">11</span>
-          <span>持久化与数据库设计</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/projections-checkpoints.html">
-          <span class="chapter-number">12</span>
-          <span>Projection、Checkpoint 与冷启动</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-    </section>
-    <section class="nav-part" data-part>
-      <h2 class="part-title">上下文治理</h2>
-
-        <a class="chapter-link" data-chapter-item href="../pages/compaction.html">
-          <span class="chapter-number">13</span>
-          <span>压缩体系与上下文压力</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/memory-knowledge.html">
-          <span class="chapter-number">14</span>
-          <span>记忆与知识：有何能力、又刻意没有什么</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-    </section>
-    <section class="nav-part" data-part>
-      <h2 class="part-title">协作状态</h2>
-
-        <a class="chapter-link" data-chapter-item href="../pages/plan-goal-todo.html">
-          <span class="chapter-number">15</span>
-          <span>Plan、Goal 与 Todo</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-    </section>
-    <section class="nav-part" data-part>
-      <h2 class="part-title">工具系统</h2>
-
-        <a class="chapter-link" data-chapter-item href="../pages/tool-primitives.html">
-          <span class="chapter-number">16</span>
-          <span>工具定义原语与执行管线</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/tool-catalog.html">
-          <span class="chapter-number">17</span>
-          <span>工具全集与能力分类</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/tool-parallelism.html">
-          <span class="chapter-number">18</span>
-          <span>工具并行器与结果顺序</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/permission-approval.html">
-          <span class="chapter-number">19</span>
-          <span>权限分析、审批与单调 Guard</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-    </section>
-    <section class="nav-part" data-part>
-      <h2 class="part-title">执行环境</h2>
-
-        <a class="chapter-link" data-chapter-item href="../pages/sandbox-filesystem.html">
-          <span class="chapter-number">20</span>
-          <span>Sandbox、Filesystem 与观察策略</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/shell-terminal-jobs.html">
-          <span class="chapter-number">21</span>
-          <span>Shell、PTY、Terminal 与后台作业</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/web-lsp-mcp-skill.html">
-          <span class="chapter-number">22</span>
-          <span>Web、LSP、MCP 与 Skill</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/code-mode-self-modification.html">
-          <span class="chapter-number">23</span>
-          <span>Code Mode、自修改与动态插件</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-    </section>
-    <section class="nav-part" data-part>
-      <h2 class="part-title">编排</h2>
-
-        <a class="chapter-link" data-chapter-item href="../pages/multi-agent.html">
-          <span class="chapter-number">24</span>
-          <span>多 Agent 协同</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/workflow-ralph.html">
-          <span class="chapter-number">25</span>
-          <span>Workflow 与 Ralph</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/inbox-steering-continuation.html">
-          <span class="chapter-number">26</span>
-          <span>Inbox、Steering 与 Continuation</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-    </section>
-    <section class="nav-part" data-part>
-      <h2 class="part-title">可靠性与产品面</h2>
-
-        <a class="chapter-link" data-chapter-item href="../pages/failure-recovery.html">
-          <span class="chapter-number">27</span>
-          <span>重试、错误、取消与恢复</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/observability.html">
-          <span class="chapter-number">28</span>
-          <span>可观测、Telemetry 与轨迹</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/api-sdk-acp.html">
-          <span class="chapter-number">29</span>
-          <span>API、SDK、JSON-RPC 与 ACP</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/web-ui.html">
-          <span class="chapter-number">30</span>
-          <span>Web UI 插件架构</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/security-trust.html">
-          <span class="chapter-number">31</span>
-          <span>安全模型与信任边界</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/testing-invariants.html">
-          <span class="chapter-number">32</span>
-          <span>测试、快照与运行时不变量</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-    </section>
-    <section class="nav-part" data-part>
-      <h2 class="part-title">综合结论</h2>
-
-        <a class="chapter-link" data-chapter-item href="../pages/tradeoffs.html">
-          <span class="chapter-number">33</span>
-          <span>优势、代价与设计取舍</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/open-questions.html">
-          <span class="chapter-number">34</span>
-          <span>缺口、限制与待验证问题</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-        <a class="chapter-link" data-chapter-item href="../pages/glossary-evidence.html">
-          <span class="chapter-number">35</span>
-          <span>术语、证据目录与源码索引</span>
-          <span class="status-dot queued" title="待研究"></span>
-        </a>
-    </section>
-    </aside>
-    <main class="main">
-      <div class="page-shell">
-        <article class="article" data-article>
-          <header>
-            <div class="page-kicker"><span>核心运行时</span><span>·</span><span>第 04 章</span></div>
-            <h1>启动、Profile、Bundle 与配置叠层</h1>
-            <p class="subtitle">运行中的 dsh 如何由有序插件树组合出来</p>
-            <div class="page-meta">
-              <span class="status queued">待研究</span>
-              <span>上游 47f943859b</span>
-              <span>范围：追踪 CLI 到 Loader、profile/bundle patch 顺序、隔离域、配置替换语义和卸载。</span>
-            </div>
-          </header>
-
-    <section class="placeholder">
-      <p class="eyebrow">研究队列</p>
-      <h2>本章尚未进入结论状态</h2>
-      <p><strong>当前范围：</strong>追踪 CLI 到 Loader、profile/bundle patch 顺序、隔离域、配置替换语义和卸载。</p>
-      <p>页面已经纳入全量研究地图，但尚未完成源码控制流复核。以下是升级为“已复核”之前必须覆盖的检查面：</p>
-      <ul class="placeholder-checks">
-        <li>实际 bundle / profile 装配入口</li>
-        <li>公开类型、事件与配置 schema</li>
-        <li>正常控制流与状态突变时机</li>
-        <li>并发、scope、所有权与 cleanup</li>
-        <li>错误、取消、重试和降级分支</li>
-        <li>持久化、projection 与 replay 语义</li>
-        <li>生产路径测试与运行时不变量</li>
-        <li>优势、代价、限制与待验证问题</li>
-      </ul>
-    </section>
-
-    <section class="learning-notes" aria-labelledby="learning-notes-title">
-      <h2 id="learning-notes-title">我的学习体会</h2>
-      <p class="privacy">内容仅自动保存到当前浏览器，不上传、不进入仓库。你可以导出 Markdown 自行归档。</p>
-      <textarea data-learning-notes aria-label="我的学习体会" placeholder="记录你的理解、疑问、反例和可迁移原则……"></textarea>
-      <div class="note-footer">
-        <span data-note-saved>本地草稿</span>
-        <button type="button" data-note-export>导出 Markdown</button>
-        <button type="button" class="danger" data-note-clear>清空</button>
-        <span data-note-count>0 字符</span>
-      </div>
-    </section>
-          <nav class="pagination" aria-label="章节翻页"><a href="../pages/module-atlas.html"><small>← 上一章 · 03</small><strong>219 个包的模块地图</strong></a><a class="next" href="../pages/agent-object-lifecycle.html"><small>下一章 · 05 →</small><strong>Agent 对象、注册表与生命周期</strong></a></nav>
-        </article>
-        <aside class="right-rail" aria-label="页内导航">
-          <h2 class="rail-title">本页目录</h2>
-          <nav class="toc" data-toc></nav>
-          <label class="jump-label" for="chapter-jump">跳转章节</label>
-          <select class="jump-select" id="chapter-jump" data-chapter-jump><option value="reading-guide">00 · 阅读入口与研究地图</option><option value="methodology">01 · 基线、方法与证据规则</option><option value="design-philosophy">02 · 设计哲学总论</option><option value="module-atlas">03 · 219 个包的模块地图</option><option value="boot-profiles-bundles" selected>04 · 启动、Profile、Bundle 与配置叠层</option><option value="agent-object-lifecycle">05 · Agent 对象、注册表与生命周期</option><option value="turn-step-loop">06 · Turn / Step / Loop 状态机</option><option value="prompt-context">07 · 提示词组装与上下文注入</option><option value="llm-adapters">08 · LLM Adapter 与会话协议转换</option><option value="session-event-model">09 · 内部会话结构与事件模型</option><option value="log-replay">10 · 日志、派生历史、重放与 Fork</option><option value="persistence-database">11 · 持久化与数据库设计</option><option value="projections-checkpoints">12 · Projection、Checkpoint 与冷启动</option><option value="compaction">13 · 压缩体系与上下文压力</option><option value="memory-knowledge">14 · 记忆与知识：有何能力、又刻意没有什么</option><option value="plan-goal-todo">15 · Plan、Goal 与 Todo</option><option value="tool-primitives">16 · 工具定义原语与执行管线</option><option value="tool-catalog">17 · 工具全集与能力分类</option><option value="tool-parallelism">18 · 工具并行器与结果顺序</option><option value="permission-approval">19 · 权限分析、审批与单调 Guard</option><option value="sandbox-filesystem">20 · Sandbox、Filesystem 与观察策略</option><option value="shell-terminal-jobs">21 · Shell、PTY、Terminal 与后台作业</option><option value="web-lsp-mcp-skill">22 · Web、LSP、MCP 与 Skill</option><option value="code-mode-self-modification">23 · Code Mode、自修改与动态插件</option><option value="multi-agent">24 · 多 Agent 协同</option><option value="workflow-ralph">25 · Workflow 与 Ralph</option><option value="inbox-steering-continuation">26 · Inbox、Steering 与 Continuation</option><option value="failure-recovery">27 · 重试、错误、取消与恢复</option><option value="observability">28 · 可观测、Telemetry 与轨迹</option><option value="api-sdk-acp">29 · API、SDK、JSON-RPC 与 ACP</option><option value="web-ui">30 · Web UI 插件架构</option><option value="security-trust">31 · 安全模型与信任边界</option><option value="testing-invariants">32 · 测试、快照与运行时不变量</option><option value="tradeoffs">33 · 优势、代价与设计取舍</option><option value="open-questions">34 · 缺口、限制与待验证问题</option><option value="glossary-evidence">35 · 术语、证据目录与源码索引</option></select>
-        </aside>
-      </div>
-      <footer class="footer">独立研究 · 固定源码基线 47f943859bef60e4160492346772ded9b24f765a · 学习笔记默认仅保存在浏览器本地</footer>
-    </main>
+<section>
+  <h2>3. The exact six-level precedence stack</h2>
+  <p>The final entry list starts empty and applies the following layers. Later layers have higher precedence:</p>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>Bundle patches</h3><p>Concatenated strictly in <code>dsh.profile.bundles</code> manifest order—normally base followed by a surface bundle.</p></div>
+    <div><span>2</span><h3>Profile user patch</h3><p><code>$DSH_HOME/profiles/&lt;name&gt;/cordis.patch.yml</code>, scoped to one Profile.</p></div>
+    <div><span>3</span><h3>Home user patch</h3><p><code>$DSH_HOME/cordis.patch.yml</code>, a machine-level preference across Profiles, so it outranks the Profile layer.</p></div>
+    <div><span>4</span><h3>CLI overlays</h3><p>All <code>--patch</code> files in their argv order.</p></div>
+    <div><span>5</span><h3>Launcher assembly overlay</h3><p>If an <code>agent-presets</code> row exists, the launcher injects the read-only preset root shipped with the installation.</p></div>
+    <div><span>6</span><h3>Telemetry hard-disable</h3><p>Any non-empty <code>DSH_TELEMETRY_DISABLED</code> value adds a final overlay that disables the row. A privacy switch prefers accidental off over accidental on.</p></div>
   </div>
-  <script src="../assets/site.js" defer></script>
-</body>
-</html>
+  <div class="claim fact"><div class="claim-label">Production control flow</div><p><code>allPatches()</code> flattens bundle, profile, home, and launcher overlays. <code>composeProfile()</code> first indexes rows from the initial user-selectable layers, then appends the preset and telemetry overrides whose semantics belong exclusively to the launcher. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/apps/cli/src/profile-boot.ts#L121-L170" title="Effective profile patch order: The application order for bundle, profile, home, CLI, launcher preset, and telemetry overlays, including construction of the row index." aria-label="Evidence PROFILE-COMPOSE">PROFILE-COMPOSE</a></p></div>
+  <div class="claim fact"><div class="claim-label">Isomorphic composition</div><p>Configuration dump, flag derivation, and real boot all share the same <code>applyEntryPatches([], ...)</code> semantics. A listed package without a <code>dsh.bundle.patch</code> declaration fails immediately instead of becoming a silent empty layer. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/boot/app-boot/src/profile.ts#L357-L420" title="Bundle resolution and isomorphic composition: Bundle declarations resolve in manifest order, missing dsh.bundle metadata fails, and the same applyEntryPatches operation used by boot composes over an empty root." aria-label="Evidence PROFILE-LOAD">PROFILE-LOAD</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/boot/app-boot/tests/profile.spec.ts#L121-L143" title="Bundle and user-layer ordering test: The test verifies bundle manifest order, wholesale configuration replacement by later layers, and empty composition without a user layer." aria-label="Evidence PROFILE-ORDER-TEST">PROFILE-ORDER-TEST</a></p></div>
+</section>
+
+<section>
+  <h2>4. Patch semantics: address a row, replace config wholesale</h2>
+  <div class="claim fact"><div class="claim-label">Configuration fact</div><p><code>dsh-base</code> performs one large <code>insert</code> over the empty root. Later patches address rows by <code>id</code>, with the last write winning. On a matching row, <code>config</code> is replaced wholesale rather than recursively deep-merged. File order does not encode load order; service availability drives activation. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/bundle/base/cordis.patch.yml#L1-L24" title="Base-bundle patch and activation semantics: Base is one insert over an empty root; later layers are last-write-wins by ID, config is replaced wholesale, and row order carries no load semantics." aria-label="Evidence BASE-BUNDLE-SEMANTICS">BASE-BUNDLE-SEMANTICS</a></p></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Operation</th><th>Effect</th><th>Frequent misreading</th></tr></thead>
+    <tbody>
+      <tr><td><code>{ id, config }</code></td><td>Replace the target row's complete <code>config</code></td><td>Writing one field does not retain other base fields</td></tr>
+      <tr><td><code>{ id, disabled }</code></td><td>Change whether the row may mount</td><td>Disable is not deletion; a later layer may explicitly override it</td></tr>
+      <tr><td><code>{ insert: [...] }</code></td><td>Add new plugin rows</td><td>Insertion position helps readers but is not a dependency-order mechanism</td></tr>
+      <tr><td>Target a missing <code>id</code></td><td>Loader emits a skipped-patch warning</td><td>This permits cross-surface overlays, but a misspelled ID may also remain only a warning</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">Design assessment</div><p>Wholesale replacement makes ownership and the final shape of one row deterministic, avoiding implicit rules for merging arrays, deleting fields, or combining expressions. The cost is repetition: an upper layer must restate the complete configuration. It fits small deployment overrides better than huge, fast-evolving nested objects exposed directly to ordinary users.</p></div>
+</section>
+
+<section>
+  <h2>5. Module resolution: installation first, Profile extension second</h2>
+  <div class="claim fact"><div class="claim-label">Production source</div><p>Bundle resolution tries the dsh installation anchor before the Profile's own <code>package.json</code>. Before launch, a breadth-first traversal of the application's <code>dependencies + peerDependencies</code> closure creates flat links under <code>$DSH_HOME/profiles/node_modules</code>. Node's parent-directory fallback from a Profile-private <code>node_modules</code> can then find installation-owned packages. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/boot/app-boot/src/profile.ts#L204-L255" title="Flat module fallback for profiles: A breadth-first traversal of dependencies and peerDependencies creates a profiles/node_modules symlink closure from installation locations." aria-label="Evidence PROFILE-MODULE-FALLBACK">PROFILE-MODULE-FALLBACK</a></p></div>
+  <p>This produces two coexisting resolution worlds:</p>
+  <div class="principle-grid">
+    <div><strong>Installation-owned</strong><span>official bundles / providers / definitions</span></div>
+    <div><strong>Profile-owned</strong><span>user-installed out-of-tree plugins</span></div>
+  </div>
+  <div class="claim inference"><div class="claim-label">Mechanism-level deduction</div><p>The flat fallback does more than make packages discoverable. It helps an out-of-tree plugin and official packages resolve the same Cordis and service-definition instances. If each side loads its own framework copy, types may look identical while runtime context keys and registry identity no longer meet.</p></div>
+</section>
+
+<section>
+  <h2>6. Boot is a commit protocol, not best-effort mounting</h2>
+  <div class="claim fact"><div class="claim-label">Production control flow</div><p><code>boot()</code> creates the root Context, provides the dsh home, installs Loader, and runs host <code>prepare</code>. It then mounts the root Include, waits for Loader settlement, and audits that every entry activated. Any failure first disposes the partial root and then throws a diagnostic containing the phase, wrapper chain, and deepest plugin stack. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/boot/app-boot/src/index.ts#L757-L801" title="Transactional boot and failure cleanup: Host preparation precedes tree mounting, activation is audited after Loader settlement, and any failure disposes the partial root while preserving the deepest error stack." aria-label="Evidence BOOT-TRANSACTION">BOOT-TRANSACTION</a></p></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Stage</th><th>Visible state</th><th>Failure ownership</th></tr></thead>
+    <tbody>
+      <tr><td>Context + Loader</td><td>No configuration-tree plugins exist yet</td><td>Reported as host preparation failure</td></tr>
+      <tr><td>Host prepare</td><td>Frozen environment and argv facts have been provided</td><td>A failure disposes the entire root</td></tr>
+      <tr><td>Include mount / settle</td><td>Plugins activate progressively as dependencies resolve</td><td>Transactional Loader wraps the failure; the root rolls back uniformly</td></tr>
+      <tr><td>Activation audit</td><td>Only a settled, live tree may return</td><td>Missing fibers and never-activating entries reject startup</td></tr>
+      <tr><td>Runtime</td><td>A signal or surface may dispose the root</td><td>Single-shot root-fiber disposal retracts effects</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">Design assessment</div><p>This protocol separates “declared in configuration” from “actually available at runtime.” The commit point is Loader completion plus the activation audit. Partial-service startup flexibility is traded for refusing to serve from a silently half-mounted tree.</p></div>
+</section>
+
+<section>
+  <h2>7. Live configuration preserves the last valid tree</h2>
+  <div class="claim fact"><div class="claim-label">Production control flow</div><p>When either Profile or home patch changes, the launcher rereads both user files in the same generation and recomposes them between fixed bundles and higher-priority overlays. Every generation receives a new deep clone so Include's in-place mutation of inserted rows cannot contaminate the next composition. The result is applied transactionally through the root Include's <code>entry.update()</code>. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/apps/cli/src/profile-boot.ts#L227-L299" title="Live recomposition of user patches: Each generation rereads both user layers, clones patches to prevent reference contamination, and mounts a config-only HMR instance when needed." aria-label="Evidence PROFILE-LIVE">PROFILE-LIVE</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/boot/app-boot/src/index.ts#L225-L265" title="Transactional user-configuration refresh: HMR watches the exact user patch, regenerates the full patch list, and replaces it transactionally through entry.update; shutdown races return a no-op disposer." aria-label="Evidence BOOT-HMR">BOOT-HMR</a></p></div>
+  <div class="claim fact"><div class="claim-label">Failure-path test</div><p>An integration-level test writes a valid configuration, a plugin-startup failure, a syntax error, a recovered configuration, and finally removes the file. Both failures broadcast an error and retain the previous valid tree; recovery applies the new tree, and deletion restores the application-owned layer. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/boot/app-boot/tests/user-patches.spec.ts#L315-L371" title="HMR last-known-good configuration test: The test covers addition, apply failure, parse failure, recovery, and removal; failed candidates never replace the previous valid plugin tree." aria-label="Evidence PROFILE-HMR-TEST">PROFILE-HMR-TEST</a></p></div>
+  <p>The Web bundle currently disables shared module HMR, but the launcher does not let the configuration hot-reload contract disappear. If no HMR service exists, it mounts a timer and a watch-only HMR instance with no module roots solely for the two user patch files.</p>
+</section>
+
+<section>
+  <h2>8. Base, Headless, and Web: one spine, different product planes</h2>
+  <div class="claim fact"><div class="claim-label">Base</div><p>The base bundle directly assembles the shared spine: LLM registry, sessions, Typert API, Agent service, jobs, retry, settings, credentials, multiple provider adapters, and JSONL persistence. Later rows continue with tools, compaction, multi-Agent capabilities, and the loop. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/bundle/base/cordis.patch.yml#L24-L100" title="The base bundle runtime spine: Base directly assembles shared LLM, session, API, agent, jobs, retry, settings, credentials, adapter, and JSONL persistence services." aria-label="Evidence BASE-BUNDLE-SPINE">BASE-BUNDLE-SPINE</a></p></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Surface</th><th>Additions over base</th><th>Agent-capability ownership</th><th>Lifecycle</th></tr></thead>
+    <tbody>
+      <tr><td>Headless</td><td>Code runtime, launch-argument provider, and one-shot runner; no Host, HTTP, Web, or browser</td><td>Process-level Agent plane from base</td><td>Requests bounded exit when the task finishes</td></tr>
+      <tr><td>Web</td><td>Host, storage, projection cache, HTTP/API, browser module roster, and UI</td><td>Disables per-Agent base rows and remounts them inside each session's preset realm</td><td>Long-lived, with concurrent sessions</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Headless evidence</div><p>The headless bundle explicitly mounts no Web or HTTP surface. An ordinary provider interprets the positional task, and its runner creates an Agent through the core registry. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/bundle/headless/cordis.patch.yml#L1-L35" title="The headless product surface: Headless mounts no Host, HTTP, Web, or browser plugins; it adds only the code runtime, launch-argument provider, and a one-shot Agent driver." aria-label="Evidence HEADLESS-BUNDLE">HEADLESS-BUNDLE</a></p></div>
+  <div class="claim fact"><div class="claim-label">Web evidence</div><p>Web disables base rows belonging to one Agent—tools, prompt contributors, compaction, and delegation—and rebuilds them through per-session presets. Cross-session registries or services read by host RPC, including jobs, goals, token metering, and subagent state, remain in the host plane. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/bundle/web-app/cordis.patch.yml#L276-L408" title="The Web host-plane and agent-plane boundary: Web disables per-Agent capability rows from base and mounts them through per-session presets, while cross-session registries and host-API dependencies remain in the host plane." aria-label="Evidence WEB-AGENT-PLANE">WEB-AGENT-PLANE</a></p></div>
+  <div class="claim inference"><div class="claim-label">Ownership deduction</div><p>Whether a capability belongs in a preset cannot be inferred from its name. One must trace its readers, whether a registry spans sessions, whether provider names are globally unique, and which context a host RPC uses to resolve the service. The long Web-patch commentary is effectively a struct-lifetime audit: process state misplaced in session scope produces missing browser services, broken cross-session queries, or duplicate registration collisions.</p></div>
+</section>
+
+<section>
+  <h2>9. Benefits, costs, and concrete risks</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Design choice</th><th>What it buys</th><th>What it costs</th></tr></thead>
+    <tbody>
+      <tr><td>Empty root + patch composition</td><td>An exportable, overridable, live-updatable tree without hard-coded products</td><td>Configuration is code and can affect any plugin lifecycle</td></tr>
+      <tr><td>Wholesale replacement by ID</td><td>Deterministic override results and simple deletion semantics</td><td>Upper configurations can drift when they fail to restate newly added fields</td></tr>
+      <tr><td>Service-driven activation</td><td>Declaration order decouples from dependency order</td><td>YAML alone does not reveal the actual activation topology</td></tr>
+      <tr><td>Two-anchor resolution</td><td>Official installation and user plugins can compose into one Profile</td><td>Peer identity, symlinks, and package-manager behavior become runtime correctness concerns</td></tr>
+      <tr><td>Transactional boot/HMR</td><td>No half-valid tree; failures retain the last known-good state</td><td>Loader and effect disposal must be exceptionally reliable, and diagnostics become deeper</td></tr>
+      <tr><td>Web per-session presets</td><td>Capability and trust configuration can be isolated per session</td><td>The host/session ownership boundary is complex and every new plugin requires another audit</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">Chapter assessment</div><p>DeepSeek Harness unifies deployment, product surfaces, Agent capabilities, and user extension under one patchable plugin-tree language. That unity is powerful: configuration dump, boot, hot reload, and per-session presets share underlying semantics. It does not remove complexity; it concentrates complexity in stable entry IDs, scope ownership, service dependencies, module identity, and transactional lifecycle. The design stays maintainable only when runtime invariants, composition tests, and observable effective configuration accompany it.</p></div>
+</section>
+
+<section>
+  <h2>Chapter verification checklist</h2>
+  <ul class="audit-list">
+    <li>Traced CLI profile dispatch through <code>runProfile()</code>.</li>
+    <li>Verified the actual order of bundle, profile, home, CLI, and launcher overlays.</li>
+    <li>Verified wholesale config replacement and service-driven rather than row-driven activation.</li>
+    <li>Verified installation and Profile anchors plus the breadth-first module fallback.</li>
+    <li>Traced boot commit points, failure cleanup, signal handling, and exit races.</li>
+    <li>Used failure/recovery tests to verify last-known-good HMR semantics.</li>
+    <li>Audited base, headless, Web, and the host/Agent-plane ownership boundary separately.</li>
+  </ul>
+</section>
+<section class="learning-notes" aria-labelledby="learning-notes-title"><h2 id="learning-notes-title">My Learning Notes</h2>
+    <p class="privacy">Autosaved only in this browser. Nothing is uploaded or committed. Export Markdown whenever you want to keep a copy.</p><textarea data-learning-notes aria-label="My Learning Notes" placeholder="Record your understanding, questions, counterexamples, and transferable principles…"></textarea>
+    <div class="note-footer"><span data-note-saved>Local draft</span><button type="button" data-note-export>Export Markdown</button>
+    <button type="button" class="danger" data-note-clear>Clear</button><span data-note-count>0 characters</span></div></section><nav class="pagination" aria-label="Chapter pagination"><a href="../pages/module-atlas.html"><small>← Previous chapter · 03</small><strong>An Atlas of 219 Packages</strong></a><a class="next" href="../pages/agent-object-lifecycle.html"><small>Next chapter · 05 →</small><strong>Agent Objects, Registry, and Lifecycle</strong></a></nav></article>
+      <aside class="right-rail" aria-label="On this page"><h2 class="rail-title">On this page</h2><nav class="toc" data-toc></nav><label class="jump-label" for="chapter-jump">Jump to chapter</label><select class="jump-select" id="chapter-jump" data-chapter-jump><option value="reading-guide">00 · Reading Guide and Research Map</option><option value="methodology">01 · Baseline, Method, and Evidence Rules</option><option value="design-philosophy">02 · Design Philosophy</option><option value="module-atlas">03 · An Atlas of 219 Packages</option><option value="boot-profiles-bundles" selected>04 · Boot, Profiles, Bundles, and Configuration Layers</option><option value="agent-object-lifecycle">05 · Agent Objects, Registry, and Lifecycle</option><option value="turn-step-loop">06 · The Turn / Step / Loop State Machine</option><option value="prompt-context">07 · Prompt Assembly and Context Injection</option><option value="llm-adapters">08 · LLM Adapters and Conversation Protocol Translation</option><option value="session-event-model">09 · Internal Sessions and the Event Model</option><option value="log-replay">10 · Logs, Derived History, Replay, and Forking</option><option value="persistence-database">11 · Persistence and Database Design</option><option value="projections-checkpoints">12 · Projections, Checkpoints, and Cold Start</option><option value="compaction">13 · Compaction and Context Pressure</option><option value="memory-knowledge">14 · Memory and Knowledge: Capabilities and Deliberate Omissions</option><option value="plan-goal-todo">15 · Plan, Goal, and Todo</option><option value="tool-primitives">16 · Tool Definition Primitives and the Execution Pipeline</option><option value="tool-catalog">17 · Complete Tool Catalog and Capability Taxonomy</option><option value="tool-parallelism">18 · Tool Parallelism and Result Ordering</option><option value="permission-approval">19 · Permission Analysis, Approval, and Monotonic Guards</option><option value="sandbox-filesystem">20 · Sandbox, Filesystem, and Observation Policy</option><option value="shell-terminal-jobs">21 · Shell, PTY, Terminal, and Background Jobs</option><option value="web-lsp-mcp-skill">22 · Web, LSP, MCP, and Skills</option><option value="code-mode-self-modification">23 · Code Mode, Self-Modification, and Dynamic Plugins</option><option value="multi-agent">24 · Multi-Agent Coordination</option><option value="workflow-ralph">25 · Workflow and Ralph</option><option value="inbox-steering-continuation">26 · Inbox, Steering, and Continuation</option><option value="failure-recovery">27 · Retries, Errors, Cancellation, and Recovery</option><option value="observability">28 · Observability, Telemetry, and Trajectories</option><option value="api-sdk-acp">29 · API, SDK, JSON-RPC, and ACP</option><option value="web-ui">30 · The Web UI Plugin Architecture</option><option value="security-trust">31 · Security Model and Trust Boundaries</option><option value="testing-invariants">32 · Tests, Snapshots, and Runtime Invariants</option><option value="tradeoffs">33 · Strengths, Costs, and Design Tradeoffs</option><option value="open-questions">34 · Gaps, Limitations, and Open Questions</option><option value="glossary-evidence">35 · Glossary, Evidence Catalog, and Source Index</option></select></aside></div>
+      <footer class="footer">Independent research · Pinned baseline 47f943859bef60e4160492346772ded9b24f765a · learning notes stay local by default</footer></main></div>
+  <script src="../assets/site.js" defer></script></body></html>
