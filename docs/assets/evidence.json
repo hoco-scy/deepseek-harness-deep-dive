@@ -10508,9 +10508,9 @@
       "path": ".github/workflows/ci.yml",
       "lines": "328-489",
       "title": "Wine 与原生 Windows 作业",
-      "supports": "分别定义必需的 Wine build/site 信号和使用真实 Windows kernel 的完整但非阻塞作业。",
+      "supports": "定义 pull-request Wine job 与真实 Windows kernel 的完整作业；后者明确不进入 all-checks-passed.needs。",
       "titleEn": "Wine and native Windows jobs",
-      "supportsEn": "Separately defines required Wine build and site signals and a complete but nonblocking job on a real Windows kernel."
+      "supportsEn": "Defines the pull-request Wine job and a complete job on a real Windows kernel; the latter is explicitly absent from all-checks-passed.needs."
     },
     {
       "id": "TINV-WINE-RUNNER",
@@ -10518,19 +10518,19 @@
       "path": "scripts/wine-windows-gates.sh",
       "lines": "31-282",
       "title": "Wine Windows runner 的实质检查",
-      "supports": "Runner 校验 Windows Node archive checksum 和 win32 x64 身份，并并行执行 Host/Client build 与 VitePress production-site build 两个 blocking surface。",
+      "supports": "Runner 校验 Windows Node archive checksum 和 win32 x64 身份，并并行执行 Host/Client build 与 VitePress production-site build 两个 surface。",
       "titleEn": "Substantive checks in the Wine Windows runner",
-      "supportsEn": "The runner verifies the Windows Node archive checksum and win32 x64 identity, then runs Host and Client build plus VitePress production-site build as the two blocking surfaces."
+      "supportsEn": "The runner verifies the Windows Node archive checksum and win32 x64 identity, then runs Host and Client build plus VitePress production-site build as its two surfaces."
     },
     {
       "id": "TINV-REQUIRED-VERDICT",
       "kind": "production-config",
       "path": ".github/workflows/ci.yml",
       "lines": "904-935",
-      "title": "必需结果汇总",
-      "supports": "列出 required job，排除原生 Windows，并把跳过、取消或失败都判为总门禁失败。",
-      "titleEn": "Required-result aggregation",
-      "supportsEn": "Lists required jobs, excludes native Windows, and makes skipped, cancelled, or failed results fail the aggregate verdict."
+      "title": "all-checks-passed 结果汇总",
+      "supports": "列出 aggregate 依赖、排除原生 Windows，并把跳过、取消或失败都判为汇总失败；该 YAML 本身不证明实时 ruleset。",
+      "titleEn": "all-checks-passed result aggregation",
+      "supportsEn": "Lists aggregate dependencies, excludes native Windows, and makes skipped, cancelled, or failed results fail the aggregate; the YAML alone does not prove the live ruleset."
     },
     {
       "id": "TINV-REGISTRY-TEST",

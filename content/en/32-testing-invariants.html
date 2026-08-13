@@ -111,16 +111,17 @@ real assembled subprocess ◄─────────────────
 <section>
   <h2>11. The platform matrix assigns different evidence responsibilities instead of copying one command</h2>
   <p>The Linux pull-request workflow separates Node 24 static, coverage, and consumer jobs.<evidence id="TINV-CI-LINUX"></evidence>The consumer gate graph owns the build, package-consumption checks, assembled snapshots, a browser snapshot, and built-bin smoke.<evidence id="TINV-CI-CONSUMERS"></evidence>A separate matrix runs compatibility contracts on Node 22.19 and 26 so the primary version's green result cannot hide support-boundary regressions.<evidence id="TINV-NODE-MATRIX"></evidence></p>
-  <p>Windows has two distinct signals. The required Wine workflow job delegates to a runner that provisions checksum-verified Windows Node, checks that it reports <code>win32 x64</code>, and runs only workspace build and documentation-site production build surfaces.<evidence id="TINV-WINDOWS"></evidence><evidence id="TINV-WINE-RUNNER"></evidence> <code>windows-native</code> runs the complete inventory on a real Windows kernel, but reports independently and does not enter the required verdict. The final <code>all checks passed</code> job uses <code>if: always()</code> to aggregate named blocking jobs and treats failed, cancelled, and skipped as failure; native Windows is explicitly absent from <code>needs</code>.<evidence id="TINV-REQUIRED-VERDICT"></evidence></p>
+  <p>Windows has two distinct signals. The pull-request <code>windows</code> workflow job delegates to a runner that provisions checksum-verified Windows Node, checks that it reports <code>win32 x64</code>, and runs only workspace build and documentation-site production build surfaces.<evidence id="TINV-WINDOWS"></evidence><evidence id="TINV-WINE-RUNNER"></evidence> <code>windows-native</code> runs the complete inventory on a real Windows kernel, but reports independently and is absent from <code>all-checks-passed.needs</code>. The final <code>all checks passed</code> job uses <code>if: always()</code> to aggregate named jobs and treats failed, cancelled, and skipped as failure.<evidence id="TINV-REQUIRED-VERDICT"></evidence></p>
   <div class="table-scroll"><table>
     <thead><tr><th>Signal</th><th>Conclusion it owns</th><th>Conclusion it does not own</th></tr></thead>
     <tbody>
       <tr><td>Linux Node 24</td><td>Primary static, coverage, assembled snapshot, and artifact consumption</td><td>Windows-kernel behavior</td></tr>
       <tr><td>Node 22.19 / 26</td><td>Explicit compatibility smokes</td><td>The complete primary gate inventory</td></tr>
-      <tr><td>Wine Windows</td><td>Required win32 build and site executability</td><td>Real kernel, ACL, and native-process semantics</td></tr>
-      <tr><td>Native Windows</td><td>Complete observational inventory on a real kernel</td><td>The current branch-protection verdict</td></tr>
+      <tr><td>Wine Windows</td><td>win32 build and site executability inside the <code>all-checks-passed</code> aggregate</td><td>Real kernel, ACL, and native-process semantics</td></tr>
+      <tr><td>Native Windows</td><td>Complete observational inventory on a real kernel</td><td>The <code>all-checks-passed</code> aggregate</td></tr>
     </tbody>
   </table></div>
+  <aside class="caveat"><strong>Repository-policy boundary:</strong> these workflow files establish jobs, triggers, and the dependency graph of <code>all-checks-passed</code>. This study did not verify the repository's live ruleset or required-status configuration, so it does not claim which checks can actually block a merge.</aside>
 </section>
 
 <section>
@@ -133,7 +134,7 @@ real assembled subprocess ◄─────────────────
       <tr><td>Mounted companions reject encoded relational violations at runtime</td><td>A custom composition without those companions receives the same protection automatically</td></tr>
       <tr><td>Current runtime and configuration references are closed</td><td>External systems, credentials, networking, and business behavior are available</td></tr>
       <tr><td>Mechanical generated regions and pasted types match source</td><td>Every causal explanation in hand-written prose is accurate</td></tr>
-      <tr><td>Required jobs succeeded together</td><td>Observational lanes or independent workflows belong to the same blocking verdict</td></tr>
+      <tr><td>Jobs named by <code>all-checks-passed.needs</code> succeeded together</td><td>Observational lanes or independent workflows belong to that same aggregate</td></tr>
     </tbody>
   </table></div>
   <p>The essential engineering discipline is not to add a larger “total test” label, but to name the needed counterexample during planning: local branch, real Loader composition, durable transcript, cross-event relationship, deployment closure, generated contract, or specific kernel. Only then does a new test land in the tier that would actually turn red for the real regression.</p>
