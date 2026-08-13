@@ -28,6 +28,9 @@ for (const chapter of manifests.en.chapters) {
   const enSource = join(content, "en", `${chapter.id}-${chapter.slug}.html`);
   const zhSource = join(content, `${chapter.id}-${chapter.slug}.html`);
   assert(existsSync(enSource) === existsSync(zhSource), `${chapter.slug}: substantive content exists in only one language`);
+  if (chapter.status === "verified") {
+    assert(existsSync(enSource) && existsSync(zhSource), `${chapter.slug}: verified chapter is missing bilingual substantive content`);
+  }
   for (const [lang, path] of [
     ["en", join(docs, "pages", `${chapter.slug}.html`)],
     ["zh", join(docs, "zh", "pages", `${chapter.slug}.html`)],
@@ -61,10 +64,10 @@ const readme = readFileSync(join(root, "README.md"), "utf8");
 assert(readme.indexOf("<a id=\"english\"") >= 0, "README: missing English anchor");
 assert(readme.indexOf("<a id=\"中文\"") > readme.indexOf("<a id=\"english\""), "README: English must be the default first section");
 
-const tracked = execFileSync("git", ["ls-files", "-z"], { cwd: root }).toString("utf8").split("\0").filter(Boolean);
+const publicFiles = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard", "-z"], { cwd: root }).toString("utf8").split("\0").filter(Boolean);
 const textExtensions = new Set(["", ".css", ".html", ".js", ".json", ".md", ".mjs", ".yml", ".yaml"]);
 const forbidden = [new RegExp(["insight", "flow"].join("[ -]?"), "i"), new RegExp(["go", "claw"].join(""), "i")];
-for (const relative of tracked) {
+for (const relative of publicFiles) {
   if (!textExtensions.has(extname(relative))) continue;
   const path = join(root, relative);
   if (!existsSync(path)) continue;
@@ -76,4 +79,4 @@ if (errors.length > 0) {
   console.error(errors.map((error) => `- ${error}`).join("\n"));
   process.exit(1);
 }
-console.log(`site-check-ok localized-pages=${manifests.en.chapters.length * 2} evidence=${evidence.items.length} tracked=${tracked.length}`);
+console.log(`site-check-ok localized-pages=${manifests.en.chapters.length * 2} evidence=${evidence.items.length} files=${publicFiles.length}`);

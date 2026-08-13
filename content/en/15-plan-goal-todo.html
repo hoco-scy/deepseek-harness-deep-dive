@@ -1,0 +1,244 @@
+<section>
+  <h2>Conclusion: Plan, Goal, and Todo Are Not Three Names for One “Planning State”</h2>
+  <div class="thesis"><p>DeepSeek Harness places three easily confused collaboration primitives in different lifecycles. Plan mode changes the system guidance for the next model request and records the effective boolean in the Session. Goal retains one revisable, pausable, resumable long-running completion objective and uses a separate process-local activation to decide whether work may continue automatically. Todo is a lightweight list that the model replaces wholesale while working: durable events preserve its history, but the UI-facing “standing plan” is cleared when the next Turn starts.</p></div>
+  <p>Entering Plan therefore does not create a Goal, creating a Goal does not synthesize Todos, and several <code>in_progress</code> Todo items do not make the Todo tool itself execute concurrently. All three can coexist, but none is a hidden database or scheduler for the others.</p>
+  <div class="claim fact"><div class="claim-label">Shortest distinction</div><p>Plan answers “under which collaboration policy should the next request reason?” Goal answers “what must still be completed across autonomous rounds?” Todo answers “which concrete steps does the model currently claim are pending, active, or complete?” <evidence id="PLANSTATE-PLAN-STATE"></evidence><evidence id="PLANSTATE-GOAL-TYPES"></evidence><evidence id="PLANSTATE-TODO-TOOL"></evidence></p></div>
+</section>
+
+<section>
+  <h2>1. Three State Machines: Authority, Lifetime, and Driver</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Primitive</th><th>Authoritative fact</th><th>Non-durable state</th><th>Who advances it</th><th>When it ends or disappears</th></tr></thead>
+    <tbody>
+      <tr><td>Plan</td><td>Last <code>plan/mode { active }</code></td><td>Pending intent awaiting a Step boundary</td><td>Human <code>/plan</code>; model via approved <code>exit_plan_mode</code></td><td>Explicit exit; never ends merely because a Turn ended</td></tr>
+      <tr><td>Goal</td><td>Whole <code>goal/change</code> snapshot or clear tombstone, plus admitted goal-round messages</td><td><code>armed / disarmed</code> activation and driver reservation</td><td>GoalService mutations; optional round driver</td><td><code>complete</code>, <code>blocked</code>, <code>paused</code>, or clear; an active goal may also be merely disarmed</td></tr>
+      <tr><td>Todo</td><td>The complete list in each <code>todo/write</code> snapshot</td><td>No separate scheduling state</td><td>The calling agent's <code>todo_write</code></td><td>Events remain forever; the UI projection becomes null at the next <code>turn/start</code></td></tr>
+    </tbody>
+  </table></div>
+  <p>All three gain replayability from SessionEvent, but “durable event” does not mean “equally long-lived presentation.” Plan and Goal fold current state across Turns. Todo events are durable too, while the product projection deliberately interprets the list as standing only until the next Turn.</p>
+</section>
+
+<section>
+  <h2>2. Plan Has Two States: Logged Mode and Pending Selection</h2>
+  <p><code>plan/mode</code> is a log-only, non-Surface, last-write-wins boolean event; the default without one is <code>false</code>. A committed value survives Session resume, Fork, and full-log replay. The controller also owns a Session-keyed <code>WeakMap</code> containing the target mode that has not reached its commit boundary and whether the switch should be narrated to the model. <evidence id="PLANSTATE-PLAN-STATE"></evidence></p>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>Idle selection</h3><p>Append <code>plan/mode</code> immediately when no Turn is open because no in-Turn pre-Step remains to wait for.</p></div>
+    <div><span>2</span><h3>Running selection</h3><p>Store only a pending intent; system-prompt assembly already reads that target value.</p></div>
+    <div><span>3</span><h3>Accepted boundary</h3><p>The pre-Step listener first awaits downstream policy and appends only for a non-rejected, non-aborted proposed Step.</p></div>
+    <div><span>4</span><h3>Switch narration</h3><p>Add one plugin user notice only when the latest request header told the model the opposite mode.</p></div>
+  </div>
+  <div class="claim fact"><div class="claim-label">Failure semantics</div><p>A boundary append failure warns, allows the current Step to continue, and retains the pending intent for a later boundary. Same-Step Provider recovery reuses frozen assembly and does not consume the selection. Real-loop tests require the mode to take effect only in a later Step while keeping tool schemas identical. <evidence id="PLANSTATE-PLAN-BOUNDARY"></evidence><evidence id="PLANSTATE-PLAN-LOOP-TEST"></evidence></p></div>
+</section>
+
+<section>
+  <h2>3. Plan Changes Guidance, Not Permission or the Tool Catalog</h2>
+  <p>While active, <code>plan:policy</code> renders the deployment-provided <code>section</code> at system-prompt order 50; while inactive, it contributes empty text. The shipped policy asks the model to explore first, restrict itself to non-mutating investigation, submit a decision-complete plan, and explicitly avoid using Todo as a substitute for the reviewed plan. <evidence id="PLANSTATE-PLAN-ASSEMBLY"></evidence><evidence id="PLANSTATE-SHIPPED-PLAN-POLICY"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Soft policy, not enforcement</div><p><code>exit_plan_mode</code> remains registered in both modes, and Plan does not filter other tools. An integration test even lets a write tool execute successfully while Plan is active. Actual restrictions depend on model compliance plus independent sandbox, approval, and tool policy. Plan mode neither reads nor writes those permission states. <evidence id="PLANSTATE-PLAN-LOOP-TEST"></evidence></p></div>
+  <p>This keeps the tool schema and Code Mode SDK prefix stable, but an application cannot interpret a lit Plan chip as proof that mutation is rejected at execution. A deployment needing hard read-only behavior must configure that separately.</p>
+</section>
+
+<section>
+  <h2>4. Three Plan Control Surfaces: Command Entry, Tool Review, and Direct Service</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Entry</th><th>Behavior</th><th>Model-history effect</th><th>Authority or failure boundary</th></tr></thead>
+    <tbody>
+      <tr><td><code>/plan</code></td><td>Select active</td><td>The command line stays outside Surface</td><td>Runs through the generic command plane; logs run/done</td></tr>
+      <tr><td><code>/plan &lt;message&gt;</code></td><td>Select active, then submit an ordinary user message through <code>agent.steer()</code></td><td>Only the suffix message enters model history</td><td>Selection happens first; a later steering failure does not roll it back</td></tr>
+      <tr><td><code>/plan off</code></td><td>Leave, or cancel an uncommitted entry</td><td>No direct model input; a switch notice may be added when needed</td><td>Only exact lowercase <code>off</code> is the control word</td></tr>
+      <tr><td><code>exit_plan_mode(plan)</code></td><td>Submit complete Markdown for human review</td><td>Call and result remain ordinary tool history</td><td>Committed mode must be active and review must explicitly approve</td></tr>
+      <tr><td><code>ctx.planMode.set()</code></td><td>A trusted plugin directly selects a target</td><td>Influences the model only through later policy or notice</td><td>In-process service, not a public user protocol</td></tr>
+    </tbody>
+  </table></div>
+  <p>The exit tool requires trimmed input beginning with a level-one <code>#</code> heading. Consent requires exactly one <code>plan-review</code> answer, exactly one selected <code>Approve</code>, and no custom text. Keep planning, free-form feedback, duplicate answers, and missing answers all become failed tool results so the model revises. Approval records only a silent pending exit: the current assistant tool batch remains under Plan, and the next accepted pre-Step commits the switch. <evidence id="PLANSTATE-PLAN-CONTROLS"></evidence></p>
+  <div class="claim fact"><div class="claim-label">Human ownership</div><p>The user-question service requires a supplied Agent to be the exact live registry instance and a current runtime root. A child owned by another live Agent cannot open review. Durable Fork lineage does not permanently remove authority: a Session later resumed as an independent root may review normally. <evidence id="PLANSTATE-PLAN-REVIEW-AUTH"></evidence></p></div>
+</section>
+
+<section>
+  <h2>5. Plan’s Web View, Projection, and Crash Recovery Are Not Equivalent</h2>
+  <p>The <code>plan</code> projection folds both <code>command/run(name="plan")</code> and <code>plan/mode</code>. The command derives a wanted target; the mode event commits active and clears wanted. It can therefore recover <code>{ active, pending }</code> from a cold log and distribute it through history baselines and <code>session/projection</code> frames to multiple browsers. <evidence id="PLANSTATE-PLAN-PROJECTION"></evidence></p>
+  <p>The Web renders a <code>Plan ×</code> chip only while the effective target is Plan; clicking it executes <code>/plan off</code> through the command Remote. The same projection selects the composer placeholder. A dedicated review panel presents Approve, Keep planning, and discuss/dismiss; providers that do not understand the intent can still render generic options. <evidence id="PLANSTATE-PLAN-UI"></evidence><evidence id="PLANSTATE-PLAN-REVIEW-UI"></evidence></p>
+  <aside class="caveat"><strong>Confirmed crash split:</strong> projection pending comes from durable <code>command/run</code>, while the controller's pending intent exists only in a <code>WeakMap</code>. If the user selects a mode after the Turn's final accepted pre-Step and the process exits before another accepted in-Turn pre-Step, a cold UI can still show the pending target, yet the new controller does not reconstruct the action from the command event. The user must reapply the selection. The upstream README acknowledges that the selection is lost, but the projection's effective-target presentation may temporarily lead the actual prompt policy. <evidence id="PLANSTATE-PLAN-BOUNDARY"></evidence><evidence id="PLANSTATE-PLAN-PROJECTION"></evidence><evidence id="PLANSTATE-PLAN-LIMITATION"></evidence></aside>
+  <p>There is no independent <code>plan.get</code>/<code>plan.set</code> business API family. The Web uses generic command Remote plus projection, the model uses the stable exit tool, and host plugins use the service.</p>
+</section>
+
+<section>
+  <h2>6. Goal Is a Complete State Machine with Compare-and-Set Revisions</h2>
+  <p>A Goal identity remains stable across revisions, while <code>GoalRef { id, revision }</code> identifies one exact version. Every snapshot carries objective, phase, and maxGoalRounds; the blocked phase additionally—and only—carries <code>{ code, message }</code>. The four phases are <code>active</code>, <code>paused</code>, <code>blocked</code>, and <code>complete</code>. <evidence id="PLANSTATE-GOAL-TYPES"></evidence></p>
+  <pre><code>create → active(r1)
+active → edit → active(r+1)
+active → pause → paused(r+1)
+active → block → blocked(r+1)
+active|paused|blocked → complete(r+1)
+active|paused|blocked --resume, capacity remains→ active(r+1)
+any current → clear tombstone(r+1)
+complete → create a fresh id at r1</code></pre>
+  <div class="claim fact"><div class="claim-label">Revision is not a round</div><p>Create, edit, pause, resume, complete, block, and clear advance revision. An admitted positive goal-round <code>user/message</code> increments only <code>roundsStarted</code>, not revision. The next goal mutation copies the current round count into its new whole snapshot. The strict fold rejects revision gaps, illegal phase transitions, reused goal ids, regressing timestamps, and non-sequential rounds. <evidence id="PLANSTATE-GOAL-FOLD"></evidence></p></div>
+</section>
+
+<section>
+  <h2>7. Durable Phase and Process-Local Activation Are Separate Axes</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Combination</th><th>Meaning</th><th>Automatic continuation</th></tr></thead>
+    <tbody>
+      <tr><td><code>active + armed</code></td><td>The objective may continue and this process holds automatic authority</td><td>The optional driver may schedule after idle</td></tr>
+      <tr><td><code>active + disarmed</code></td><td>The durable objective is unfinished but automatic authority has been removed</td><td>No; explicit resume is required</td></tr>
+      <tr><td><code>paused/blocked/complete + disarmed</code></td><td>The durable lifecycle is stopped</td><td>No</td></tr>
+    </tbody>
+  </table></div>
+  <p>Activation is never logged. A fresh cache, every <code>agent/session-start</code>, driver hot-load, and uncertain failure disarm it; resume writes a new revision and arms it. Resume, Fork, and process restart can therefore restore objective, phase, revision, and round count without silently restoring autonomous execution authority. <evidence id="PLANSTATE-GOAL-SERVICE"></evidence><evidence id="PLANSTATE-GOAL-COMMIT"></evidence></p>
+  <p>GoalService also requires the exact live object in AgentRegistry, not merely the same id. After creation, edit, pause, resume, complete, block, and clear all compare the current <code>GoalRef</code>. When browser tabs, model tools, and human commands race, the first commit advances revision and later stale refs fail explicitly instead of overwriting it.</p>
+</section>
+
+<section>
+  <h2>8. Goal Continuation Driver: Same Session, One Reservation, Per-Round Durability</h2>
+  <pre><code>goal/change arms or revises goal
+→ driver coalesces wakeups per exact Agent
+→ wait until Agent idle and no competing queued human work
+→ flush pending durable prefix
+→ reserve {goalId, revision, roundsStarted + 1}
+→ Agent.followup(&lt;goal_round&gt;...)
+→ pre-step validates full message + live revision before and after downstream hooks
+→ admitted user/message increments roundsStarted
+→ whole Agent returns idle
+→ flush the settled round before reserving the next one</code></pre>
+  <p>Each Agent's driver state permits one queued, claimed, or admitted attempt. The prompt writes the JSON-quoted objective, <code>round/maxGoalRounds</code>, and instructions to verify progress against current workspace, tool results, and durable state as an ordinary user message. It neither creates a new Agent nor copies the Session. <evidence id="PLANSTATE-GOAL-DRIVER"></evidence></p>
+  <div class="claim fact"><div class="claim-label">Competing input wins</div><p>Ordinary human work arriving before a reservation or joining its batch marks competition and makes the automatic round yield. If objective or revision changes after claim, pre-Step treats the old round as stale, preserves other claimed messages, and reschedules only after the new state settles without consuming the round number. <evidence id="PLANSTATE-GOAL-DRIVER"></evidence></p></div>
+  <p>The round cap counts admitted rounds, not tokens, cost, or time. At capacity the driver writes durable <code>blocked</code> with code <code>round-limit</code>. Test source requires exactly rounds 1 through N and no extra dispatch. <evidence id="PLANSTATE-GOAL-DRIVER-TEST"></evidence></p>
+</section>
+
+<section>
+  <h2>9. Goal Tool Authority Is Stricter Than GoalService</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Operation</th><th>Model-tool authority</th><th>Additional rule</th></tr></thead>
+    <tbody>
+      <tr><td><code>get_goal</code></td><td>Exact live, running, current initiator, open Turn</td><td>No human message required</td></tr>
+      <tr><td><code>create_goal</code></td><td>A host-attested user message in the runtime root's current Turn</td><td>The model judges whether the task is sufficiently long-running</td></tr>
+      <tr><td><code>edit / pause / resume</code></td><td>The same direct-human root Turn</td><td>Must read and copy the exact id/revision first</td></tr>
+      <tr><td><code>complete / blocked</code></td><td>Direct human or the exact admitted round of the current Goal</td><td>Autonomous blocked also needs the configured round minimum</td></tr>
+    </tbody>
+  </table></div>
+  <p>Tool authority is derived from actual committed <code>user/message.source</code> inside the open Turn, not from model arguments. A goal round must match the current id, revision, and <code>roundsStarted</code>; an autonomous round may not edit, pause, or resume. <evidence id="PLANSTATE-GOAL-AUTHORITY"></evidence><evidence id="PLANSTATE-GOAL-TOOLS"></evidence></p>
+  <div class="claim fact"><div class="claim-label">One final Step after terminal state</div><p>After an autonomous round successfully marks complete or blocked, current code does not call <code>concludeTurn()</code>. It uses <code>deferContext()</code> to add a <code>&lt;goal_complete&gt;</code> or <code>&lt;goal_blocked&gt;</code> closing instruction, asking the model for one user-facing message with no more tool calls. A direct-human mutation adds no such context. Tests explicitly require <code>concludesTurn</code> to be undefined. <evidence id="PLANSTATE-GOAL-TOOLS"></evidence><evidence id="PLANSTATE-GOAL-WRAPUP-TEST"></evidence></p></div>
+</section>
+
+<section>
+  <h2>10. Goal Commands, Remote/API, and Web UI Expose Different Operation Sets</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Surface</th><th>Operations</th><th>How it reads state</th><th>Not exposed</th></tr></thead>
+    <tbody>
+      <tr><td><code>/goal</code> command</td><td>show, create, edit, pause, resume, clear</td><td>Calls GoalService directly and renders text</td><td>complete, block, per-command round cap</td></tr>
+      <tr><td>Goal Remote/API</td><td>create, edit, pause, resume, complete, clear</td><td>Current value travels through the <code>goal</code> projection; mutations only acknowledge ref/cleared</td><td><code>get</code> and <code>block</code></td></tr>
+      <tr><td>Web GoalBar</td><td>edit, active→pause, paused→resume, clear</td><td><code>useProjection("goal")</code></td><td>create, complete, blocked-resume button, activation</td></tr>
+      <tr><td>Model tools</td><td>get, create, five update actions</td><td><code>get_goal</code> returns live activation</td><td>clear</td></tr>
+    </tbody>
+  </table></div>
+  <p><code>/goal</code> executes directly in the command plane without opening a model Turn. The Web also projects durable <code>command/run</code> into a right-aligned command-input bubble. GoalBar reads the latest projected CAS ref for every click and combines a synchronous ref with React pending for single-flight behavior; after clear succeeds it locally suppresses that id until the null projection catches up. <evidence id="PLANSTATE-GOAL-COMMAND"></evidence><evidence id="PLANSTATE-GOAL-COMMAND-UI"></evidence><evidence id="PLANSTATE-GOAL-COMMAND-VIEW"></evidence><evidence id="PLANSTATE-GOAL-UI"></evidence><evidence id="PLANSTATE-GOAL-UI-REMOTE"></evidence></p>
+  <p>The Host mutation façade reuses a live Agent or cold-resumes an ordinary Session and rejects identities still owned by subagent routing. It does not reuse the model tool's “direct human Turn” rule; it is a trusted control-plane mutation of the domain. GoalError currently maps to wire <code>internal</code>, with the stable domain code under <code>details.goalCode</code>, so clients must inspect details to distinguish stale revision and other business failures. <evidence id="PLANSTATE-GOAL-API"></evidence><evidence id="PLANSTATE-GOAL-API-ROUTING"></evidence><evidence id="PLANSTATE-GOAL-API-ERRORS"></evidence></p>
+</section>
+
+<section>
+  <h2>11. Goal Failure, Cancellation, and Concurrency Recovery</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Condition</th><th>State consequence</th><th>Automatic retry?</th></tr></thead>
+    <tbody>
+      <tr><td>Durability checkpoint failure for a Goal change or prior round</td><td>Retain the phase in the current Session log; disarm activation</td><td>No; human resume required</td></tr>
+      <tr><td><code>Agent.followup</code> queue failure</td><td>If revision still matches, block as <code>queue-failed</code></td><td>No</td></tr>
+      <tr><td>Downstream pre-Step rejects a valid reservation</td><td>Block as <code>prompt-rejected</code>; no admitted round consumed</td><td>No</td></tr>
+      <tr><td>Provider/Agent error or max tokens</td><td>Goal may remain active but activation becomes disarmed</td><td>The driver performs no abnormal auto-retry</td></tr>
+      <tr><td>Cancellation belongs to a queued/claimed/admitted goal attempt</td><td>Idle checkpoint tries durable pause; falls back to disarm</td><td>No</td></tr>
+      <tr><td>Cancellation belongs only to ordinary human work</td><td>Does not invent a Goal phase; may only disarm</td><td>No</td></tr>
+      <tr><td>Plugin teardown</td><td>Close admission, disarm, cancel active attempt, await quiescence</td><td>No later round may start</td></tr>
+    </tbody>
+  </table></div>
+  <p>The driver serializes work with one attempt and a coalesced run promise per Agent; Goal mutations serialize conflicting control planes through revision CAS. These solve different concurrency problems. If an external LLM-retry plugin recovers successfully within the same Step, the original reservation can settle; the driver itself never converts an unclassified failure into a new round. <evidence id="PLANSTATE-GOAL-DRIVER"></evidence><evidence id="PLANSTATE-GOAL-DURABILITY-TEST"></evidence></p>
+</section>
+
+<section>
+  <h2>12. Todo Is Whole-Value Replacement, Not a Task Database</h2>
+  <p><code>todo_write({ todos })</code> must send the complete list on every call. Success synchronously appends one <code>todo/write</code>, and current value is the last snapshot. Each item contains only normalized non-empty <code>content</code> and one of <code>pending</code>, <code>in_progress</code>, or <code>completed</code>. There is no id, priority, dependency, nesting, patch, delete-one operation, or read-back operation. An empty array is a valid explicit empty list. <evidence id="PLANSTATE-TODO-TOOL"></evidence></p>
+  <div class="claim fact"><div class="claim-label">Validation before write</div><p>The tool schema rejects unknown item keys and invalid enum values; execute then trims content, rejects blanks and duplicates, and enforces the deployment's active-count policy. Failure occurs before append and writes no <code>todo/write</code>. A non-Agent caller is rejected because it has no owning Session. <evidence id="PLANSTATE-TODO-TOOL"></evidence><evidence id="PLANSTATE-TODO-TEST"></evidence></p></div>
+  <p><code>allowParallelInProgress</code> is a required deployment choice. <code>true</code> changes both model instructions and validation to allow several active items; <code>false</code> rejects more than one. The shipped base profile selects <code>true</code>. The durable invariant deliberately does not reapply the current active-count policy, so a log written under a permissive deployment still replays after policy is tightened. <evidence id="PLANSTATE-SHIPPED-TODO-POLICY"></evidence><evidence id="PLANSTATE-TODO-INVARIANT"></evidence></p>
+</section>
+
+<section>
+  <h2>13. Todo Events Persist; the Standing Projection Lasts Only Until the Next Turn</h2>
+  <pre><code>Turn N: todo_write(snapshot A)
+        todo_write(snapshot B)   → projection = B
+        turn/end                 → projection still B
+Turn N+1: turn/start             → projection = null
+        ... old todo/write events remain in the Session log</code></pre>
+  <p>The <code>todos</code> projection is null before the first write, replaces its whole value on every write, and clears on every <code>turn/start</code>. It does not clear at <code>turn/end</code>, so a completed checklist remains visible after Agent idle until another human or automatic goal round actually opens a Turn. Cold reads, resume, and Fork replay the same full-log fold. <evidence id="PLANSTATE-TODO-PROJECTION"></evidence></p>
+  <p>The Web TodoPanel reads only that projection, showing a collapsible card with status counts and all items. A separate <code>todo_write</code> tool row derives “done/total + first active + extra-active count” from durable call arguments. The first is the product's currently standing list; the second is historical tool-call presentation. Their lifetimes differ. <evidence id="PLANSTATE-TODO-UI"></evidence><evidence id="PLANSTATE-TODO-ROW"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Model visibility</div><p><code>todo/write</code> itself is log-only, not a second model message. The model sees its complete tool-call arguments and a compact result. A later whole-list replacement updates only the Todo projection; it does not remove earlier tool history, whose calls continue to occupy Surface until compaction or a similar mechanism shadows them. No context plugin automatically reinjects the latest Todo snapshot into later requests.</p></div>
+</section>
+
+<section>
+  <h2>14. “Todo Allows Parallel Work” Means the Todo Tool Itself Is Exclusive</h2>
+  <p>ToolRuntime classifies a call as parallel only when its definition supplies <code>isConcurrencySafe(args)</code> and returns exact <code>true</code>. Omission, exceptions, hidden tools, and invalid definitions all fail closed to exclusive. Plan exit, all three Goal tools, and <code>todo_write</code> do not opt in, so each is an ordering barrier. <evidence id="PLANSTATE-TOOL-EXCLUSIVE"></evidence></p>
+  <p>Two consecutive <code>todo_write</code> calls in one model batch therefore execute in order, and the second deterministically replaces the first. Multiple <code>in_progress</code> items mean the Agent may genuinely advance work through subagents, background commands, or workflows at the same time. They are not permission for concurrent snapshot writes and do not create a shared swarm task registry. <evidence id="PLANSTATE-TOOL-SCHEDULER"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Why Todo has no CAS</div><p>The normal production writer is one Agent's exclusive tool pipeline, where whole-value last-wins already defines order. Goal concurrently serves commands, Remote calls, model tools, and a scheduler, so revision CAS is necessary. Their concurrency models should not be mechanically unified.</p></div>
+</section>
+
+<section>
+  <h2>15. Event, Surface, Projection, and Replay Matrix</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Fact</th><th>Session log</th><th>Direct model Surface</th><th>Current browser view</th><th>Resume/Fork</th></tr></thead>
+    <tbody>
+      <tr><td><code>plan/mode</code></td><td>Yes</td><td>No; acts through the system section and optional notice</td><td><code>plan {active,pending}</code></td><td>Committed active recovers; controller pending does not</td></tr>
+      <tr><td><code>goal/change</code></td><td>Yes</td><td>No; tool result or round prompt makes state visible</td><td>Whole <code>goal</code> snapshot</td><td>Durable state recovers; activation always disarms</td></tr>
+      <tr><td>Goal-round <code>user/message</code></td><td>Yes</td><td>Yes</td><td>Current projection ignores it</td><td>Strict fold recovers round count</td></tr>
+      <tr><td><code>todo/write</code></td><td>Yes</td><td>No; call/result are visible</td><td><code>todos</code> standing list</td><td>Refolds latest write plus later turn/start</td></tr>
+      <tr><td><code>command/run/done</code></td><td>Yes</td><td>No</td><td>Plan pending, Goal command bubble, generic command row</td><td>Pure-log reconstruction</td></tr>
+    </tbody>
+  </table></div>
+  <p>Compaction rewrites model Surface; it does not delete these log-only domain facts. Plan active and Goal lifecycle do not depend on a summary remembering them. Todo projection also remains reconstructable from the complete log, although its next-Turn clearing rule still applies. Goal-round prompts, tool calls, and results are Surface content, so a later model may know their semantics only through a checkpoint after compaction.</p>
+</section>
+
+<section>
+  <h2>16. Three Confirmed Documentation Drifts</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Documentation claim</th><th>Current production behavior</th><th>Finding</th></tr></thead>
+    <tbody>
+      <tr><td>tool-goal README says autonomous complete/blocked calls <code>concludeTurn()</code></td><td>Source uses <code>deferContext()</code> for a final closing message; tests require no conclusion marker</td><td>README is stale</td></tr>
+      <tr><td>ui-goal README says Remote mutations write <code>agent/inbox/spliced</code> and queue Goal context</td><td>GoalService directly appends log-only <code>goal/change</code> and injects no model context</td><td>README still describes an older architecture</td></tr>
+      <tr><td>command-goal README says there is no continuous status widget</td><td>The Web now ships a projection-driven GoalBar with edit/pause/resume/clear</td><td>The limitation is obsolete</td></tr>
+    </tbody>
+  </table></div>
+  <p>These findings compare production source and tests at the pinned commit; they are not inferences from prose alone. The core Plan and Todo READMEs broadly match their current control flow within this chapter's scope. Goal evolved across more packages and shows visible synchronization lag. <evidence id="PLANSTATE-DOC-GOAL-TOOL"></evidence><evidence id="PLANSTATE-DOC-GOAL-UI"></evidence><evidence id="PLANSTATE-DOC-GOAL-COMMAND"></evidence></p>
+</section>
+
+<section>
+  <h2>17. Confirmed Constraints, Gaps, and Deliberate Tradeoffs</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Finding</th><th>Classification</th><th>Practical effect</th></tr></thead>
+    <tbody>
+      <tr><td>Plan provides guidance only</td><td>Explicit design</td><td>Independent sandbox/approval must enforce hard restrictions</td></tr>
+      <tr><td>Plan's durable pending view and process intent can split after a crash</td><td>Recovery constraint</td><td>UI may show the target while prompts still use old committed state; reapply required</td></tr>
+      <tr><td>Only Web has specialized plan review and Plan chip</td><td>Presentation boundary</td><td>Other providers use generic questions and commands</td></tr>
+      <tr><td>Goal projection does not apply admitted goal-round messages</td><td>Confirmed projection gap</td><td><code>roundsStarted</code> may remain at the latest mutation until another <code>goal/change</code>; service reads remain accurate</td></tr>
+      <tr><td>Goal projection omits activation</td><td>Explicit design</td><td>GoalBar cannot distinguish active-armed from active-disarmed and may offer pause rather than resume after recovery</td></tr>
+      <tr><td>GoalBar offers no resume button for a blocked Goal</td><td>UI feature gap</td><td>Use <code>/goal resume</code> or another Remote/tool path</td></tr>
+      <tr><td>Goal has no independent evaluator or resource budget</td><td>Explicit scope</td><td>Completion and same-blocker semantics remain model judgment; the cap counts rounds only</td></tr>
+      <tr><td>Todo projection deliberately clears across Turns</td><td>Product semantics</td><td>It is not a long-lived task board; historical events remain</td></tr>
+      <tr><td>Todo has no read, patch, CAS, or shared scope</td><td>Explicit scope</td><td>The model resends the whole list; it belongs to one calling Agent Session</td></tr>
+      <tr><td>Todo invariant does not reject extra item keys</td><td>Invariant coverage gap</td><td>The tool schema rejects them, but the companion misses extra fields forged by a trusted direct Session writer</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Exact projection-gap boundary</div><p>GoalService's strict cache fold reads goal-sourced <code>user/message</code> and immediately advances roundsStarted. The lightweight <code>goal</code> projection replaces only on <code>goal/change</code>, and tests pin the same-reference fast path for non-goal-change events. This is browser-projection freshness, not loss of the domain round. <evidence id="PLANSTATE-GOAL-FOLD"></evidence><evidence id="PLANSTATE-GOAL-PROJECTION"></evidence><evidence id="PLANSTATE-GOAL-PROJECTION-TEST"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">Exact invariant-gap boundary</div><p>The Todo tool's JSON schema sets <code>additionalProperties: false</code>. Its companion reads content/status and checks normalization, uniqueness, and enum membership, but never compares own keys. Normal model input is protected; the gap concerns trusted producers that bypass the tool and append directly to Session. <evidence id="PLANSTATE-TODO-TOOL"></evidence><evidence id="PLANSTATE-TODO-INVARIANT"></evidence></p></div>
+</section>
+
+<section>
+  <h2>18. Design Assessment and Verification Status</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Design choice</th><th>Benefit</th><th>Cost</th></tr></thead>
+    <tbody>
+      <tr><td>Plan uses a stable tool catalog and variable system section</td><td>More stable KV-cache shape and a clear review protocol</td><td>Hard restrictions must live on another permission axis</td></tr>
+      <tr><td>Goal separates durable phase from activation</td><td>Resume and Fork cannot accidentally restart autonomy</td><td>UI needs another live channel to display actual continuation eligibility</td></tr>
+      <tr><td>Goal combines revision CAS with a one-attempt driver</td><td>Cross-surface conflicts fail closed; rounds are serial and auditable</td><td>Its lifecycle and failure matrix is much more complex than Plan or Todo</td></tr>
+      <tr><td>Todo uses whole-value snapshots</td><td>Simple replay, no item identity, direct model semantics</td><td>Long lists repeatedly consume tokens and cannot support collaborative incremental edits</td></tr>
+      <tr><td>All three write log-only domain events</td><td>Compaction cannot erase control state</td><td>Readers must keep complete log, model Surface, and UI projection distinct</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Verification scope</div><p>This chapter traced PlanModeController, command/user-question/Plan UI, GoalService/strict fold/invariant, Goal tools/authority/wrap-up, the same-session round driver, Goal command/Remote/API/GoalBar, Todo tool/invariant/projection/UI, and their unit, integration, and real-loop test sources. Upstream dependencies are not installed, so this report does not claim local test execution. Every documented drift and gap was cross-checked against reachable production control flow at the pinned commit.</p></div>
+</section>

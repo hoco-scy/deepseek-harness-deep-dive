@@ -6,7 +6,7 @@
 <body data-page="projections-checkpoints" data-baseline="47f943859bef60e4160492346772ded9b24f765a" data-lang="zh">
   <header class="topbar"><button class="icon-button nav-toggle" type="button" data-nav-toggle aria-label="打开章节目录" aria-expanded="false">☰</button>
     <a class="brand" href="../index.html"><span class="brand-mark">DS</span><span>Harness 系统拆解</span></a>
-    <span class="topbar-meta">固定基线 47f943859b · 13 已复核 / 1 撰写中 / 36 章</span>
+    <span class="topbar-meta">固定基线 47f943859b · 17 已复核 / 1 撰写中 / 36 章</span>
     <div class="topbar-actions"><a class="language-switch" href="../../pages/projections-checkpoints.html" lang="en" aria-label="阅读本章英文版">English</a><button class="icon-button" type="button" data-theme-toggle aria-label="切换明暗主题">◐</button></div></header>
   <div class="layout"><aside class="sidebar" data-sidebar aria-label="章节目录"><input class="filter" data-chapter-filter type="search" placeholder="筛选章节……" aria-label="筛选章节"><section class="nav-part" data-part><h2 class="part-title">导论</h2>
     <a class="chapter-link" data-chapter-item href="../pages/reading-guide.html">
@@ -23,16 +23,16 @@
     <a class="chapter-link" data-chapter-item href="../pages/session-event-model.html">
       <span class="chapter-number">09</span><span>内部会话结构与事件模型</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link" data-chapter-item href="../pages/log-replay.html">
       <span class="chapter-number">10</span><span>日志、派生历史、重放与 Fork</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link" data-chapter-item href="../pages/persistence-database.html">
-      <span class="chapter-number">11</span><span>持久化与数据库设计</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link current" data-chapter-item href="../pages/projections-checkpoints.html">
+      <span class="chapter-number">11</span><span>持久化与数据库设计</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link current" data-chapter-item href="../pages/projections-checkpoints.html">
       <span class="chapter-number">12</span><span>Projection、Checkpoint 与冷启动</span><span class="status-dot verified" title="已复核"></span></a></section><section class="nav-part" data-part><h2 class="part-title">上下文治理</h2>
     <a class="chapter-link" data-chapter-item href="../pages/compaction.html">
       <span class="chapter-number">13</span><span>压缩体系与上下文压力</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link" data-chapter-item href="../pages/memory-knowledge.html">
-      <span class="chapter-number">14</span><span>记忆与知识：有何能力、又刻意没有什么</span><span class="status-dot queued" title="待研究"></span></a></section><section class="nav-part" data-part><h2 class="part-title">协作状态</h2>
+      <span class="chapter-number">14</span><span>记忆与知识：有何能力、又刻意没有什么</span><span class="status-dot verified" title="已复核"></span></a></section><section class="nav-part" data-part><h2 class="part-title">协作状态</h2>
     <a class="chapter-link" data-chapter-item href="../pages/plan-goal-todo.html">
-      <span class="chapter-number">15</span><span>Plan、Goal 与 Todo</span><span class="status-dot queued" title="待研究"></span></a></section><section class="nav-part" data-part><h2 class="part-title">工具系统</h2>
+      <span class="chapter-number">15</span><span>Plan、Goal 与 Todo</span><span class="status-dot verified" title="已复核"></span></a></section><section class="nav-part" data-part><h2 class="part-title">工具系统</h2>
     <a class="chapter-link" data-chapter-item href="../pages/tool-primitives.html">
       <span class="chapter-number">16</span><span>工具定义原语与执行管线</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link" data-chapter-item href="../pages/tool-catalog.html">
-      <span class="chapter-number">17</span><span>工具全集与能力分类</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/tool-parallelism.html">
+      <span class="chapter-number">17</span><span>工具全集与能力分类</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link" data-chapter-item href="../pages/tool-parallelism.html">
       <span class="chapter-number">18</span><span>工具并行器与结果顺序</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/permission-approval.html">
       <span class="chapter-number">19</span><span>权限分析、审批与单调 Guard</span><span class="status-dot queued" title="待研究"></span></a></section><section class="nav-part" data-part><h2 class="part-title">执行环境</h2>
     <a class="chapter-link" data-chapter-item href="../pages/sandbox-filesystem.html">
@@ -57,9 +57,254 @@
       <span class="chapter-number">35</span><span>术语、证据目录与源码索引</span><span class="status-dot queued" title="待研究"></span></a></section></aside>
     <main class="main"><div class="page-shell"><article class="article" data-article><header><div class="page-kicker"><span>会话与持久化</span><span>·</span><span>第 12 章</span></div>
       <h1>Projection、Checkpoint 与冷启动</h1><p class="subtitle">全量事件之外，系统保存了哪些可丢弃的加速状态</p><div class="page-meta"><span class="status verified">已复核</span><span>上游 47f943859b</span><span>范围: 区分语义 checkpoint、projection cache、watermark、write-behind、tail replay 和恢复门槛。</span></div></header>
-      <section class="placeholder"><p class="eyebrow">研究队列</p><h2>本章尚未进入结论状态</h2>
-    <p><strong>当前范围:</strong> 区分语义 checkpoint、projection cache、watermark、write-behind、tail replay 和恢复门槛。</p><p>页面已经纳入全量研究地图，但尚未完成源码控制流复核。以下是升级为“已复核”之前必须覆盖的检查面：</p>
-    <ul class="placeholder-checks"><li>实际 bundle / profile 装配入口</li><li>公开类型、事件与配置 schema</li><li>正常控制流与状态突变时机</li><li>并发、scope、所有权与 cleanup</li><li>错误、取消、重试和降级分支</li><li>持久化、projection 与 replay 语义</li><li>生产路径测试与运行时不变量</li><li>优势、代价、限制与待验证问题</li></ul></section><section class="learning-notes" aria-labelledby="learning-notes-title"><h2 id="learning-notes-title">我的学习体会</h2>
+      <section>
+  <h2>结论：事件日志掌握真相，Checkpoint 与 Projection 掌握时机和成本</h2>
+  <div class="thesis"><p>DeepSeek Harness 没有在 Session 日志旁边再持久化第二套“对话真相”。它让 append-only <code>SessionEvent</code> 流和 <code>SessionHeader</code> 保持权威，再叠加三种不同机制：不可逆工作前的语义 flush barrier、快速读取当前视图的内存 projection cell，以及缩短部分 fold 的耐久 projection checkpoint。浏览器还会收到另一层派生数据——带 watermark 的 baseline 和非耐久 push frame——并让它们重新向日志收敛。</p></div>
+  <p>只有把这些层严格分开，架构的优势才成立。语义 checkpoint 证明更早的事实已经到达存储；projection checkpoint 只记住一次 fold；watermark 表示一个值观察到了哪里；baseline 是传输 cut；client row 则是可丢弃的收敛状态。把其中任何一层误当成日志本身，恰好会制造这套设计试图避免的恢复错误。</p>
+</section>
+
+<section>
+  <h2>1. 六个名称对应六种不同合同</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>层</th><th>表示</th><th>权威性</th><th>能够证明什么</th></tr></thead>
+    <tbody>
+      <tr><td>Durable fact</td><td><code>SessionHeader</code> + append-only <code>SessionEvent</code></td><td>事实源</td><td>Backend 实际保存了哪些 metadata 与 committed events</td></tr>
+      <tr><td>Semantic checkpoint</td><td>被 await 的 <code>sessions.flush(session)</code></td><td>耐久屏障，不是数据</td><td>已接纳前缀的所有参与 flush listener 均已 settle</td></tr>
+      <tr><td>Live projection cell</td><td>每个 unit、每个 live Session 的 <code>{state, observedSeq}</code></td><td>可丢弃派生状态</td><td>最后一个通过该 unit fold 的事件</td></tr>
+      <tr><td>Projection checkpoint</td><td>每个 key 的 <code>{ver, seq, val}</code></td><td>仅为耐久 cache</td><td>绑定到某一日志生命周期的版本化 fold shortcut</td></tr>
+      <tr><td>Host baseline</td><td><code>{asOfSeq, values}</code></td><td>派生 wire snapshot</td><td>一个可用来 seed client 的一致 cut</td></tr>
+      <tr><td>Client row</td><td><code>key -&gt; {value, seq}</code></td><td>可丢弃收敛状态</td><td>该 key 最新被接受的 Host value</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">持久化合同</div><p>持久化单元就是既有的 Session event，而不是一套平行 persisted-message 模型；不可 replay 的 metadata 保留在 Header 中。Projection checkpoint 类型也明确声明：row 从不具有权威性，版本不适用或它声称的日志端点无法成立时必须丢弃。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/docs/architecture.md#L92-L102" title="Session log 与 capability seam: 日志是模型上下文事实源；model-visible 必须可从日志重建；seam 包含定义、提供者与消费者。" aria-label="证据 ARCH-LOG">ARCH-LOG</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/session/src/types.ts#L33-L99" title="Session format version 与持久 header: 格式版本固定为 0 且无兼容承诺；header 保存 identity、createdAt、cwd、fork parent/seedLength、subagent origin/depth 与 agent preset。" aria-label="证据 SESSION-FORMAT-HEADER">SESSION-FORMAT-HEADER</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-projection/src/index.ts#L88-L118" title="Projection baseline 与非权威 checkpoint 类型: ProjectionSnapshot 定义共享 asOfSeq cut；ProjectionCheckpointRow 记录版本、水位与内部状态，并明确 row 只是 fold shortcut、不是 authority。" aria-label="证据 PROJ-AUTHORITY-LAYERS">PROJ-AUTHORITY-LAYERS</a></p></div>
+</section>
+
+<section>
+  <h2>2. Semantic checkpoint 是 await barrier，不是存储中的 checkpoint object</h2>
+  <pre><code>把事实 append 到 live Session
+        ↓
+sessions.flush(session)
+        ├─ persistence listener 排空 write-behind
+        ├─ 其他 scoped durability listener settle
+        └─ 所有 listener settle 后才抛出第一个失败
+        ↓
+构造 model stream 或进入顶层 tool body</code></pre>
+  <p><code>SessionStore.flush()</code> 解析精确 live Session 的 scoped listeners，调用全部 listener，以 <code>Promise.allSettled</code> 等待，若存在拒绝再抛出第一个。它的返回值只表示是否有 durability listener 参与；这个 API 不会生成任何耐久的“checkpoint record”。</p>
+  <div class="claim fact"><div class="claim-label">语义策略</div><p>标准 policy 会在构造下游 model stream 前、顶层 tool body 运行前，以及每一个 <code>agent/pre-step</code> 边界放置 barrier。Model 与 tool 边界 fail-closed；嵌套 tool dispatch 复用已经耐久的外层 call。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-checkpoint-policy/src/index.ts#L20-L82" title="模型与工具副作用前的语义 durability checkpoint: 策略在模型 stream 构造、顶层工具 body 和每个 pre-step 前 flush；checkpoint 失败时 adapter 或工具副作用体不会运行，嵌套 tool dispatch 复用外层边界。" aria-label="证据 LOG-CHECKPOINT-POLICY">LOG-CHECKPOINT-POLICY</a></p></div>
+  <aside class="caveat"><strong>精确边界：</strong>它在可能发生副作用前记录 execution intent；它不会让副作用变成 exactly-once。若 durable call 之后、durable result 之前崩溃，恢复只能表达 <code>TOOL_OUTCOME_UNKNOWN</code>，不能推断成功或自动重试。</aside>
+</section>
+
+<section>
+  <h2>3. Write-behind 把热路径接纳与耐久静止点分开</h2>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>接纳时复制</h3><p>每个 committed event 通过 <code>structuredClone</code> 进入 persistence 自己拥有的队列。</p></div>
+    <div><span>2</span><h3>固定 deadline 组批</h3><p>第一个 pending event 启动一个有界 timer；热 append 路径不等待磁盘。</p></div>
+    <div><span>3</span><h3>失败仍保留</h3><p>失败 batch 按原顺序放回队首，并暂停自动重试。</p></div>
+    <div><span>4</span><h3>加入同一 barrier</h3><p>并发显式 flush caller 共用一次排空，直到队列静止。</p></div>
+  </div>
+  <div class="claim fact"><div class="claim-label">生产 controller</div><p>显式 flush 会取消 batching timer、等待重叠工作、重试 retained events，并一直排空到 active 与 pending write 都不存在。按 Session ID 的 serialization 阻止同一日志的耐久 append 相互交错。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-persistence/src/write-behind.ts#L18-L158" title="每 Session write-behind 队列与显式 quiescence barrier: 事件被克隆进固定 deadline 队列；稳定 batch 写失败会按原顺序放回并暂停自动重试；并发 flush 共享 barrier，显式重试直到队列和 active write 都静止。" aria-label="证据 LOG-WRITE-BEHIND">LOG-WRITE-BEHIND</a></p></div>
+  <p>Persistence 与 checkpoint scheduling 是两个独立插件。只加载 backend 合法，但崩溃可能丢失仍处于 batching window 或 outstanding write 中的事件。发布的 base composition 会显式同时挂载 JSONL persistence provider 与 checkpoint policy。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/bundle/base/cordis.patch.yml#L98-L356" title="发布组合显式挂载持久化、Projection 与 checkpoint policy: Base patch 在独立 rows 中挂载 JSONL Session persistence、共享 projection registry 和模型请求/顶层工具前的 semantic checkpoint policy；三者不是一个隐式服务。" aria-label="证据 PROJ-SHIPPED-COMPOSITION">PROJ-SHIPPED-COMPOSITION</a></p>
+</section>
+
+<section>
+  <h2>4. Projection unit 是对每个 committed event 的同步 fold</h2>
+  <pre><code>ProjectionDefinition&lt;K, S&gt; = {
+  key,
+  schema,             // 校验 wire-facing view
+  init(): S,
+  apply(S, event): S, // pure 且同步
+  view(S): Value,
+  stateVersion
+}</code></pre>
+  <div class="claim fact"><div class="claim-label">Registry drive</div><p>Registry 只订阅一次 <code>session/event</code>。每个事件都会通过每个已注册 unit 的 <code>apply</code>；不关心该事件的 unit 必须返回同一 state reference。只有 reference 改变才会触发 schema validation 与 change notification。缺失 cell 会延迟 fold 完整内存日志，而 <code>observedSeq</code> 即使在 state reference 未变化时也会前进。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-projection/src/index.ts#L130-L425" title="Per-Session projection cells、同步 snapshot 与 eager drive: Registry 以 WeakMap cell 保存 state/observedSeq，单次订阅驱动所有 unit；缺失 cell 从内存日志 lazy fold，Object.is 只让 reference 变化产生通知，而 observedSeq 对每个事件前进。" aria-label="证据 PROJ-REGISTRY-DRIVE">PROJ-REGISTRY-DRIVE</a></p></div>
+  <p>同步要求具有关键作用。Carrier 可以复制 Session 的 event snapshot，并在同一个 JavaScript turn 中立刻调用 <code>snapshot()</code>，得到共享 <code>asOfSeq</code> 恰为 <code>session.seq - 1</code> 的 values；异步 unit 会撕裂这个 cut。</p>
+  <aside class="caveat"><strong>注册语义：</strong>当 <code>stateVersion</code> 相同时，实现会对同一个 key 的重复注册计数并共享；只有 version 不同时才 throw。它无法比较 schema 或 fold function，因此两个语义不同、却复用同一 key 与 version 的定义会静默共享第一份 definition 和 cells。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-projection/src/index.ts#L137-L220" title="同 key 注册的 refcount 与 version 冲突规则: 同 key、同 stateVersion 的 registrant 共享第一份 unit 并增加 refs；version 不同才拒绝。最后一个 disposer 删除 registration 与全部 cells，且 runtime 无法比较函数语义。" aria-label="证据 PROJ-REGISTRY-REGISTRATION">PROJ-REGISTRY-REGISTRATION</a></aside>
+</section>
+
+<section>
+  <h2>5. 十三个生产 key 共用一个框架，却表达不同生命周期</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Key / version</th><th>Fold 语义</th><th>生产源码</th></tr></thead>
+    <tbody>
+      <tr><td><code>todos</code> v2</td><td>最新 whole <code>todo/write</code>；下一个 <code>turn/start</code> 清空</td><td><code>packages/todo/tool-todo/src/index.ts:122-147</code></td></tr>
+      <tr><td><code>plan</code> v1</td><td><code>command/run(plan)</code> 记录意图；<code>plan/mode</code> 提交 active 并清除 pending</td><td><code>packages/plan/plan-mode/src/index.ts:235-265</code></td></tr>
+      <tr><td><code>goal</code> v4</td><td>Durable <code>goal/change</code> 的 last-wins projection</td><td><code>packages/goal/goal/src/index.ts:201-212</code></td></tr>
+      <tr><td><code>title</code> v1</td><td>最新 <code>session/title</code></td><td><code>packages/session/session-title/src/index.ts:304-316</code></td></tr>
+      <tr><td><code>sessionStats</code> v1</td><td>全日志 Turn、Step、model、tool、TTFT 与 decode totals</td><td><code>packages/session/session-stats/src/projection.ts:1-21,88-182</code></td></tr>
+      <tr><td><code>tokenUsage</code> v1</td><td>Usage sample 替换同一 Turn/Step 的前一份 sample</td><td><code>packages/llm/token-meter/src/usage-projection.ts:97-140</code></td></tr>
+      <tr><td><code>contextPressure</code> v4</td><td>Provider prompt sample 加 Surface signed movement 估计下一请求</td><td><code>packages/llm/token-meter/src/usage-projection.ts:142-205</code></td></tr>
+      <tr><td><code>contextBreakdown</code> v2</td><td>最新 request envelope 加 message-surface shadow pricing</td><td><code>packages/llm/token-meter/src/breakdown-projection.ts:31-69</code></td></tr>
+      <tr><td><code>subagentTiming</code> v2</td><td>Descriptor 之后已完成及当前活跃 Turn 的持续时间</td><td><code>packages/subagent/subagent/src/projection.ts:36-85</code></td></tr>
+      <tr><td><code>subagent</code> v2</td><td>最后一个有效耐久 mode/label descriptor，并包含其 seq</td><td><code>packages/subagent/subagent/src/projection.ts:131-155</code></td></tr>
+      <tr><td><code>permissions</code> v1</td><td>三个 whole-value knob events，再相对 composition defaults 生成 view</td><td><code>packages/interaction/permission-presets/src/index.ts:227-251</code></td></tr>
+      <tr><td><code>sessionListMetadata</code> v1</td><td>供 listing 使用的 blank-to-nonblank 状态与最新真人 prompt 时间</td><td><code>packages/host/apiproxy/src/api-proxy.ts:1289-1300</code></td></tr>
+      <tr><td><code>imageLimits</code> v1</td><td>每次启动固定的 attachment limits；constant state、live-service view、只走 baseline</td><td><code>packages/host/apiproxy/src/api-proxy.ts:1302-1323</code></td></tr>
+    </tbody>
+  </table></div>
+  <p>这是固定 commit 上对生产注册的全仓库清点，并不承诺每种部署都激活全部十三个 key。注册取决于 composition；process-wide unit table 还意味着某个 preset 挂载的 key，可能出现在自身 preset 并不会产生有意义值的其他 Session snapshot 中。</p>
+</section>
+
+<section>
+  <h2>6. Watermark 在观察时前进，Push 只在变化时发生</h2>
+  <pre><code>seq N 的 event 进入每个 unit
+  ├─ apply 返回同一 reference
+  │    observedSeq = N
+  │    不发送 session/projection frame
+  └─ apply 返回新 reference
+       observedSeq = N
+       schema.parse(view(state))
+       emit { key, value, seq: N }</code></pre>
+  <p>这个区分解释了为何 <code>imageLimits</code> 从不发送 push，却仍会出现在 tail baseline 中；也解释了为何完整 snapshot 中一个安静的 value 可以合法地标记为日志当前 <code>asOfSeq</code>。Watermark 表示“已观察至此”，而不是“最后一次变化发生在此”。</p>
+  <div class="claim fact"><div class="claim-label">Host carrier</div><p>Host 把 registry change 翻译为非持久的 <code>session/projection</code> mux frame。History tail——并且只有 tail——携带完整 baseline。Attached Session 在复制 events 与读取 projection snapshot 之间没有 await；detached Session 则 fold 被 inspect 的 events。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/src/api-proxy.ts#L1273-L1323" title="Projection change frame 与 Host 自有 projection units: API Proxy 把 registry change 广播为 session/projection frame，并注册 sessionListMetadata 与 per-boot imageLimits；imageLimits apply 永远返回同一 state，因此只通过 baseline 传播。" aria-label="证据 PROJ-HOST-CARRIER">PROJ-HOST-CARRIER</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/src/api-proxy.ts#L1533-L1574" title="历史事件与 projection baseline 的同一同步 cut: Attached history 复制 live events，cold history 使用 inspect；所有 await 之后同步读取 events 与 projection watermark，避免一个响应混用 N 与 N+1 两个时刻。" aria-label="证据 LOG-HISTORY-CUT">LOG-HISTORY-CUT</a></p></div>
+</section>
+
+<section>
+  <h2>7. Durable projection cache 是版本化 shortcut，从不是读取权威</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Guard</th><th>为何存在</th><th>失败行为</th></tr></thead>
+    <tbody>
+      <tr><td><code>stateVersion</code></td><td>State shape 或 fold semantics 可能变化</td><td>丢弃该 key 的 row 并重新 fold</td></tr>
+      <tr><td><code>createdAt</code> + <code>cwd</code></td><td>Session ID 表示一个槽位，不会永远唯一指向同一生命周期</td><td>丢弃整个无关 record</td></tr>
+      <tr><td>Anchored floor</td><td>Cached row 可能声称超过缩短或修复后的 stored log</td><td>检测 overreach 并从 seq 0 重读</td></tr>
+      <tr><td>Lossless JSON boundary</td><td>Unit 内部状态必须可耐久序列化</td><td>让该 cache write 失败；不修改 Session log</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">存储形状</div><p><code>session_projcache</code> domain 版本为 3。每个 Session record 把完整的 key-to-row checkpoint 绑定到一个 log identity。Domain version 不兼容时可以丢弃整个 cache medium，因为事件日志仍足以重建。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-projection-cache/src/spec.ts#L16-L69" title="Versioned row、日志生命周期 identity 与 cache domain: 每个 checkpoint row 包含 ver/seq/JSON val；完整 Session record 绑定 createdAt/cwd identity；session_projcache domain v3 可整体丢弃，因为它只保存派生状态。" aria-label="证据 PROJ-CACHE-SCHEMA">PROJ-CACHE-SCHEMA</a></p></div>
+  <div class="claim fact"><div class="claim-label">Restore 数学</div><p><code>restoreFloor()</code> 选择最低可用 watermark 前的一条事件。<code>restore()</code> 只有在 row version 匹配、且 seq 位于所提供 suffix 能够证明的边界中时才接受它。不安全的 partial restore 会 throw，让 caller 从零重读，而不是混合不兼容状态。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-projection/src/index.ts#L284-L385" title="Anchored restore floor 与安全 tail fold: restoreFloor 选择最低可用水位前的一条事件；restore 只接受 version 匹配且位于可证明日志端点内的 row，不安全的 partial restore 会要求从 seq 0 重读。" aria-label="证据 PROJ-REGISTRY-RESTORE">PROJ-REGISTRY-RESTORE</a></p></div>
+</section>
+
+<section>
+  <h2>8. 已实现的 cold-cache ladder 没有接入发布的 Cold History</h2>
+  <pre><code>已实现的 SessionProjectionCache.coldSnapshot(id)
+  cache rows → restoreFloor → persistence.readFrom(tail)
+  → registry.restore → fail-soft refreshed write-back
+
+发布的 ordinary cold History
+  persistence.inspect(full logical log)
+  → registry.restore({}, all events, 0)
+
+发布的 Session list
+  只调用 cachedSnapshot(header)，零 log I/O</code></pre>
+  <div class="claim fact"><div class="claim-label">已实现 ladder</div><p><code>coldSnapshot()</code> 会校验 log identity，从 anchored floor 做 tail fold，在 identity 或 endpoint 失败后回退到一次 full read，并在不影响读取的前提下写回 refreshed rows。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-projection-cache/src/index.ts#L154-L197" title="Projection cache 的 cold tail-replay ladder: coldSnapshot 读取 checkpoint、计算 restore floor、调用 persistence.readFrom 做 tail fold；identity 或 watermark overreach 时回退到 full read，并 fail-soft 写回刷新结果。" aria-label="证据 PROJ-CACHE-LADDER">PROJ-CACHE-LADDER</a></p></div>
+  <div class="claim assessment"><div class="claim-label">全仓库 call-site 审计</div><p>在固定 commit 上，生产源码搜索只找到 <code>coldSnapshot</code> 方法定义与生成的 API catalog，没有任何发布 caller。<code>session.list</code> 只使用 <code>cachedSnapshot</code>；ordinary 与 subagent cold History 已经读取 inspect 后的完整日志，并从零 fold；subagent listing 在 cached row 足以定论时使用它，否则执行完整 inspection。因此这个 cache 当前是发布的 list/metadata accelerator，而不是活跃的 cold-History tail-replay accelerator。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/src/api-proxy.ts#L841-L877" title="发布的 list 与 detached History projection 路径: Session list 对 live row 使用 registry snapshot、对 cold row 只使用 cachedSnapshot；detached History 直接以空 checkpoint 对完整 inspected events 从零 restore。" aria-label="证据 PROJ-CACHE-INTEGRATION">PROJ-CACHE-INTEGRATION</a></p></div>
+  <aside class="caveat"><strong>Backend 细节：</strong>即便未来 caller 使用 <code>readFrom</code>，物理成本也不统一为 O(tail)。SQLite 可以 seek suffix，而顺序 JSONL medium 仍需解析 artifact 并跳过更早事件。</aside>
+</section>
+
+<section>
+  <h2>9. Inspect、Prepare 与 Resume 构成冷启动协议，而不是三个别名</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>操作</th><th>逻辑恢复</th><th>耐久突变</th><th>Ownership / publication</th></tr></thead>
+    <tbody>
+      <tr><td><code>inspect(id)</code></td><td>校验并在内存加入确定性 closers</td><td>不提交 repair</td><td>无 Agent；可保留 exact prepared graph 供复用</td></tr>
+      <tr><td><code>readFrom(id, seq)</code></td><td>无；返回有效 physical stored suffix</td><td>无</td><td>不经过 preparation cache，也不发布</td></tr>
+      <tr><td><code>prepare(id)</code></td><td>构造平衡的 exact Session</td><td>必要时提交 repair，再重新加载</td><td>独占预留 unpublished Session</td></tr>
+      <tr><td>Agent <code>resume</code></td><td>消费 preparation</td><td>后续 live suffix 按正常路径持久化</td><td>运行 setup，发布 exact Session + Agent，或 rollback</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Persistence 读面</div><p>Cold inspection 可以呈现平衡的 logical Turn，同时不触碰 torn 或 interrupted physical tail。Preparation 使用 <code>loading</code>、<code>ready</code>、<code>committing</code>、<code>reserved</code> 四个 phase；同 ID inspector 共享一次 load，只有被独占预留的 exact Session 能够 publish。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-persistence/src/coordinator.ts#L720-L889" title="prepare、load、inspect 与 readFrom 的四种读契约: prepare 预留唯一可发布 Session 并提交恢复；load 提交恢复后返回平衡视图；inspect 只做逻辑恢复不发布不写盘；readFrom 返回物理存储 suffix 且不做恢复。" aria-label="证据 LOG-PERSISTENCE-READ-FACES">LOG-PERSISTENCE-READ-FACES</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-persistence/src/coordinator.ts#L891-L990" title="Prepared repair 的 revision 校验与精确提交: Cold source 读取后合成 closers 并通过 Session seed 校验；commitRepair 后因 revision 已变化而重新加载，避免把旧内存图错误绑定到新 revision；live load 先 flush 且拒绝 open turn。" aria-label="证据 LOG-PREPARED-COMMIT">LOG-PREPARED-COMMIT</a></p></div>
+  <div class="claim fact"><div class="claim-label">Agent transaction</div><p>Agent factory 把 caller、owner fiber 与 factory cancellation 融合到 <code>persistence.prepare</code> 周围。Setup 在 publication 前运行；失败会 dispose prepared Agent 并释放 reservation。<code>SessionStore.enter</code> 是最终同 ID collision boundary。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/index.ts#L624-L710" title="Exact prepared Session 的 setup、publication 与 rollback: Agent resume 需要 persistence.prepare，在融合 cancellation 下取得 exact preparation；setup 在 publish 前运行，失败会 dispose，finally 释放 reservation，不存在 resume 失败后自动 fresh-create 的分支。" aria-label="证据 PROJ-COLD-RESUME">PROJ-COLD-RESUME</a></p></div>
+</section>
+
+<section>
+  <h2>10. 浏览器 Cold Open 被刻意设计为不同于 Agent Resume</h2>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>恢复选择</h3><p>浏览器记住当前 Session address，并在 list 到达后选择它。</p></div>
+    <div><span>2</span><h3>打开 History</h3><p><code>Session.open()</code> 请求 tail page；它不请求 Agent。</p></div>
+    <div><span>3</span><h3>Inspect 冷存储</h3><p>Host 优先使用 attached Session，否则使用 persistence inspection。</p></div>
+    <div><span>4</span><h3>仅按需 Resume</h3><p>Prompt、rename、model、command 等需要 Agent 的操作才进入共享 resolver。</p></div>
+  </div>
+  <p>Cold Session 必须能被 persistence list 找到，并携带 project <code>cwd</code>，才可由 Web 服务。若日志记录的 preset 已无法提供 standing presenter scope，History 仍可降级为 generic tool card。真正 resume 更严格：它必须通过 format、continuity、ownership、preset composition、setup 与最终 publication 检查。</p>
+  <div class="claim fact"><div class="claim-label">没有静默 Fresh fallback</div><p>共享 resolver 复用 live Agent，对同 ID resume 去重，inspect ownership 与 composition，再调用 <code>agents.resume</code>。Not-found 与 subagent ownership 得到 typed error；其他真正的 resume failure 仍是 error。只有显式 create/adopt 路径在 persistence 确认 ID 缺失后才创建 fresh Session。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/src/api-proxy.ts#L1525-L1573" title="Cold History 使用 inspect 而不取得 Agent ownership: History 优先读取 attached Session，否则调用 servable inspection；所有 await 结束后同步取得 events 与 projection cut，整个路径不 resume 或 publish Agent。" aria-label="证据 PROJ-HOST-COLD-OPEN">PROJ-HOST-COLD-OPEN</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/index.ts#L624-L710" title="Exact prepared Session 的 setup、publication 与 rollback: Agent resume 需要 persistence.prepare，在融合 cancellation 下取得 exact preparation；setup 在 publish 前运行，失败会 dispose，finally 释放 reservation，不存在 resume 失败后自动 fresh-create 的分支。" aria-label="证据 PROJ-COLD-RESUME">PROJ-COLD-RESUME</a></p></div>
+</section>
+
+<section>
+  <h2>11. Client Convergence 组合完整 Baseline、稀疏 Push 与 Generation Repair</h2>
+  <pre><code>history tail baseline { asOfSeq: N, values: all registered keys }
+                       ↓ seed
+resident ProjectionValueStore
+                       ↑ 仅 frame.seq 更大时 apply
+session/projection { key, value, seq }
+
+新 mux generation：
+session/subscribed { lastSeq: D }
+→ 删除 client 中 seq &gt; D 的 rows
+→ 重新拉 list，并 resync 已打开的 History windows</code></pre>
+  <div class="claim fact"><div class="claim-label">Value store</div><p>即使 Session object 尚不存在，manager 也为每个 Session 拥有一个 projection store。Baseline 与 push frame 都使用严格 higher-seq-wins。完整 History baseline 还会清理 cut 及更早时刻未携带的旧 key；局部 <code>session.list</code> block 只 apply 自己携带的 key，刻意不清理其他 key。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/runtime/src/client/sessions/projection-store.ts#L67-L177" title="Client projection 的 higher-seq-wins、完整 seed 与 generation truncate: Value store 对 baseline 与 push 都拒绝 lower/equal seq；完整 seed 会清除 cut 时缺失的旧 key，而 subscribed truncate 只删除 seq 超过 Host durable lastSeq 的 rows。" aria-label="证据 PROJ-CLIENT-STORE">PROJ-CLIENT-STORE</a></p></div>
+  <div class="claim fact"><div class="claim-label">重启恢复</div><p><code>session/subscribed.lastSeq</code> 会删除声称超过 Host durable endpoint 的 row，让 crash 后重建出的较低 seq 真相能够落地。随后 History installation 排空 buffered live events，丢弃 overlap，并在检测到 seq hole 时重新拉 tail。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/runtime/src/client/sessions/manager.ts#L438-L735" title="List baseline、pre-instantiation push 与 subscribed repair 的收敛: Manager 在 list pull 后 replay 并发 mutations；局部 list projection 只 apply carried keys；session/projection 在 Session 实例化前也进入 resident store，subscribed 再 truncate phantom rows 并重置 generation state。" aria-label="证据 PROJ-CLIENT-MANAGER">PROJ-CLIENT-MANAGER</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/runtime/src/client/sessions/session.ts#L614-L729" title="History window、live buffer、去重与 gap repair: 客户端先装 tail page，再按 seq 拼接订阅期间 buffer；重叠事件丢弃，发现 seq hole 就缓存并重新拉 tail page，避免向 conversation engine 注入不连续窗口。" aria-label="证据 LOG-CLIENT-STITCH">LOG-CLIENT-STITCH</a></p></div>
+  <p>Mux 与 host feed 是两条独立 stream，没有共享 total-order 声明；v1 的 <code>events.mux({since})</code> 也会忽略 <code>since</code>。被支持的收敛方式是重开 stream、刷新 list、重拉 History，并按各 domain 规则 repair，而不是从一个全局线性 stream offset 继续。</p>
+</section>
+
+<section>
+  <h2>12. Rebuild 与 Invalidation 发生在四种不同 Scope</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>变化</th><th>被失效的状态</th><th>真相如何回来</th></tr></thead>
+    <tbody>
+      <tr><td>追加另一个 event</td><td>Live cell eager 前进</td><td>变化 unit 发 push；完整 baseline 之后把每个 value 标记到新 cut</td></tr>
+      <tr><td>Unit state 或 fold semantics 变化</td><td>旧 <code>stateVersion</code> 的 persisted row</td><td>丢弃 row，并从可证明的日志前缀 fold</td></tr>
+      <tr><td>Session ID 被重建或 storage root 变化</td><td>Identity 不匹配的整个 checkpoint record</td><td>丢弃该无关生命周期的全部 rows</td></tr>
+      <tr><td>最后一个 registrant 卸载</td><td>该 key 的 registration 与全部 live WeakMap cells</td><td>后续 snapshot 省略 key；重新注册后延迟 fold 内存日志</td></tr>
+      <tr><td>Projection-cache domain format 变化</td><td>整个 derived medium</td><td>全部丢弃；Session log 仍足以重建</td></tr>
+    </tbody>
+  </table></div>
+  <p>没有任何 live registry API 会从 persisted checkpoint hydrate 自己的 WeakMap cells。Cache 的 detached <code>restore()</code> 路径会返回 snapshot 与 refreshed checkpoint，但 resumed live Session 在 registry 第一次访问时仍会 fold 内存 event array。Cache 也没有 eviction 或 retention surface；record 会一直累积，直到 out-of-band maintenance 删除。</p>
+</section>
+
+<section>
+  <h2>13. 四项文档声明已经偏离当前生产控制流</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>文档声明</th><th>当前实现</th><th>证据</th></tr></thead>
+    <tbody>
+      <tr><td>重复 projection key 会 throw</td><td>同 version 注册共享一个 ref-counted unit；只有 version mismatch 才 throw</td><td><code>session-projection/README.md:11</code> 对比 <code>src/index.ts:194-220</code></td></tr>
+      <tr><td>Title 不进入 <code>session.list</code></td><td>List row 携带 projection block；cold cached title 会在 open 前 seed manager</td><td><code>host/apiproxy/README.md:33</code> 对比 <code>api-proxy.ts:1725-1764</code></td></tr>
+      <tr><td>History 会 resume unattached Session，且没有 persistence-only read path</td><td>Cold History 使用 <code>inspect()</code>，并明确不发布 Agent</td><td><code>client/connection/README.md:23-26</code> 对比 <code>api/sessions.ts:264-283</code></td></tr>
+      <tr><td><code>skill.list</code> 可从 Header 解析 cold Session</td><td>Handler 首先要求 <code>ctx.sessions.get(sessionId)</code>；unattached Session 返回 not found</td><td><code>host/apiproxy/README.md:59</code> 对比 <code>api-proxy.ts:3205-3245</code></td></tr>
+    </tbody>
+  </table></div>
+  <aside class="caveat"><strong>CLI 表述：</strong>Launcher 的 <code>--resume</code> 示例明确是 TUI argument pass-through。Web command 只解析 host、port 与 trusted-host；本章不声称存在 Web <code>--resume</code> flag。</aside>
+</section>
+
+<section>
+  <h2>14. 源码级风险：Detach 可能短暂让 Projection Cache 领先日志</h2>
+  <pre><code>Session detach
+  1. 从 SessionStore 移除 Session
+  2. emit 被 contain、未 await 的 session/disposed observers
+       ├─ persistence 启动异步 retirement flush
+       └─ projection cache 取 snapshot 并写入
+            live-entry 检查此时失败 → 不调用 sessions.flush()</code></pre>
+  <div class="claim inference"><div class="claim-label">高置信静态推导；未执行 crash injection</div><p>Cache 文档声明日志永远领先 cache。普通 live write 确实执行这个保证，但 detach 时并不严格成立：Session 已经离开 store，因此 cache 跳过显式 flush，只依赖 persistence listener 的另一条 retirement drain。Cache 源码自身也承认可能存在 residual overreach。若进程在两次耐久写之间崩溃，就可能留下 seq 领先 stored log 的 checkpoint。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-projection-cache/src/index.ts#L132-L230" title="Live checkpoint 的 log-before-cache barrier 与 detach 例外: 普通 write 在 registry cut 后 flush 仍 live 的 Session，再 put cache；disposed listener 异步触发 flushSoft，但此时 live-store 检查可失败而跳过显式 flush，源码注释承认 residual overreach 由 cold read 检测。" aria-label="证据 PROJ-CACHE-DETACH-WINDOW">PROJ-CACHE-DETACH-WINDOW</a></p></div>
+  <p><code>coldSnapshot()</code> 原本可通过 anchored floor 检出 overreach，但发布路径没有 caller 使用它；zero-I/O list read 也不校验 stored log endpoint。因此 phantom list projection 可能进入 client；后续较低 seq 的 cold-History full-fold baseline 会在 higher-seq-wins 下失败，直到真正 resume 发出 <code>session/subscribed</code> 并 truncate row，或日志前进超过它。</p>
+  <aside class="caveat"><strong>证据边界：</strong>这是源码中可达的 ordering，不是已复现的生产事故。正常 turn-end cache write 已经 flush 日志，因此该窗口要求存在未被之前成功 barrier 覆盖的状态，并在相应 detach 区间发生崩溃。</aside>
+</section>
+
+<section>
+  <h2>15. 源码级风险：Equal-seq Replacement 无法跨越 Host Generation</h2>
+  <div class="claim inference"><div class="claim-label">确定性 client-rule 推导；未执行该场景</div><p>Client 会拒绝 seq 小于或等于 resident row 的所有 update，而 generation truncation 只删除严格超过新 Host durable <code>lastSeq</code> 的 rows。如果 Host 在相同日志端点上重启、但在该端点计算出不同 value，旧 row 会保留，新 equal-seq baseline 无法替换它。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/runtime/src/client/sessions/projection-store.ts#L128-L177" title="Equal-seq update 拒绝与严格大于 lastSeq 的 truncate: apply 在 seq 小于或等于现有 row 时直接返回；seed 复用该规则；generation truncate 只删除 row.seq 大于 lastSeq 的状态，因此同水位的新 generation value 无法替换旧值。" aria-label="证据 PROJ-CLIENT-EQUAL-SEQ">PROJ-CLIENT-EQUAL-SEQ</a></p></div>
+  <p><code>imageLimits</code> 让场景变得具体：它的 state 永远是 <code>null</code>，view 读取当前 boot 的 attachment config，并且刻意从不 push。浏览器若跨 Host restart 保持存活，就可能在 seq N 保留旧 limits；subscribed 不会删除它，因为它没有超过 N，而新的 N baseline 会因 equal 被拒绝。只有另一个 event 推进 baseline、client 完整重置，或协议携带 generation/version 维度后，value 才会收敛。</p>
+  <p>同一个边界也适用于 unit view semantics 在日志 watermark 不变时改变，以及同 key 的 unload/reload。<code>stateVersion</code> 能保护 Host persisted cache，却没有出现在 client wire row 中，因此无法解决这个 client-generation 歧义。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/src/api-proxy.ts#L1302-L1323" title="Per-boot、baseline-only 的 imageLimits projection: imageLimits unit 的 state 恒为 null，apply 永远返回同一 reference，view 直接读取当前 attachments service 配置；因此启动内不发 change frame，只由 baseline 传播。" aria-label="证据 PROJ-IMAGE-LIMITS">PROJ-IMAGE-LIMITS</a></p>
+</section>
+
+<section>
+  <h2>16. 源码级风险：一个 Optional Unit 可以让 Ordinary History 不可用</h2>
+  <div class="claim assessment"><div class="claim-label">Carrier 不一致</div><p>Detached History baseline 调用 <code>registry.restore({}, events, 0)</code>，会 fold 每一个已注册 unit。如果任何 unit 的 <code>apply</code>、<code>view</code> 或 schema 拒绝日志，ordinary <code>session.history</code> 会返回 <code>internal</code>，而不是在没有 projections 的情况下继续提供 transcript。Session listing 明确按 row contain projection failure，subagent History 也会降级为不带 block；ordinary History 没有这样做。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/src/api-proxy.ts#L2242-L2269" title="Ordinary History 将 projection 异常折叠为 internal error: History 在同一 try 中取得 source、composition、projection cut 与页面；除 SessionNotFound 外的任何异常都返回 history unavailable/internal，没有像 list 或 subagent History 那样省略 projection block 的降级分支。" aria-label="证据 PROJ-HISTORY-FAILURE">PROJ-HISTORY-FAILURE</a></p></div>
+  <p>这不只是 failing domain 内部的 corrupt state：process-wide registry 的 all-unit fold 允许一个无关 projection 阻断基础 transcript read。Fail-loud 是否符合预期需要明确产品决策；当前 carrier 行为并不一致。</p>
+  <div class="claim assessment"><div class="claim-label">Capability invalidation 延迟</div><p>注销最后一个 unit 只会删除 registration 与 cells，不会发送 invalidation frame。已连接 client 会保留该 key，直到后续完整 tail baseline 省略它；如果相同 key 在同一 log seq 重新加载，即使 baseline 到达，严格 equal-seq 规则仍可能保留旧 value。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-projection/src/index.ts#L137-L220" title="同 key 注册的 refcount 与 version 冲突规则: 同 key、同 stateVersion 的 registrant 共享第一份 unit 并增加 refs；version 不同才拒绝。最后一个 disposer 删除 registration 与全部 cells，且 runtime 无法比较函数语义。" aria-label="证据 PROJ-REGISTRY-REGISTRATION">PROJ-REGISTRY-REGISTRATION</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/runtime/src/client/sessions/projection-store.ts#L67-L177" title="Client projection 的 higher-seq-wins、完整 seed 与 generation truncate: Value store 对 baseline 与 push 都拒绝 lower/equal seq；完整 seed 会清除 cut 时缺失的旧 key，而 subscribed truncate 只删除 seq 超过 Host durable lastSeq 的 rows。" aria-label="证据 PROJ-CLIENT-STORE">PROJ-CLIENT-STORE</a></p></div>
+</section>
+
+<section>
+  <h2>17. 设计评价与验证状态</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>选择</th><th>收益</th><th>代价</th></tr></thead>
+    <tbody>
+      <tr><td>唯一权威事件日志</td><td>每个派生层都可丢弃并重建</td><td>加速路径未接线时，cold full fold 仍昂贵</td></tr>
+      <tr><td>同步、whole-value projection units</td><td>原子 cut 与简单 client replacement 语义</td><td>每个 event 都触碰每个 unit；大 value 随每个 tail baseline 传输</td></tr>
+      <tr><td>版本化 persisted fold shortcuts</td><td>语义变化无需 cache migration</td><td>Version discipline 依赖人工，cache retention 无界</td></tr>
+      <tr><td>Inspect 与 Resume 分离</td><td>Cold browsing 不激活 Agent，也不突变 durable recovery state</td><td>读取与执行路径会暴露不同的 logical/physical 时刻</td></tr>
+      <tr><td>Client higher-seq-wins</td><td>Stale baseline 与 replayed frame 无法回退当前状态</td><td>单独 seq 无法区分 equal-watermark Host generation</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">本章验证范围</div><p>本章在固定 upstream commit 上追踪了 Session flush dispatch、checkpoint policy、persistence write-behind、projection registry 与全部生产注册、projection-cache schema 与读写路径、Host History/list carrier、cold inspection 与 exact preparation、Agent resume，以及浏览器 projection/gap-repair store；同时阅读了相关合同测试源码。依赖未安装，本地没有执行测试、crash injection 或真实 reconnect 实验，因此上面的每个风险段都被标记为静态推导，而非已复现行为。</p></div>
+</section>
+<section class="learning-notes" aria-labelledby="learning-notes-title"><h2 id="learning-notes-title">我的学习体会</h2>
     <p class="privacy">内容仅自动保存到当前浏览器，不上传、不进入仓库。你可以导出 Markdown 自行归档。</p><textarea data-learning-notes aria-label="我的学习体会" placeholder="记录你的理解、疑问、反例和可迁移原则……"></textarea>
     <div class="note-footer"><span data-note-saved>本地草稿</span><button type="button" data-note-export>导出 Markdown</button>
     <button type="button" class="danger" data-note-clear>清空</button><span data-note-count>0 字符</span></div></section><nav class="pagination" aria-label="章节翻页"><a href="../pages/persistence-database.html"><small>← 上一章 · 11</small><strong>持久化与数据库设计</strong></a><a class="next" href="../pages/compaction.html"><small>下一章 · 13 →</small><strong>压缩体系与上下文压力</strong></a></nav></article>

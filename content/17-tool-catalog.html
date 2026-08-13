@@ -1,0 +1,240 @@
+<section>
+  <h2>结论：DeepSeek Harness 没有一张固定的“默认工具表”，只有可证明完整的工具包上界和由 composition 解出的运行时视图</h2>
+  <div class="thesis"><p>固定基线上，上游生成目录覆盖 24 个 shipped tool package、52 个 schema 条目和 51 个唯一生成名称；唯一重名是一次性 shell 与持久 PTY 两种实现都注册为 <code>bash</code>。生成器还记录了未单独生成 schema heading 的 shipped 配置别名 <code>subagent_fork</code>，所以被目录代表的 distinct shipped names 是 52 个。这些名字绝不会默认同时出现：标准 Web 预设在 Linux/有 attachment service 的基线组合中是 25 个 root 工具，minimal 预设只有 2 个，Code/Cordis/自定义 preset、scope restriction、动态插件和子 Agent 身份还会继续改变集合。</p></div>
+  <div class="claim fact"><div class="claim-label">可复现口径</div><p>本章的“全集”从生成目录的 package headings 与 tool headings 计数，并逐行核对 package map；“实际集合”则从 shipped preset 与 host service 条件重新求值。生成器对每个工具包启动独立真实 Context、读取 <code>ctx.tools.schemas()</code>，并用磁盘 glob 阻止漏列新工具包。<evidence id="TOOLCAT-GENERATED"></evidence><evidence id="TOOLCAT-GENERATOR"></evidence></p></div>
+</section>
+
+<section>
+  <h2>1. 三个不能混为一谈的集合</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>集合</th><th>固定基线结论</th><th>回答的问题</th><th>不能推出什么</th></tr></thead>
+    <tbody>
+      <tr><td>生成目录上界</td><td>24 package sections；52 schema 条目；51 唯一生成名称；另记 1 个 shipped alias</td><td>所有 shipped <code>packages/*/tool-*</code> 在选定配置下能贡献什么</td><td>不表示一个 Agent 同时看见全部</td></tr>
+      <tr><td>Composition 集合</td><td>preset + host services + platform + feature flags</td><td>某一部署装载了哪些 definition</td><td>不表示每个 scope 都有权看见</td></tr>
+      <tr><td>Request 集合</td><td>scope view + restriction + native/code/both projection</td><td>本次模型请求实际收到哪些 schema</td><td>不表示调用一定获批或后端可用</td></tr>
+    </tbody>
+  </table></div>
+  <p>还有第四个时间维度：definitions 是 live Cordis effects。排队后、真正 start 前的热装载/卸载可改变 visibility 或并行分类；因此审计必须保存 request header 与 durable call/result，不能只拿进程当前 catalog 反推历史。</p>
+</section>
+
+<section>
+  <h2>2. 生成目录为何比静态 grep 更可信、又为何仍不是运行时真相</h2>
+  <pre><code>glob packages/*/tool-* → completeness guard
+for each manifest entry:
+  fresh Context → SystemPrompt → ToolRuntime → package-specific seams
+  → mount plugin → ctx.tools.schemas(scope) → sort → dispose
+render package map + name + description + JSON-Schema + source link</code></pre>
+  <div class="claim fact"><div class="claim-label">双重失败保护</div><p>Manifest 漏掉磁盘上的工具包会直接失败；已列工具包因缺 service 而 pending、最终一个 schema 都没注册也会失败。每个 package 独立 boot，避免前一个包的注册被错误归因到后一个包。<evidence id="TOOLCAT-GENERATOR"></evidence></p></div>
+  <aside class="caveat"><strong>目录边界：</strong>它按默认配置启动，只有 required/no-default 字段由生成器明确选分支；名称和 schema 可以受配置影响，MCP 与动态 Cordis 工具也可在部署期新增，examples 刻意排除。因此它是“shipped package 能力上界的可执行快照”，不是全世界所有可能工具的封闭枚举。</aside>
+</section>
+
+<section>
+  <h2>3. 完整 package/name 地图（24 包，51 个生成名称 + 1 个 shipped 配置别名）</h2>
+  <div class="table-scroll"><table class="package-table">
+    <thead><tr><th>能力族 / package</th><th>模型可见名称</th><th>主要 seam / 副作用</th></tr></thead>
+    <tbody>
+      <tr><td>Human · <code>tool-ask-user</code></td><td><code>ask_user_question</code></td><td>等待 UI/provider 人类回答；call 在等待期间保持打开</td></tr>
+      <tr><td>Code transport · <code>tools</code></td><td><code>run_code</code></td><td>Code Mode 保留 transport；嵌套 subcall 重新进入完整 tool pipeline</td></tr>
+      <tr><td>Plan · <code>plan-mode</code></td><td><code>exit_plan_mode</code></td><td>评审计划；批准后写 <code>plan/mode inactive</code></td></tr>
+      <tr><td>One-shot shell</td><td><code>bash</code> / <code>pwsh</code></td><td>新进程、可选后台 job；平台二选一</td></tr>
+      <tr><td>Runtime self-modification · <code>tool-cordis</code></td><td><code>cordis_define</code>, <code>cordis_inspect_list</code>, <code>cordis_inspect_query</code>, <code>cordis_inspect_self</code>, <code>cordis_run</code>, <code>cordis_stop</code>, <code>cordis_undefine</code></td><td>进程内定义、检查、启动和卸载动态 package；shipped tree 默认不装</td></tr>
+      <tr><td>Persistent shell</td><td><code>bash</code></td><td>owner-isolated PTY 状态；与 one-shot <code>bash</code> 同名但不是同一 definition</td></tr>
+      <tr><td>Standalone editor</td><td><code>str_replace_editor</code></td><td>view/create/literal replace/insert over <code>ctx.fs</code></td></tr>
+      <tr><td>Filesystem</td><td><code>read</code>, <code>read_image</code>, <code>write</code>, <code>edit</code></td><td>观察事件、写/edit intent、durable attachment；image 注册依赖 attachment service</td></tr>
+      <tr><td>Filesystem discovery</td><td><code>glob</code>, <code>grep</code></td><td>固定 argv 调 packaged ripgrep；可把完整 capped 结果 spill</td></tr>
+      <tr><td>Terminal</td><td><code>terminal_open</code>, <code>terminal_read</code>, <code>terminal_send</code>, <code>terminal_signal</code>, <code>terminal_list</code>, <code>terminal_close</code></td><td>持久 PTY 生命周期；send 可注册 background job</td></tr>
+      <tr><td>Goal</td><td><code>create_goal</code>, <code>get_goal</code>, <code>update_goal</code></td><td>Session-owned durable goal/revision/round 状态与权限检查</td></tr>
+      <tr><td>Schedule</td><td><code>schedule_create</code>, <code>schedule_delete</code>, <code>schedule_list</code></td><td>仅 opt-in live root scope；写 <code>schedule/change</code></td></tr>
+      <tr><td>Language server</td><td><code>lsp</code></td><td>稳定 schema，provider 不可用时结构化拒绝</td></tr>
+      <tr><td>Fixed iteration</td><td><code>ralph</code></td><td>每轮创建 fresh structured child，前台执行固定 workflow</td></tr>
+      <tr><td>Skill</td><td><code>skill</code></td><td>读取可信 instruction catalog/body；可注入 replacement catalog</td></tr>
+      <tr><td>Session query</td><td><code>session_search</code>, <code>session_event_search</code>, <code>session_trace</code>, <code>session_event_trace</code>, <code>session_event_read</code></td><td>显式授权的词法检索、lineage 与 exact event read；默认标准 preset 不装</td></tr>
+      <tr><td>Delegation</td><td><code>subagent</code>（shipped alias <code>subagent_fork</code>）</td><td>provider/name/background mode 都由配置决定；child 有独立 Session</td></tr>
+      <tr><td>Child control</td><td><code>send_message</code>, <code>interrupt_agent</code>, <code>list_agents</code></td><td>continuable child 的 follow-up/interrupt/list</td></tr>
+      <tr><td>Child return channel</td><td><code>report</code></td><td>只注册到 continuable in-process child，向直接 parent 写 user-role message</td></tr>
+      <tr><td>Background jobs</td><td><code>job_list</code>, <code>job_output</code>, <code>job_kill</code></td><td>统一控制 shell、PTY send 与 one-shot subagent jobs</td></tr>
+      <tr><td>Todo</td><td><code>todo_write</code></td><td>写 <code>todo/write</code>；是否允许多个 in-progress 是必选部署配置</td></tr>
+      <tr><td>Programmable orchestration</td><td><code>workflow</code></td><td>受限 worker script 编排 Agent；script 本身无 fs/network/timer</td></tr>
+      <tr><td>Web</td><td><code>web_search</code>, <code>web_fetch</code></td><td>provider-neutral seam；search/fetch 是否存在由 composition 决定</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">逐包归因</div><p>上游 package map 同时记录每个包的 Requires、Writes/Affects、shipped aliases 与 deployment note；其后保留每个 tool 的精确 description、参数 JSON Schema 和生产源码链接。本表是完整索引，不复制 1,800 余行 schema。<evidence id="TOOLCAT-PACKAGE-MAP"></evidence></p></div>
+</section>
+
+<section>
+  <h2>4. 标准 Web root 的实际 25 个工具</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>来源</th><th>名称</th><th>数量</th></tr></thead>
+    <tbody>
+      <tr><td>平台 shell</td><td>Linux/macOS <code>bash</code>；Windows <code>pwsh</code></td><td>1</td></tr>
+      <tr><td>Filesystem + search</td><td><code>read</code>, <code>read_image</code>, <code>write</code>, <code>edit</code>, <code>glob</code>, <code>grep</code></td><td>6</td></tr>
+      <tr><td>Jobs + skill</td><td><code>job_list</code>, <code>job_output</code>, <code>job_kill</code>, <code>skill</code></td><td>4</td></tr>
+      <tr><td>Goal + plan</td><td><code>create_goal</code>, <code>get_goal</code>, <code>update_goal</code>, <code>exit_plan_mode</code></td><td>4</td></tr>
+      <tr><td>Delegation</td><td><code>subagent</code>, <code>subagent_fork</code>, <code>send_message</code>, <code>interrupt_agent</code>, <code>list_agents</code></td><td>5</td></tr>
+      <tr><td>Workflow</td><td><code>workflow</code>, <code>ralph</code></td><td>2</td></tr>
+      <tr><td>Interaction/state/web</td><td><code>ask_user_question</code>, <code>todo_write</code>, <code>web_search</code></td><td>3</td></tr>
+      <tr><td><strong>总计</strong></td><td></td><td><strong>25</strong></td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">条件已写入结论</div><p>标准 preset 明确平台 shell 二选一、装载 fs/search/jobs/skill/goal/plan、两个 delegation 名称、三项 control、workflow/Ralph/ask/todo，并把 <code>fetch:false</code>；host 基线装载 local attachment store，所以 <code>read_image</code> 注册。<evidence id="TOOLCAT-STANDARD-BASE"></evidence><evidence id="TOOLCAT-STANDARD-ORCHESTRATION"></evidence><evidence id="TOOLCAT-ATTACHMENT"></evidence></p></div>
+  <p><code>exit_plan_mode</code> 即使 planning inactive 仍留在 schema，以避免模式切换改变 tool catalog、破坏 request-cache prefix；执行时再拒绝不合法状态。Codex/Claude Code delegation rows 在该 preset 中明确 disabled，<code>web_fetch</code> 也不出现。</p>
+</section>
+
+<section>
+  <h2>5. Minimal 预设不是 standard 的“少一点”，而是另一种完整产品假设</h2>
+  <div class="claim fact"><div class="claim-label">精确集合</div><p>Minimal 使用 complete persona，关闭 runtime context snapshot，不装 compaction，只暴露 persistent <code>bash</code> 与 <code>str_replace_editor</code>。它为 PTY 与 bare local filesystem 各自建立 isolated realm。<evidence id="TOOLCAT-MINIMAL"></evidence></p></div>
+  <p>这解释了为什么“Harness 支持 51 个工具”和“这个 Agent 只有 2 个工具”可以同时为真。能力不是二进制产品清单，而是 profile/preset 给 Agent 的可组合语言。</p>
+</section>
+
+<section>
+  <h2>6. 相同名称不等于相同语义：两个 <code>bash</code></h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>实现</th><th>进程模型</th><th>状态</th><th>典型 composition</th></tr></thead>
+    <tbody>
+      <tr><td><code>dsh-tool-bash</code></td><td>每次调用新进程，经 <code>ctx.shell</code></td><td>cwd/env 由请求与 executor 决定；无 PTY 连续状态</td><td>standard/base</td></tr>
+      <tr><td><code>dsh-tool-bash-persistent</code></td><td>复用 owner-isolated PTY，经 <code>ctx.terminals</code></td><td>shell 状态跨 calls 保留</td><td>minimal</td></tr>
+    </tbody>
+  </table></div>
+  <aside class="caveat"><strong>Registry 约束：</strong>同一 visibility layer 不能同时注册两个同名定义；composition 必须选择、隔离或 shadow。审计历史也不能只看 <code>name:"bash"</code> 判断后端，必须结合当时 composition/request header。</aside>
+</section>
+
+<section>
+  <h2>7. Filesystem 家族：发现、读取、变更与观察被拆开</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>工具</th><th>动作</th><th>关键策略</th><th>展示意图</th></tr></thead>
+    <tbody>
+      <tr><td><code>glob</code>/<code>grep</code></td><td>packaged rg 的 fixed-argv 发现</td><td>timeout/cap/spill；不经 shell，也不经 <code>ctx.fs</code></td><td>search result groups</td></tr>
+      <tr><td><code>read</code></td><td>有界 UTF-8 line window</td><td>记录 present/absent version observation</td><td>read card + locations</td></tr>
+      <tr><td><code>read_image</code></td><td>有界 bytes → content-addressed attachment</td><td>先验 extension/media/model route gates</td><td>durable image block + metadata</td></tr>
+      <tr><td><code>write</code>/<code>edit</code></td><td>create/overwrite 与 literal replacement</td><td>默认 observation policy 要求 unchanged version；sandbox 可升级审批</td><td>diff intent + durable meta</td></tr>
+      <tr><td><code>str_replace_editor</code></td><td>把 view/create/replace/insert 合成一 tool</td><td>用于 minimal 的紧缩接口；依旧走 fs seam</td><td>generic/diff</td></tr>
+    </tbody>
+  </table></div>
+  <p>值得注意：<code>glob</code>/<code>grep</code> 语义上是只读，却没有 opt in 并行；读写语义与 scheduler 分类是两个独立维度。</p>
+</section>
+
+<section>
+  <h2>8. Shell、Terminal 与 Job：执行能力与生命周期控制正交</h2>
+  <pre><code>bash/pwsh --run_in_background--> Job Registry <--terminal_send / one-shot subagent
+                                        |
+                           job_list / job_output / job_kill
+
+terminal_open/read/send/signal/list/close → persistent PTY registry</code></pre>
+  <p>Job 工具不是 shell 专属 API，而是跨 producer 的统一后台任务控制面。Terminal 六件套则显式暴露会话建立、I/O、signal 与 close，换取更强状态性；standard 没装它，minimal 甚至不暴露 terminal controls，只把 persistent PTY 包装成同名 <code>bash</code>。</p>
+</section>
+
+<section>
+  <h2>9. Plan、Goal、Todo 与 Ask：四种人机/协作状态，不是一张任务表</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>原语</th><th>生命周期</th><th>谁拥有真相</th><th>工具动作</th></tr></thead>
+    <tbody>
+      <tr><td>Plan mode</td><td>Agent mode，跨 steps</td><td><code>plan/mode</code> 事件 + reviewer</td><td><code>exit_plan_mode</code> 提交完整计划</td></tr>
+      <tr><td>Goal</td><td>Session 多 round、可继续</td><td>Goal service/projection</td><td>create/get/update</td></tr>
+      <tr><td>Todo</td><td>Session 内最新 checklist projection</td><td><code>todo/write</code></td><td>整表 replacement write</td></tr>
+      <tr><td>Question</td><td>单次 tool call 的 suspension</td><td>UserQuestion provider</td><td>等待并返回回答</td></tr>
+    </tbody>
+  </table></div>
+  <p>第 15 章分析它们的 durable semantics；本章只强调 tool surface 不应按名称相似度合并。</p>
+</section>
+
+<section>
+  <h2>10. Delegation、Workflow 与 Ralph：三种不同的编排自由度</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>工具</th><th>模型决定什么</th><th>Runtime 固定什么</th><th>结果通道</th></tr></thead>
+    <tbody>
+      <tr><td><code>subagent*</code></td><td>一次 child prompt、label、foreground/background</td><td>provider、depth、background mode</td><td>tool result、job settlement 或 continuable child</td></tr>
+      <tr><td><code>workflow</code></td><td>受限 JS 中的 fan-out/control flow</td><td>worker isolation、agent bridge、并发/总量 cap</td><td>前台聚合 result</td></tr>
+      <tr><td><code>ralph</code></td><td>objective 与可选 rounds</td><td>每轮 fresh child 的固定迭代脚本</td><td>前台最终 result</td></tr>
+    </tbody>
+  </table></div>
+  <p><code>send_message</code>/<code>interrupt_agent</code>/<code>list_agents</code> 管理 continuable child；<code>report</code> 反向存在于 child scope，而不是 root catalog。第 24–26 章继续追踪 Session、activation 与 inbox。</p>
+</section>
+
+<section>
+  <h2>11. Web、LSP、Session Query 与 Skill：schema 稳定，provider 能力可以缺席</h2>
+  <p>这些工具都把模型可见 contract 与后端 provider 分开：<code>web_search</code>/<code>web_fetch</code> 走 <code>ctx.web</code>，<code>lsp</code> 走 <code>ctx.lsp</code>，Session Query 走可关闭 FTS 的 <code>ctx.sessionQuery</code>，Skill 走 scope-layered catalog。Schema 可保持 prefix 稳定，但执行可能返回 unavailable/disabled；“模型看见工具”从来不等于“provider 必然成功”。</p>
+  <div class="claim assessment"><div class="claim-label">设计判断</div><p>这种稳定 surface 对 KV cache 和替换 provider 很友好；代价是 capability discovery 不能只看 schema。高质量 host 还应把 provider readiness、policy mode 与故障原因呈现在 UI/telemetry，而不是让模型用失败调用探测。</p></div>
+</section>
+
+<section>
+  <h2>12. Cordis 工具集是刻意 opt-in 的“修改自身运行时”能力</h2>
+  <p>七个 <code>cordis_*</code> 工具能定义、检查、运行、停止和取消定义动态 package。运行中的 package 可继续注册新的模型工具，直到 stop/undefine/restart；因此 51 名上界在启用它后天然不是闭包。</p>
+  <div class="claim fact"><div class="claim-label">默认安全姿态</div><p>生成 package map 明确记载这套工具不在任何 shipped tree 中；缺少 <code>dynamicCordisRunner</code> 时根本不会激活。它不是“隐藏默认超能力”，而是 deployment 必须主动承担的真实 runtime-code trust boundary。<evidence id="TOOLCAT-PACKAGE-MAP"></evidence></p></div>
+</section>
+
+<section>
+  <h2>13. 并行分类：只有 8 个唯一名称/定义明确 opt in，其余全部 fail closed 为 exclusive</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>明确 parallel-safe</th><th>理由</th><th>在标准 root 中？</th></tr></thead>
+    <tbody>
+      <tr><td><code>read</code>, <code>read_image</code></td><td>只读；观察 race 由后续 mutation 的 in-lock version check 关闭；attachment content-addressed</td><td>是</td></tr>
+      <tr><td><code>web_search</code>, <code>web_fetch</code></td><td>provider read，不改 parent Agent state</td><td>仅 search</td></tr>
+      <tr><td><code>session_trace</code>, <code>session_event_trace</code>, <code>session_event_read</code></td><td>授权后的 exact/lineage reads</td><td>否，query package opt-in</td></tr>
+      <tr><td><code>subagent</code> definition（含配置别名）</td><td>child 不改 parent Session；唯一 parent write 是同步可交换 task insertion</td><td><code>subagent</code> 与 <code>subagent_fork</code></td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Fail-closed classifier</div><p>仓库生产源码中排除 helper/generated/test 后只有上述 8 处 <code>isConcurrencySafe: () =&gt; true</code>。Registry 只有在 classifier 精确返回 true 时给 parallel；缺失、非法参数或 throw 都是 exclusive。<code>glob</code>/<code>grep</code>、goal reads、job list 等看似“读”的工具仍是 barrier。<evidence id="TOOLCAT-PARALLEL-OPTINS"></evidence><evidence id="TOOL-SCHEMA-PROJECTION"></evidence></p></div>
+</section>
+
+<section>
+  <h2>14. “危险性”不是工具名上的一个布尔值</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>风险轴</th><th>代表工具</th><th>真正控制点</th></tr></thead>
+    <tbody>
+      <tr><td>文件 mutation</td><td>write/edit/editor</td><td>fs intent、observed version、sandbox escalation、approval</td></tr>
+      <tr><td>任意进程</td><td>bash/pwsh/terminal</td><td>sandbox provider、shell policy、timeout、signal/job kill</td></tr>
+      <tr><td>外部数据流</td><td>web/MCP/LSP</td><td>provider URL/credential/SSRF boundary、output retention</td></tr>
+      <tr><td>跨 Agent</td><td>subagent/control/workflow</td><td>parent authority、depth/caps、workspace effects、continuation ownership</td></tr>
+      <tr><td>持久状态</td><td>goal/todo/schedule</td><td>session/root authority、event validation、durability barrier</td></tr>
+      <tr><td>运行时代码</td><td>run_code/cordis_*</td><td>VM/worker surface、nested pipeline、opt-in composition</td></tr>
+    </tbody>
+  </table></div>
+  <p>本表是 threat-model 分类，不是源码里的 risk score。Harness 的做法是把风险分散到 provider confinement、pre approval、monotonic guard、tool-specific event gate 与 execution owner；第 19、20、31 章分别验证这些边界。</p>
+</section>
+
+<section>
+  <h2>15. 输入、输出与 UI 意图：目录只承诺模型 schema，执行 contract 还在 ToolDefinition</h2>
+  <div class="claim fact"><div class="claim-label">目录内容</div><p>生成器为每项输出 name、description、parameters JSON Schema 和 source；output schema、canonical value、timeout/concurrency metadata、presenters 与 finalizer 不在生成目录页面内。必须把第 16 章 ToolDefinition 分析和本章 package map 合看。<evidence id="TOOLCAT-GENERATOR"></evidence><evidence id="TOOL-DEFINITION"></evidence></p></div>
+  <p>UI 也不按 tool name 硬编码全部卡片。工具返回 provider-neutral generic/terminal/diff/search/read/web render intent；Host 用当前 scope definition 配对 call/result，配对缺失或 presenter throw 时保留原 event 并退回 generic card。<evidence id="TOOL-PRESENTATION-INTENTS"></evidence><evidence id="TOOL-HOST-PRESENTER"></evidence></p>
+</section>
+
+<section>
+  <h2>16. 可用性矩阵：注册、可见、可调度、获批、后端就绪是五道门</h2>
+  <pre><code>package mounted?
+  → required service satisfied and tool registered?
+    → current Agent scope can see it?
+      → presentation mode exposes native name or Code SDK?
+        → pre-policy + approval + guards allow this call?
+          → provider/runtime is ready and body succeeds?</code></pre>
+  <p>任何一层为否，都可能表现为“没有 schema”“UNKNOWN_TOOL”“需要审批”“provider unavailable”或普通 error result。把它们都叫“权限问题”会让诊断走错层。</p>
+</section>
+
+<section>
+  <h2>17. 已确认的文档/组合漂移与审计陷阱</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>陷阱</th><th>正确读法</th></tr></thead>
+    <tbody>
+      <tr><td>把生成 catalog 当 standard 默认</td><td>它是逐包 isolated boot 的上界，standard 要从 preset 重算</td></tr>
+      <tr><td>按“只读”猜 parallel</td><td>只有显式 classifier true 才 parallel；其余 exclusive</td></tr>
+      <tr><td>按 tool name 推断实现</td><td><code>bash</code> 有两套 shipped definition；subagent name 也可配置</td></tr>
+      <tr><td>schema 存在即 provider ready</td><td>LSP/Web/Query 等可用稳定 schema + execution-time unavailable</td></tr>
+      <tr><td>用当前 presenter 还原历史 UI</td><td>Host 确实 live-read 当前 definition；旧 call 跨页时会 generic fallback</td></tr>
+      <tr><td>认为 Code Mode 删除能力</td><td>它改变 wire entrance；SDK 中仍保留 end capabilities，subcall 重进 pipeline</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>18. 设计评价与验证状态</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>选择</th><th>收益</th><th>代价</th></tr></thead>
+    <tbody>
+      <tr><td>工具包与 provider seam 分离</td><td>稳定 schema 可替换后端</td><td>schema 无法表达 readiness</td></tr>
+      <tr><td>生成 catalog 通过真实 boot 收集</td><td>能捕获动态 schema、配置名称与注入条件</td><td>仍只代表 generator 选择的配置分支</td></tr>
+      <tr><td>Preset 决定能力语言</td><td>同一 runtime 支持 2-tool minimal 到 full agent</td><td>“默认工具数”必须附带 surface/platform/service 条件</td></tr>
+      <tr><td>并发显式 opt in</td><td>未知第三方工具默认安全串行</td><td>纯读工具漏声明会损失吞吐</td></tr>
+      <tr><td>Provider-neutral presentation</td><td>Web/CLI 可共享语义且 replay 有 fallback</td><td>热更 presenter 可能改变旧事件的当前展示</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">本章验证范围</div><p>本章逐项核对了生成 tool catalog、generator completeness/boot 逻辑、全部 24 package map rows、standard/minimal shipped presets、attachment condition、全仓生产 <code>isConcurrencySafe</code> 声明与 ToolRuntime classifier。计数来自固定基线文本的可复现 heading 统计。上游依赖未安装，因此不声称本机执行了 generator 或 upstream tests；站点自身构建与一致性检查会在提交前运行。</p></div>
+</section>

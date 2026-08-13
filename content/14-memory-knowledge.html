@@ -1,0 +1,189 @@
+<section>
+  <h2>结论：DeepSeek Harness 有耐久历史与显式召回，但没有默认自动运行的长期记忆系统</h2>
+  <div class="thesis"><p>在固定基线中，最容易被混称为“记忆”的能力其实属于六个不同层次：当前 Session Surface 是模型的工作上下文；JSONL 是完整耐久事件历史；compaction checkpoint 是同一会话内的有损上下文替换；session reference 是显式复制的跨会话快照；session query/FTS 是读取与词法检索；Skills 是可信指令目录。真正的外部记忆数据库、知识图谱或其他召回后端只通过默认关闭的 Memory MCP 示例接入。</p></div>
+  <div class="claim fact"><div class="claim-label">源码结论</div><p>“日志已经持久化”不等于“新会话会自动想起旧会话”。每次 Provider 请求仍只从当前 Session 的 Surface 派生消息；默认组合没有自动搜索其他会话、把搜索结果排序后注入 prompt 的第一方管线。<evidence id="MEMORY-AGENT-CONTEXT"></evidence><evidence id="SESSION-SURFACE-PROJECTION"></evidence></p></div>
+  <aside class="caveat"><strong>措辞边界：</strong>仓库中的 Ralph workflow 会把共享工作目录比作跨轮次的“long-term memory”。那是以文件系统作为权威交接面的工作流设计，不是会话事实自动抽取、语义索引或隐式召回服务。</aside>
+</section>
+
+<section>
+  <h2>1. 把六层核心能力与外部边界放进同一张矩阵</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>机制</th><th>权威数据</th><th>模型如何看见</th><th>是否跨会话</th><th>发布默认</th></tr></thead>
+    <tbody>
+      <tr><td>Working context</td><td>当前 Session Surface + 本次 system/tools</td><td><code>deriveMessages()</code> 直接组成请求</td><td>否</td><td>是；minimal 会关闭动态 runtime context</td></tr>
+      <tr><td>Durable history</td><td>追加式 Session event log</td><td>只有折叠后仍在 Surface 的消息进入请求</td><td>可被显式读取，不自动召回</td><td>Base 默认 JSONL</td></tr>
+      <tr><td>Compaction</td><td>摘要审计事件 + replacement checkpoint</td><td>checkpoint 替换旧 Surface span</td><td>否</td><td>Standard 有；minimal 无</td></tr>
+      <tr><td>Session reference</td><td>来源会话当前 Surface 的有界快照</td><td>作为带来源的 user-role context 注入</td><td>是，显式一次性复制</td><td>Opt-in，发布组合未挂载</td></tr>
+      <tr><td>Session query / FTS</td><td>实时或持久日志；可丢弃的 SQLite 派生索引</td><td>Host/UI 或可选模型工具读取</td><td>是，但受调用方授权</td><td>精确读取启用；FTS 与模型工具关闭</td></tr>
+      <tr><td>Skills</td><td>文件系统或 runtime provider 的指令定义</td><td>目录摘要 + 按需完整正文</td><td>按 workspace/scope 发现，不从对话学习</td><td>Standard 有；minimal 无</td></tr>
+      <tr><td>Memory MCP</td><td>第三方 provider 自己的存储</td><td>模型显式调用 MCP 工具</td><td>由 provider 决定</td><td>示例全部关闭</td></tr>
+    </tbody>
+  </table></div>
+  <p>默认不是一个单一布尔值，而是 composition 的结果。Base 挂载 JSONL 与 <code>sessionQuery</code>，但把 FTS 配成 <code>openAt: never</code>；standard preset 再挂载 Skills 和 compaction；minimal 明确省略 compaction，并禁止动态 runtime-context snapshot。<evidence id="MEMORY-DEFAULT-COMPOSITION"></evidence><evidence id="MEMORY-STANDARD-PRESET"></evidence><evidence id="MEMORY-MINIMAL-PRESET"></evidence></p>
+</section>
+
+<section>
+  <h2>2. Working context 是当前 Surface，不是整份日志</h2>
+  <pre><code>claim inbox messages
+→ assemble system prompt and tools
+→ project dynamic runtime context
+→ run agent/pre-step injections
+→ append accepted user/context messages durably
+→ derive current Surface messages
+→ snapshot request header
+→ call Provider</code></pre>
+  <p>Agent 在 pre-step 中认领输入、组装 prompt、计算 runtime context，并允许插件追加 context；只有被接受的消息才作为 <code>user/message</code> 落入 Session。模型调用随后读取 <code>session.deriveMessages()</code>，并把 canonical provider/model、system 与 tools 另写进 <code>request/header</code>。<evidence id="MEMORY-AGENT-CONTEXT"></evidence></p>
+  <div class="claim fact"><div class="claim-label">可见性规则</div><p>只有 <code>user/message</code>、非空 <code>assistant/message</code> 与 <code>tool/result</code> 能成为 Surface message。Turn/Step boundary、raw stream chunk、request header 和其他 log-only event 从不直接进入模型历史；replacement generation 变化时，derived cache 会按新 Surface 全量重建。<evidence id="SESSION-SURFACE-PROJECTION"></evidence><evidence id="SESSION-DERIVED-CACHE"></evidence></p></div>
+  <p>因此一个 Session 同时拥有两种“过去”：raw log 保存发生过的事实，current Surface 决定下一次模型真正看见什么。后文所有 memory 讨论都必须先说明自己读取的是哪一层。</p>
+</section>
+
+<section>
+  <h2>3. Durable history 是恢复基础，不是自动召回策略</h2>
+  <p>Base bundle 默认把 Session 日志写到 <code>$DSH_HOME/sessions</code>。Persistence coordinator 只在 backend batch append 成功后推进 durable cursor；resume/load 通过 reservation 与稳定 revision 取得精确、已修复的逻辑历史。实时事件进入有界 write-behind，显式 <code>session/flush</code> 是即时 durability barrier，Session disposal 会 drain 剩余写入。<evidence id="MEMORY-DEFAULT-COMPOSITION"></evidence><evidence id="MEMORY-PERSISTENCE-TRANSACTION"></evidence><evidence id="MEMORY-PERSISTENCE-FLUSH"></evidence></p>
+  <div class="claim fact"><div class="claim-label">文件边界</div><p>POSIX 路径以 <code>0700</code> 创建目录，以 <code>0600</code> 创建同步临时文件，并通过 link、目录 fsync 和清理完成不覆盖既有日志的发布。它降低同机泄露和掉电损坏风险，但没有引入租户级访问模型。<evidence id="MEMORY-JSONL-PERMISSIONS"></evidence></p></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>它保证什么</th><th>它不保证什么</th></tr></thead>
+    <tbody>
+      <tr><td>事件按 seq 连续追加，flush 后可作为恢复事实</td><td>不会提炼稳定用户画像或事实</td></tr>
+      <tr><td>冷会话能由 Host 或查询服务显式读取</td><td>新会话不会因此自动搜索旧会话</td></tr>
+      <tr><td>被 compaction 遮蔽的原始事件仍可审计</td><td>模型不会自动重新获得这些被遮蔽原文</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>4. Compaction 是同会话有损变换，不是第二个记忆库</h2>
+  <p>Compaction 的 start/summary/end 是 log-only bracket；真正改变模型可见历史的是随后带 <code>surfaceOp: replace</code> 的 user-message checkpoint。Summary 事件保存被遮蔽 seq、估算 token price、provider/model、usage 与完整 <code>rawOutput</code>，所以旧原文和辅助模型原始输出仍存在于耐久日志中。<evidence id="COMPACT-EVENTS"></evidence></p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>维度</th><th>Compaction 的语义</th><th>为什么不是长期记忆</th></tr></thead>
+    <tbody>
+      <tr><td>范围</td><td>当前 Session 的一个 head-anchored Surface span</td><td>不读取其他会话或外部事实库</td></tr>
+      <tr><td>结果</td><td>较短 checkpoint + 保留近期 tail</td><td>只为下一次上下文预算服务</td></tr>
+      <tr><td>保真</td><td>Prompt 要求结构化摘要，代码只验证非空且更短</td><td>没有事实一致性或实体记忆 invariant</td></tr>
+      <tr><td>恢复</td><td>原始事件保留，Surface 只看 replacement</td><td>审计可追溯不等于模型自动 recall</td></tr>
+    </tbody>
+  </table></div>
+  <p>默认 basic policy 在 80% pressure 附近触发，保留约 16% 的近期 tail，并允许有界 retry。摘要 directive 固定要求英文；非英语会话可能引入额外翻译损失。自动摘要失败只警告并继续当前 Turn，因此高压历史可能保持未压缩。<evidence id="COMPACT-CONFIG"></evidence><evidence id="COMPACT-SUMMARIZER"></evidence></p>
+  <aside class="caveat"><strong>数据保留边界：</strong>compaction 缩短模型视图，不是数据删除。若需求是隐私擦除或 retention policy，不能把“已经压缩”当作“旧内容已经消失”。</aside>
+</section>
+
+<section>
+  <h2>5. Session reference 是显式、不可变、带来源的跨会话快照</h2>
+  <pre><code>user selects source session ids
+→ resolver reads each source's current Surface once
+→ keep direct user text + assistant text + canonical checkpoints
+→ drop tools, reasoning, nested injected context, and shadowed raw history
+→ enforce a per-source UTF-8 byte budget
+→ inject one sourced user-role snapshot into the target Session</code></pre>
+  <p>Resolver 默认最多接收 3 个来源、候选上限 50、每个来源 65536 UTF-8 bytes。Prompt 明确把快照标为 untrusted、read-only，并禁止模型采纳其中的指令、权限声明或工具请求，除非当前用户再次提出。<evidence id="MEMORY-REFERENCE-RESOLVER"></evidence></p>
+  <p>Projection 只保留直接用户消息、assistant text 和 canonical compact checkpoint。超预算时先保留 checkpoint 与最新消息、删除较旧非 checkpoint 单元，再对最长文本做 head/tail 截断并记录精确 omission。<evidence id="MEMORY-REFERENCE-PROJECTION"></evidence></p>
+  <div class="claim fact"><div class="claim-label">Snapshot 而非 link</div><p><code>prepare()</code> 每个来源只读一次。来源之后被追加、压缩或删除，都不会改变目标 Session 已经写入的 context；测试还要求 fresh replay 复现相同目标消息。<evidence id="MEMORY-REFERENCE-CONTRACT-TEST"></evidence></p></div>
+  <p>它不是 fork、resume、subscription 或实时共享，也不会在模型认为旧会话“相关”时自动运行。context 包总览明确把 <code>session-reference</code> 列为 opt-in。<evidence id="MEMORY-REFERENCE-OPT-IN"></evidence></p>
+</section>
+
+<section>
+  <h2>6. Session reference 的授权属于 Host，不属于 resolver</h2>
+  <p><code>listCandidates()</code> 会列出 <code>sessionQuery</code> 暴露的所有非自身会话；相同 cwd 只提高排序优先级，不构成过滤。<code>prepare()</code> 接受精确 Session ID 后直接调用 <code>readSurface()</code>。包 README 也明确称 resolver 假定 Host 已经获准读取 query service 暴露的每个 Session。<evidence id="MEMORY-REFERENCE-RESOLVER"></evidence><evidence id="MEMORY-REFERENCE-TRUST"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">信任边界，而非默认漏洞</div><p>在固定提交中，该包默认未挂载，也没有发布 Web candidate picker，因此不存在 stock UI 直接越权读取的路径。但任何未来多用户 Host 若暴露它，都必须在候选发现和精确 <code>prepare</code> 两处分别过滤、重新授权；不能把 cwd 排名误当成 access control。</p></div>
+  <div class="claim assessment"><div class="claim-label">已确认文档漂移</div><p>README 声称 standard TUI 安装 one-shot pre-step wrapper，并描述 idle/running 两条 inject/steer 集成路径；固定提交中找不到对应生产 adapter、消费方或发布 composition row。可验证的实现止于 resolver、URI/parser、projection 与 UI replay 组件。<evidence id="MEMORY-REFERENCE-DOC-DRIFT"></evidence><evidence id="MEMORY-REFERENCE-OPT-IN"></evidence></p></div>
+</section>
+
+<section>
+  <h2>7. Session query 是统一读取面；FTS5 是可丢弃的词法派生索引</h2>
+  <p>Query corpus 优先读取 detached live snapshot；只有目标不在线时才 inspect persistence，并在读取期间再次检查 attach race。批量 cold read 有并发上限，单个 Session 失败被隔离为该项的 rejected result。<evidence id="MEMORY-QUERY-CORPUS"></evidence></p>
+  <p>搜索文档由完整 raw log 逐事件抽取，并用 canonical Surface fold 标成 <code>current</code>、<code>shadowed</code> 或 <code>log-only</code>。默认可搜索 user/assistant text、tool name/arguments/results、Todo 与部分 Turn error；reasoning、raw chunks、request headers、未知事件和未知 block 被排除。<evidence id="MEMORY-QUERY-DOCUMENTS"></evidence><evidence id="MEMORY-QUERY-EXTRACTION"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">搜索语义风险</div><p><code>user/message</code> 抽取不检查 <code>source</code>。因此一旦启用 FTS，Skill catalog、Skill invocation 或 session-reference 等插件注入的 user-role context 也可能进入索引；Host 的 Web 搜索虽过滤 current user/assistant event type，却没有再按 message source 过滤。这是可确认的静态索引语义与隐私边界，不代表默认配置已经创建该索引。</p></div>
+  <p>SQLite 后端是 FTS5 <code>unicode61</code> 词法检索，不是 embedding 或 semantic retrieval。若配置持久路径，它会把抽取后的明文复制进派生数据库；新建目录与文件使用 owner-only 权限，外来数据库会被拒绝，受识别但版本不兼容的派生 schema 可重建。<evidence id="MEMORY-QUERY-SQLITE-SCHEMA"></evidence></p>
+</section>
+
+<section>
+  <h2>8. 默认只启用精确读取；全文搜索和模型查询工具都关闭</h2>
+  <p>Base 与 Web patch 都设置 <code>path: ':memory:'</code>、<code>openAt: never</code>。这个模式完全不 import/open SQLite，并让 <code>searchSessions</code>/<code>searchEvents</code> 返回 <code>SESSION_QUERY_SEARCH_DISABLED</code>；但 title、lineage、surface 与 exact event read 仍由统一 service 提供。<evidence id="MEMORY-DEFAULT-COMPOSITION"></evidence><evidence id="MEMORY-QUERY-SQLITE-MODE"></evidence><evidence id="LOG-QUERY-TRACE"></evidence></p>
+  <p>模型侧 <code>tool-session-query</code> 是另一个 opt-in 包，注册 <code>session_search</code>、<code>session_event_search</code>、<code>session_trace</code>、<code>session_event_trace</code> 与 <code>session_event_read</code>；发布 Host composition 默认不挂载。它还故意不做结果字节/字符截断，部署方若需要有界 inline output，必须另挂 spill policy。<evidence id="MEMORY-QUERY-TOOL-CONTRACT"></evidence></p>
+  <div class="claim fact"><div class="claim-label">模型工具授权</div><p>若显式挂载，调用者只能来自 <code>exec.agent</code>；self 始终可读，跨会话必须与调用 Session 的 cwd 精确相等，且读取后会按 observed header 再检查。未经授权的 lineage 分支被替换为不含隐藏 Session ID 的 marker。<evidence id="MEMORY-QUERY-TOOL-AUTH"></evidence></p></div>
+  <p>要精确描述默认能力，应说“Host 拥有跨会话精确查询 seam，但模型默认没有跨会话搜索/读取工具”，而不是笼统写成“支持会话记忆”。</p>
+</section>
+
+<section>
+  <h2>9. Web UI 当前是本地元数据搜索优先，内容搜索按配置降级</h2>
+  <p>Workspace Browser 对非空查询立即匹配 title 与 Workspace 名称，250 ms 后再请求 Host content search；远端失败时保留本地结果并显示 warning。两类结果按本地优先顺序去重、合并并限制到 20 条。<evidence id="MEMORY-WEB-SEARCH"></evidence></p>
+  <p>Host 以“attached Session + 带 cwd 的可服务 cold Session”作为可见 baseline，查询 provider 后只接受属于可见集合、类型为 current user/assistant message、且 Session ID 自洽的 hit。这个 Host gate 是 Web 路径的授权边界。<evidence id="MEMORY-WEB-HOST-GATE"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">默认组合落差</div><p>Stock Web 的非空查询仍会发起 content request，但 base/backend 的 <code>openAt: never</code> 确定性拒绝 FTS，于是用户实际得到 title/workspace-only 结果和 unavailable warning。UI README 描述了内容匹配交互，却没有在同处说明发布默认关闭，因此“UI 能发请求”和“默认部署能搜正文”不能混为一谈。</p></div>
+  <aside class="caveat"><strong>部署边界：</strong>search handler 当前会把底层错误字符串拼进响应，并留有“扩展到 single-user local deployment 之外前先 redact”的源码 TODO。它是公开多用户部署前必须收紧的已知边界。<evidence id="MEMORY-WEB-HOST-GATE"></evidence></aside>
+</section>
+
+<section>
+  <h2>10. Skills 是可信知识与操作说明，不是从对话学习的记忆</h2>
+  <p>Skill registry 合并 host/global 与 per-scope provider/runtime 层：最近 scope 的同名项覆盖较远层，层内再按 rank 解决重复；<code>list()</code> 返回摘要，<code>get()</code> 按需加载完整定义。Registry 不包含从 Session 事实提取、强化、冲突消解或遗忘的路径。<evidence id="MEMORY-SKILL-REGISTRY"></evidence></p>
+  <p>Filesystem provider 从最近 Git root 的 <code>.dsh/skills</code> 与 <code>.agents/skills</code>、custom roots、用户 roots 和 bundled root 发现扁平 <code>.md</code> 或一层目录中的 <code>SKILL.md</code>。默认开启 watch、跟随符号链接，并允许最多 128 个 project watchers；非 bundled root 通过可选 filesystem policy 读取。<evidence id="MEMORY-SKILL-FILESYSTEM-CONFIG"></evidence><evidence id="MEMORY-SKILL-FILESYSTEM-ROOTS"></evidence><evidence id="MEMORY-SKILL-FILESYSTEM-LOAD"></evidence></p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>路径</th><th>进入模型的内容</th><th>持久语义</th></tr></thead>
+    <tbody>
+      <tr><td>Catalog publication</td><td>名称 + 截断后的 description</td><td>以 sourced user message 记录完整当前目录</td></tr>
+      <tr><td>模型调用 <code>skill</code></td><td>按需完整 <code>&lt;skill_content&gt;</code></td><td>普通 tool call/result 留在 Session</td></tr>
+      <tr><td>用户输入空白边界 <code>/name</code></td><td>直接注入完整 instructions context</td><td>带 <code>skill-invocation</code> source 的 user message</td></tr>
+    </tbody>
+  </table></div>
+  <p>两条加载路径都检查实际 definition 的 invocation policy，且只有直接用户来源能伪触发不了的 <code>/name</code> gesture。完整正文被有意视作 trusted local content 并原样嵌入；这正是知识注入，而不是记忆检索。<evidence id="MEMORY-SKILL-INVOCATION"></evidence></p>
+</section>
+
+<section>
+  <h2>11. Skills 的主要风险是仓库信任与上下文放大</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>发现</th><th>分类</th><th>实际影响</th></tr></thead>
+    <tbody>
+      <tr><td>项目 Skills 自动被发现，没有逐仓库或逐 Skill consent</td><td>Host trust boundary</td><td>不可信仓库的 description 可进入 catalog，正文可在调用后成为强指令</td></tr>
+      <tr><td>每条 description 默认最多 500 字符，但没有 Skill 数量/总 catalog 上限</td><td>静态韧性缺口</td><td>大量 Skill 可线性放大每次 catalog publication</td></tr>
+      <tr><td>完整 Skill body 没有字节上限</td><td>静态韧性缺口</td><td>一次模型或用户加载即可显著占用上下文</td></tr>
+      <tr><td>Body 原样渲染为可信 instructions</td><td>设计边界</td><td>可形成 prompt injection，但不会因此自动执行仓库脚本</td></tr>
+      <tr><td>Provider 配置注释称默认名 <code>local</code>，schema/constructor 实际为 <code>filesystem</code></td><td>文档漂移</td><td>嵌入方按注释推断 provider identity 会出错</td></tr>
+    </tbody>
+  </table></div>
+  <p>单条 description cap、完整目录 publication 和无 body cap 都能从实现直接确认；filesystem provider 的 JSDoc/default 不一致也位于同一配置定义中。<evidence id="MEMORY-SKILL-FILESYSTEM-CONFIG"></evidence><evidence id="MEMORY-SKILL-FILESYSTEM-LOAD"></evidence><evidence id="MEMORY-SKILL-INVOCATION"></evidence></p>
+  <p>Web 的 <code>skill.list</code> 只为已 attach Session 解析 host-owned cwd/scope，并只返回 user-invocable 项；客户端按 Session 缓存、以 <code>/</code> 提供候选，选中后只写入字面量 <code>/name </code>。列表失败会静默丢弃该菜单分组，没有 consent 或风险预览层。<evidence id="MEMORY-SKILL-HOST-UI"></evidence><evidence id="MEMORY-SKILL-CLIENT-UI"></evidence></p>
+</section>
+
+<section>
+  <h2>12. 外部 Memory MCP 是互操作边界，数据与召回语义归 Provider 所有</h2>
+  <p><code>examples/mcp-memory</code> 提供 Memorix、MCP Reference Memory 与 Engram 三个 pin 住版本的 overlay。Harness 负责解析 overlay、启动 stdio 子进程或连接 Streamable HTTP、发现工具并把它们注册为 <code>mcp__&lt;server&gt;__&lt;tool&gt;</code>；它不下载服务、初始化数据库、选择模型/embedding provider、迁移数据或监管独立 HTTP 服务。发布 composition 中没有 memory server，省略 <code>--patch</code> 时全部关闭。<evidence id="MEMORY-MCP-BOUNDARY"></evidence></p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Provider 示例</th><th>README 所述存储/检索</th><th>Harness 能保证的部分</th></tr></thead>
+    <tbody>
+      <tr><td>Memorix</td><td>Provider 自有本地 heuristic 与数据目录</td><td>MCP transport、tool discovery 与调用</td></tr>
+      <tr><td>Reference Memory</td><td>本地 knowledge graph；大小写无关 substring search</td><td>配置把存储路径传给子进程</td></tr>
+      <tr><td>Engram</td><td>Provider 自有 storage/project selection</td><td>启动配置与环境边界</td></tr>
+    </tbody>
+  </table></div>
+  <p>是否写入、何时搜索、如何解决冲突、是否遗忘、跨项目身份和许可都不是 core Harness contract。示例甚至建议在 tool description 不足时额外写一条“该记住时写、历史相关时搜”的模型指令，说明自动使用仍依赖 prompt/tool policy。<evidence id="MEMORY-MCP-BOUNDARY"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">测试边界</div><p>现有测试验证 overlay 可解析、pin 存在、没有明显硬编码 key，并把真实命令替换为 keyless fixture 后检查工具发现；它没有运行真实 provider，也没有证明写入、Host 重启持久化、新 Session 召回、权限隔离或语义质量。<evidence id="MEMORY-MCP-CONTRACT-TEST"></evidence></p></div>
+</section>
+
+<section>
+  <h2>13. 固定提交中刻意没有的第一方自动记忆闭环</h2>
+  <pre><code>not present as a shipped first-party default:
+conversation → fact extraction → durable semantic store
+             → relevance retrieval → ranking/dedup
+             → permission-filtered automatic prompt injection
+             → conflict resolution / forgetting / provenance feedback</code></pre>
+  <p>源码与发布 composition 能证明的是 Session event log、Surface replacement、exact/lexical query、explicit snapshots 与 instruction catalogs。没有证据支持把这些机制描述成默认的 embedding memory、向量检索、episodic/semantic memory、用户画像学习或自动 recall。外部 MCP 可以补上其中部分能力，但能力、数据所有权与风险随 provider 改变。</p>
+  <div class="claim assessment"><div class="claim-label">为什么这种克制很重要</div><p>显式边界让 replay、授权和 token cost 更容易推理：历史读取必须经过 Host/tool seam，跨会话内容带 source，Skills 必须被加载，外部数据库必须显式挂载。代价是用户期待的“长期记住我”不会自然发生，部署者必须自行选择存储、触发、授权、冲突与遗忘策略。</p></div>
+  <p>最准确的产品描述是：<strong>durable, replayable session history with explicit cross-session retrieval seams</strong>，而不是 autonomous memory platform。</p>
+</section>
+
+<section>
+  <h2>14. 已确认问题、静态风险与验证状态</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>项目</th><th>结论级别</th><th>状态</th></tr></thead>
+    <tbody>
+      <tr><td>Session-reference README 描述未落地的 standard TUI integration</td><td>已确认文档漂移</td><td>默认未挂载</td></tr>
+      <tr><td>Stock Web 发 content search，但 backend 默认确定性禁用 FTS</td><td>已确认 composition/UI 落差</td><td>降级为 title/workspace + warning</td></tr>
+      <tr><td>启用 FTS 后可能索引插件注入的 user messages</td><td>高置信静态推论</td><td>默认未创建索引</td></tr>
+      <tr><td>持久 FTS 复制抽取后的明文</td><td>已确认数据边界</td><td>owner-only；显式启用才发生</td></tr>
+      <tr><td>Skill catalog/body 缺少 aggregate size cap，项目发现无 consent</td><td>已确认静态韧性/信任缺口</td><td>standard 默认相关</td></tr>
+      <tr><td>Compaction 保留 shadowed raw events 与 summarizer rawOutput</td><td>已确认 retention 边界</td><td>不是删除机制</td></tr>
+      <tr><td>Web search 返回底层错误文本</td><td>源码承认的部署边界</td><td>当前只声明 single-user local</td></tr>
+      <tr><td>Memory MCP 没有真实 provider E2E</td><td>已确认验证缺口</td><td>只有配置与 fixture discovery 测试</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">验证范围</div><p>本章固定在 upstream commit <code>47f943859bef60e4160492346772ded9b24f765a</code>，交叉检查了 Agent request path、Session/Surface、persistence、compaction、session-reference、session-query/SQLite/model tools、Web Host/UI、Skills 与 Memory MCP 示例及其测试源码。由于依赖安装在无关平台包上阻塞，本轮没有成功执行测试；这里报告的是源码与既有测试合同审计，不声称运行时测试通过。</p></div>
+</section>

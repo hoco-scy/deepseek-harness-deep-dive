@@ -1,0 +1,244 @@
+<section>
+  <h2>结论：Plan、Goal 与 Todo 不是同一种“计划状态”的三个名字</h2>
+  <div class="thesis"><p>DeepSeek Harness 把三种容易混淆的协作原语放在不同生命周期里：Plan mode 改变下一次模型请求的系统指引，并把已生效的布尔状态写入 Session；Goal 保存一个可修订、可暂停、可恢复的长期完成目标，并用独立的进程内 activation 决定是否自动续跑；Todo 则是模型在当前工作中反复整表替换的轻量清单，耐久事件保留历史，但面向 UI 的“standing plan”会在下一 Turn 开始时清空。</p></div>
+  <p>因此，“进入 Plan”不会创建 Goal，“创建 Goal”不会自动生成 Todo，Todo 中出现多个 <code>in_progress</code> 也不代表 Todo tool 自己并发执行。三者可以同时存在，但没有任何一者是另外两者的隐藏数据库或调度器。</p>
+  <div class="claim fact"><div class="claim-label">最短判别法</div><p>Plan 回答“下一请求应以什么协作策略思考”；Goal 回答“跨多少个自动轮次仍要完成什么”；Todo 回答“模型此刻声称哪些具体步骤待办、在做、已完成”。<evidence id="PLANSTATE-PLAN-STATE"></evidence><evidence id="PLANSTATE-GOAL-TYPES"></evidence><evidence id="PLANSTATE-TODO-TOOL"></evidence></p></div>
+</section>
+
+<section>
+  <h2>1. 三套状态机的权威事实、有效期与执行者</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>原语</th><th>权威事实</th><th>非耐久状态</th><th>谁推进</th><th>何时结束／隐藏</th></tr></thead>
+    <tbody>
+      <tr><td>Plan</td><td>最后一条 <code>plan/mode { active }</code></td><td>等待 Step boundary 的 pending intent</td><td>人类 <code>/plan</code>、模型经批准的 <code>exit_plan_mode</code></td><td>显式退出；不会随 Turn 自动结束</td></tr>
+      <tr><td>Goal</td><td><code>goal/change</code> 全量 snapshot 或 clear tombstone，加已接纳 goal-round message</td><td><code>armed / disarmed</code> activation 与 driver reservation</td><td>GoalService mutation；可选 round driver</td><td><code>complete</code>、<code>blocked</code>、<code>paused</code> 或 clear；active 也可能仅 disarm</td></tr>
+      <tr><td>Todo</td><td>每次 <code>todo/write</code> 的完整清单 snapshot</td><td>没有独立调度状态</td><td>调用 agent 的 <code>todo_write</code></td><td>事件永远留在日志；UI projection 在下一 <code>turn/start</code> 变为 null</td></tr>
+    </tbody>
+  </table></div>
+  <p>三者都借 SessionEvent 获得重放能力，但“事件耐久”不等于“同样长期可见”。Plan 与 Goal 的当前状态跨 Turn 折叠；Todo 的事件也耐久，产品 projection 却有意把它解释成只站立到下一 Turn 的清单。</p>
+</section>
+
+<section>
+  <h2>2. Plan 的双状态：已记录模式与待生效选择</h2>
+  <p><code>plan/mode</code> 是 log-only、非 Surface、last-write-wins 的布尔事件；没有记录时为 <code>false</code>。已提交值可以随 Session resume、Fork 与完整日志重放恢复。Controller 另有一个按 Session 键控的 <code>WeakMap</code>，保存尚未到提交边界的目标模式及是否需要给模型叙述切换。<evidence id="PLANSTATE-PLAN-STATE"></evidence></p>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>空闲选择</h3><p>没有 open Turn 时立即 append <code>plan/mode</code>，因为再等下去不会有轮内 pre-step。</p></div>
+    <div><span>2</span><h3>运行中选择</h3><p>只放入 pending intent；系统提示词组装已读取这个目标值。</p></div>
+    <div><span>3</span><h3>接受边界</h3><p>pre-step listener 先等待下游决定，只有非 reject、未取消的候选 Step 才 append。</p></div>
+    <div><span>4</span><h3>切换叙述</h3><p>仅当最近 request header 告诉模型的是另一模式，才追加一条 plugin user notice。</p></div>
+  </div>
+  <div class="claim fact"><div class="claim-label">失败语义</div><p>边界 append 失败会 warn、允许当前 Step 继续，并保留 pending intent 供以后边界重试；same-Step Provider recovery 复用冻结的 assembly，不消费这个选择。真实 loop 测试要求模式只在后续 Step 生效，工具 schema 在切换前后保持相同。<evidence id="PLANSTATE-PLAN-BOUNDARY"></evidence><evidence id="PLANSTATE-PLAN-LOOP-TEST"></evidence></p></div>
+</section>
+
+<section>
+  <h2>3. Plan 改的是提示词，不是权限或工具目录</h2>
+  <p>Active 时，<code>plan:policy</code> 在 system prompt order 50 渲染部署提供的 <code>section</code>；inactive 时贡献空文本。发布配置要求先探索、只做非变更检查、提交完整可执行计划，并明确禁止在 Plan 阶段用 Todo 代替最终计划。<evidence id="PLANSTATE-PLAN-ASSEMBLY"></evidence><evidence id="PLANSTATE-SHIPPED-PLAN-POLICY"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">软策略，不是 enforcement</div><p><code>exit_plan_mode</code> 在两种模式都注册，其他工具也不因 Plan 而被过滤；集成测试甚至让一个写工具在 Plan 中成功执行。实际限制取决于模型服从该 section，以及独立的 sandbox、approval 和 tool policy。Plan mode 本身不读写这些权限状态。<evidence id="PLANSTATE-PLAN-LOOP-TEST"></evidence></p></div>
+  <p>这个选择维持了 tool schema 与 Code Mode SDK 的前缀稳定性，但也意味着应用不能把“Plan chip 亮着”解释成“写操作在执行层必然被拒绝”。若部署需要硬只读，必须单独配置执行权限。</p>
+</section>
+
+<section>
+  <h2>4. Plan 的三条控制面：命令进入、工具评审、服务直调</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>入口</th><th>行为</th><th>是否进模型 history</th><th>授权／失败边界</th></tr></thead>
+    <tbody>
+      <tr><td><code>/plan</code></td><td>选择 active</td><td>命令文本不进 Surface</td><td>经通用 command plane；记录 run/done</td></tr>
+      <tr><td><code>/plan &lt;message&gt;</code></td><td>先选择 active，再 <code>agent.steer()</code> 普通 user message</td><td>只有 message 后缀进入模型 history</td><td>模式选择先发生；steer 后续失败不会回滚已选模式</td></tr>
+      <tr><td><code>/plan off</code></td><td>退出，或取消尚未提交的进入</td><td>不增加模型输入；必要时另有 switch notice</td><td>精确小写 <code>off</code> 才是控制词</td></tr>
+      <tr><td><code>exit_plan_mode(plan)</code></td><td>把完整 Markdown 计划交给人类评审</td><td>call/result 都是普通工具历史</td><td>必须已提交为 active，且评审必须明确批准</td></tr>
+      <tr><td><code>ctx.planMode.set()</code></td><td>受信插件直接选择目标模式</td><td>只通过后续 policy/notice 影响模型</td><td>这是进程内 service，不是公开用户协议</td></tr>
+    </tbody>
+  </table></div>
+  <p>退出工具要求 trim 后以一级 <code>#</code> 标题开头。只有唯一一条 <code>plan-review</code> answer、唯一选择 <code>Approve</code>、且没有 custom text 才算同意；“Keep planning”、自定义反馈、重复或缺失 answer 都以失败 tool result 返回，让模型继续修订。批准只写一个 silent pending exit，当前 assistant tool batch 仍处于 Plan，下一 accepted pre-step 才切换。<evidence id="PLANSTATE-PLAN-CONTROLS"></evidence></p>
+  <div class="claim fact"><div class="claim-label">人类所有权</div><p>User-question service 要求 supplied Agent 是 registry 中精确 live instance 且为当前 runtime root；被另一个 live Agent 拥有的 child 不能打开评审。持久 Fork lineage 本身不永久降权：以后独立恢复为 root 的 Session 可以评审。<evidence id="PLANSTATE-PLAN-REVIEW-AUTH"></evidence></p></div>
+</section>
+
+<section>
+  <h2>5. Plan 的 Web、projection 与崩溃恢复并不完全等价</h2>
+  <p><code>plan</code> projection 同时折叠 <code>command/run(name="plan")</code> 和 <code>plan/mode</code>：前者推导 wanted target，后者提交 active 并清空 wanted。因此它能从冷日志恢复 <code>{ active, pending }</code>，并通过 history baseline 与 <code>session/projection</code> frame 分发给多个浏览器。<evidence id="PLANSTATE-PLAN-PROJECTION"></evidence></p>
+  <p>Web 只在“有效目标”为 Plan 时显示 <code>Plan ×</code> chip；点击通过 command Remote 执行 <code>/plan off</code>。同一 projection 还切换输入框 placeholder。Plan review 则由专用 decision panel 呈现 Approve、Keep planning 和讨论／dismiss；不认识 intent 的 provider 仍可退化成通用 options。<evidence id="PLANSTATE-PLAN-UI"></evidence><evidence id="PLANSTATE-PLAN-REVIEW-UI"></evidence></p>
+  <aside class="caveat"><strong>确认的 crash split：</strong>projection 的 pending 来自耐久 <code>command/run</code>，Controller 的 pending intent 却只在 <code>WeakMap</code>。如果用户在本 Turn 最后一个 accepted pre-step 之后作出选择，而进程又在下一次 accepted in-turn pre-step 之前退出，冷 UI 仍可显示 pending target，但新 Controller 不会从 command event 重建待提交动作；用户必须重新执行选择。上游 README 已承认这个选择会丢失，但 projection 的“有效目标”显示可能暂时领先真实 prompt policy。<evidence id="PLANSTATE-PLAN-BOUNDARY"></evidence><evidence id="PLANSTATE-PLAN-PROJECTION"></evidence><evidence id="PLANSTATE-PLAN-LIMITATION"></evidence></aside>
+  <p>没有独立的 <code>plan.get</code>/<code>plan.set</code> 业务 API 家族：Web 使用通用 command Remote 加 projection；模型使用稳定的 exit tool；host 内插件使用 service。</p>
+</section>
+
+<section>
+  <h2>6. Goal 是一个带 compare-and-set revision 的完整状态机</h2>
+  <p>Goal identity 在多次修订间稳定，<code>GoalRef { id, revision }</code> 精确标识一个版本。Snapshot 每次都带 objective、phase、maxGoalRounds；blocked phase 额外且仅额外带 <code>{ code, message }</code>。四个 phase 是 <code>active</code>、<code>paused</code>、<code>blocked</code>、<code>complete</code>。<evidence id="PLANSTATE-GOAL-TYPES"></evidence></p>
+  <pre><code>create → active(r1)
+active → edit → active(r+1)
+active → pause → paused(r+1)
+active → block → blocked(r+1)
+active|paused|blocked → complete(r+1)
+active|paused|blocked --resume, capacity remains→ active(r+1)
+any current → clear tombstone(r+1)
+complete → create a fresh id at r1</code></pre>
+  <div class="claim fact"><div class="claim-label">Revision 不等于 round</div><p>create/edit/pause/resume/complete/block 和 clear 都推进 revision；一条被接纳的正数 goal-round <code>user/message</code> 只把 <code>roundsStarted</code> 增一，不推进 revision。下一次 goal mutation 会把当前 round count 复制进新的全量 snapshot。严格 fold 会拒绝跳号 revision、非法 phase 转换、复用旧 goal id、倒退 timestamp 和非顺序 round。<evidence id="PLANSTATE-GOAL-FOLD"></evidence></p></div>
+</section>
+
+<section>
+  <h2>7. Durable phase 与 process-local activation 是两条轴</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>组合</th><th>含义</th><th>是否会自动续跑</th></tr></thead>
+    <tbody>
+      <tr><td><code>active + armed</code></td><td>目标可继续，当前进程持有自动 authority</td><td>可选 driver 会在 idle 后调度</td></tr>
+      <tr><td><code>active + disarmed</code></td><td>耐久目标仍未完成，但自动 authority 已撤销</td><td>不会，需显式 resume</td></tr>
+      <tr><td><code>paused/blocked/complete + disarmed</code></td><td>耐久生命周期已停止</td><td>不会</td></tr>
+    </tbody>
+  </table></div>
+  <p>Activation 从不写入日志。新 cache、每次 <code>agent/session-start</code>、driver 热加载与不确定失败都会 disarm；resume 则写一个新的 revision 并 arm。于是 resume、Fork 和进程重启可以恢复 objective、phase、revision、round count，却不会偷偷恢复自动执行 authority。<evidence id="PLANSTATE-GOAL-SERVICE"></evidence><evidence id="PLANSTATE-GOAL-COMMIT"></evidence></p>
+  <p>GoalService 还要求传入的是 AgentRegistry 中精确的 live object，而不仅是相同 id；create 之后的 edit、pause、resume、complete、block 与 clear 都用当前 <code>GoalRef</code> 做 CAS。多标签页、模型工具和人类命令同时修改时，先提交者推进 revision，后来的旧 ref 明确失败，而不是覆盖新状态。</p>
+</section>
+
+<section>
+  <h2>8. Goal continuation driver：同一 Session、一个 reservation、逐轮 durability barrier</h2>
+  <pre><code>goal/change arms or revises goal
+→ driver coalesces wakeups per exact Agent
+→ wait until Agent idle and no competing queued human work
+→ flush pending durable prefix
+→ reserve {goalId, revision, roundsStarted + 1}
+→ Agent.followup(&lt;goal_round&gt;...)
+→ pre-step validates full message + live revision before and after downstream hooks
+→ admitted user/message increments roundsStarted
+→ whole Agent returns idle
+→ flush the settled round before reserving the next one</code></pre>
+  <p>每个 Agent 的 driver state 只允许一个 queued/claimed/admitted attempt。Prompt 把 JSON-quoted objective、<code>round/maxGoalRounds</code> 和“依据当前 workspace、工具结果、耐久状态验证进展”的指令写成普通 user message；它不创建新 Agent，也不复制 Session。<evidence id="PLANSTATE-GOAL-DRIVER"></evidence></p>
+  <div class="claim fact"><div class="claim-label">竞争输入优先</div><p>普通人类工作在 reservation 之前或与它进入同一 batch 时，driver 标记竞争并让自动 round 让路。Claim 后 objective/revision 改变，pre-step 会把旧 round 判 stale、保留其它 claimed messages，并在新状态稳定后重排，而不会消费 round number。<evidence id="PLANSTATE-GOAL-DRIVER"></evidence></p></div>
+  <p>Round cap 是 admitted-round 数量上限，不是 token、费用或时间预算。到达上限时 driver 写 durable <code>blocked</code>，code 为 <code>round-limit</code>；测试源码要求恰好接纳 1..N 且不多发一轮。<evidence id="PLANSTATE-GOAL-DRIVER-TEST"></evidence></p>
+</section>
+
+<section>
+  <h2>9. Goal 工具的 authority 比 GoalService 本身更严格</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>操作</th><th>模型工具 authority</th><th>额外规则</th></tr></thead>
+    <tbody>
+      <tr><td><code>get_goal</code></td><td>精确 live、running、当前 initiator、open Turn</td><td>不要求 human message</td></tr>
+      <tr><td><code>create_goal</code></td><td>runtime root 当前 Turn 中有 host-attested user message</td><td>模型判断任务是否足够长期</td></tr>
+      <tr><td><code>edit / pause / resume</code></td><td>同样要求 direct-human root Turn</td><td>必须先读并复制 exact id/revision</td></tr>
+      <tr><td><code>complete / blocked</code></td><td>direct human，或当前 Goal 的精确 admitted round</td><td>自动 blocked 还要达到配置的 round 下限</td></tr>
+    </tbody>
+  </table></div>
+  <p>Tool authority 通过 open Turn 内实际提交的 <code>user/message.source</code> 判定，而不是相信模型参数。Goal-round 必须匹配当前 id、revision 与 <code>roundsStarted</code>；自动 round 无权 edit、pause 或 resume。<evidence id="PLANSTATE-GOAL-AUTHORITY"></evidence><evidence id="PLANSTATE-GOAL-TOOLS"></evidence></p>
+  <div class="claim fact"><div class="claim-label">终态后的最后一步</div><p>自动 round 成功标记 complete/blocked 后，当前实现不会调用 <code>concludeTurn()</code>。它用 <code>deferContext()</code> 增加一条 <code>&lt;goal_complete&gt;</code> 或 <code>&lt;goal_blocked&gt;</code> closing instruction，让模型再写一次面向用户、不得继续调用工具的收尾消息；direct-human mutation 不增加这条上下文。测试明确断言 <code>concludesTurn</code> 为 undefined。<evidence id="PLANSTATE-GOAL-TOOLS"></evidence><evidence id="PLANSTATE-GOAL-WRAPUP-TEST"></evidence></p></div>
+</section>
+
+<section>
+  <h2>10. Goal 的命令、Remote/API 与 Web UI 是三种不同能力面</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>表面</th><th>提供的操作</th><th>读状态方式</th><th>不提供</th></tr></thead>
+    <tbody>
+      <tr><td><code>/goal</code> command</td><td>show、create、edit、pause、resume、clear</td><td>直接调用 GoalService，输出文本</td><td>complete、block、round-cap 参数</td></tr>
+      <tr><td>Goal Remote/API</td><td>create、edit、pause、resume、complete、clear</td><td>当前值走 <code>goal</code> projection，mutation 只 ack ref/cleared</td><td><code>get</code> 与 <code>block</code></td></tr>
+      <tr><td>Web GoalBar</td><td>edit、active→pause、paused→resume、clear</td><td><code>useProjection("goal")</code></td><td>create、complete；blocked resume 按钮；activation</td></tr>
+      <tr><td>模型 tools</td><td>get、create、五种 update action</td><td><code>get_goal</code> 返回 live activation</td><td>clear</td></tr>
+    </tbody>
+  </table></div>
+  <p><code>/goal</code> 在 command plane 内直接执行，不开启模型 Turn；Web 还把耐久 <code>command/run</code> 投影成右对齐的 command-input bubble。GoalBar 每次点击都从最新 projection 读取 CAS ref，并用同步 ref + React pending 做 single-flight；clear 成功后先本地隐藏该 id，等待 null projection 收敛。<evidence id="PLANSTATE-GOAL-COMMAND"></evidence><evidence id="PLANSTATE-GOAL-COMMAND-UI"></evidence><evidence id="PLANSTATE-GOAL-COMMAND-VIEW"></evidence><evidence id="PLANSTATE-GOAL-UI"></evidence><evidence id="PLANSTATE-GOAL-UI-REMOTE"></evidence></p>
+  <p>Host mutation façade 会复用 live Agent 或冷恢复普通 Session，并拒绝仍属于 subagent routing 的 identity。它不复用模型工具的“direct human Turn”规则——这是受信控制面的直接 domain mutation。GoalError 当前统一映射为 wire <code>internal</code>，稳定 domain code 放在 <code>details.goalCode</code>；客户端必须看 details 才能区分 stale revision 等业务拒绝。<evidence id="PLANSTATE-GOAL-API"></evidence><evidence id="PLANSTATE-GOAL-API-ROUTING"></evidence><evidence id="PLANSTATE-GOAL-API-ERRORS"></evidence></p>
+</section>
+
+<section>
+  <h2>11. Goal 的失败、取消与并发恢复策略</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>条件</th><th>状态后果</th><th>是否自动重试</th></tr></thead>
+    <tbody>
+      <tr><td>Goal-change 或上一 round 的 durability checkpoint 失败</td><td>保留当前 Session 日志中的 phase，activation disarm</td><td>否，需人类 resume</td></tr>
+      <tr><td><code>Agent.followup</code> 入队失败</td><td>若 revision 仍精确，block 为 <code>queue-failed</code></td><td>否</td></tr>
+      <tr><td>pre-step 下游拒绝合法 reservation</td><td>block 为 <code>prompt-rejected</code>；未接纳不消耗 round</td><td>否</td></tr>
+      <tr><td>Provider／Agent error 或 max tokens</td><td>active 可保持，但 activation disarm</td><td>driver 不做异常 auto-retry</td></tr>
+      <tr><td>取消属于 queued/claimed/admitted goal attempt</td><td>idle checkpoint 尝试 durable pause；失败则 disarm</td><td>否</td></tr>
+      <tr><td>取消只属于普通人类工作</td><td>不伪造 goal phase，最多 disarm</td><td>否</td></tr>
+      <tr><td>插件 teardown</td><td>关闭 admission、disarm，取消 active attempt 并等待 quiescence</td><td>不得再开新 round</td></tr>
+    </tbody>
+  </table></div>
+  <p>Driver 的“串行”由每 Agent 的一个 attempt 和 coalesced run promise 保证；Goal mutation 的“并发”由 revision CAS 保证。它们解决的是不同问题。外部 LLM retry plugin 若在同一 Step 内成功恢复，原 reservation 仍可结算；driver 自己不会把未分类的异常重新排成新 round。<evidence id="PLANSTATE-GOAL-DRIVER"></evidence><evidence id="PLANSTATE-GOAL-DURABILITY-TEST"></evidence></p>
+</section>
+
+<section>
+  <h2>12. Todo 是 whole-value replacement，不是任务数据库</h2>
+  <p><code>todo_write({ todos })</code> 每次必须发送完整清单；成功后同步 append 一条 <code>todo/write</code>，当前值就是最后一条 snapshot。Item 只有规范化后的非空 <code>content</code> 与三态 <code>status</code>：<code>pending</code>、<code>in_progress</code>、<code>completed</code>。没有 id、priority、dependency、nesting、patch、delete-one 或 read-back operation。空数组是合法的显式空清单。<evidence id="PLANSTATE-TODO-TOOL"></evidence></p>
+  <div class="claim fact"><div class="claim-label">写入前验证</div><p>Tool schema 拒绝未知 item keys 和错误 enum；execute 再 trim content、拒绝空白与重复，并按部署策略检查 active count。失败发生在 append 之前，不生成 <code>todo/write</code>；非 Agent caller 因没有 owning Session 被拒绝。<evidence id="PLANSTATE-TODO-TOOL"></evidence><evidence id="PLANSTATE-TODO-TEST"></evidence></p></div>
+  <p><code>allowParallelInProgress</code> 是必选部署决策。<code>true</code> 同时改变模型说明和验证，允许多个 active item；<code>false</code> 拒绝超过一个。发布的 base profile 选择 <code>true</code>。耐久 invariant 故意不按当前配置重验 active count，否则用宽松策略写出的旧日志会在以后收紧部署时无法重放。<evidence id="PLANSTATE-SHIPPED-TODO-POLICY"></evidence><evidence id="PLANSTATE-TODO-INVARIANT"></evidence></p>
+</section>
+
+<section>
+  <h2>13. Todo 事件长期存在，standing projection 只活到下一 Turn</h2>
+  <pre><code>Turn N: todo_write(snapshot A)
+        todo_write(snapshot B)   → projection = B
+        turn/end                 → projection still B
+Turn N+1: turn/start             → projection = null
+        ... old todo/write events remain in the Session log</code></pre>
+  <p><code>todos</code> projection 在首次 write 前为 null，遇到 write 整值替换，遇到每个 <code>turn/start</code> 清空；它不在 <code>turn/end</code> 清空，因此完成清单在 Agent idle 后仍能显示，直到下一条人类或自动 goal round 真正开启新 Turn。冷读、resume 和 Fork 都按完整日志重做同一 fold。<evidence id="PLANSTATE-TODO-PROJECTION"></evidence></p>
+  <p>Web TodoPanel 只读这个 projection：非空时显示折叠卡片、按状态计数并可展开所有项；另一个 <code>todo_write</code> tool row 从耐久 call arguments 生成 “done/total + 首个 active + 额外 active 数”摘要。前者显示被产品认定仍站立的清单，后者是历史工具调用，两者寿命不同。<evidence id="PLANSTATE-TODO-UI"></evidence><evidence id="PLANSTATE-TODO-ROW"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">模型可见性</div><p><code>todo/write</code> 本身是 log-only，不是第二条模型消息。模型看到的是自己的完整 tool-call arguments 和简短 result；后续整表替换只更新 Todo projection，不会移除旧 tool history，旧调用会继续占 Surface，直到 compaction 等机制遮蔽。没有 context plugin 把最新 Todo snapshot 自动重新注入未来请求。</p></div>
+</section>
+
+<section>
+  <h2>14. “Todo 允许并行”与“Todo tool 并行执行”恰好相反</h2>
+  <p>ToolRuntime 只有定义显式提供 <code>isConcurrencySafe(args)</code> 且返回严格 <code>true</code> 时才把调用归入 parallel group；省略、异常、隐藏或无效定义一律 exclusive。Plan exit、三个 Goal tool 与 <code>todo_write</code> 都没有 opt-in，因此都是 ordering barrier。<evidence id="PLANSTATE-TOOL-EXCLUSIVE"></evidence></p>
+  <p>所以两个连续 <code>todo_write</code> 在同一模型 batch 中按顺序执行，第二个稳定覆盖第一个；多个 <code>in_progress</code> 只表示 Agent 可能通过 subagent、后台命令或 workflow 同时推进多项工作。它不是对 Todo snapshot 的并发写许可，更不是共享 swarm task registry。<evidence id="PLANSTATE-TOOL-SCHEDULER"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">为什么没有 Todo CAS</div><p>正常生产写入口只有同一 Agent 的 exclusive tool pipeline，whole-value last-wins 已给出确定顺序；Goal 则同时面对命令、Remote、模型工具和调度器，必须用 revision CAS。两者的并发模型不同，不应机械统一。</p></div>
+</section>
+
+<section>
+  <h2>15. 事件、Surface、projection 与重放矩阵</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>事实</th><th>Session log</th><th>直接进入 model Surface</th><th>浏览器当前视图</th><th>Resume/Fork</th></tr></thead>
+    <tbody>
+      <tr><td><code>plan/mode</code></td><td>是</td><td>否；通过 system section 与可选 notice 生效</td><td><code>plan {active,pending}</code></td><td>已提交 active 恢复；Controller pending 不恢复</td></tr>
+      <tr><td><code>goal/change</code></td><td>是</td><td>否；tool result 或 round prompt 才可见</td><td><code>goal</code> whole snapshot</td><td>durable state 恢复，activation 一律 disarm</td></tr>
+      <tr><td>goal-round <code>user/message</code></td><td>是</td><td>是</td><td>projection 目前忽略它</td><td>strict fold 恢复 round count</td></tr>
+      <tr><td><code>todo/write</code></td><td>是</td><td>否；call/result 可见</td><td><code>todos</code> standing list</td><td>按最后 write 与后续 turn/start 重折叠</td></tr>
+      <tr><td><code>command/run/done</code></td><td>是</td><td>否</td><td>Plan pending、Goal command bubble 与通用 command row</td><td>纯日志重建</td></tr>
+    </tbody>
+  </table></div>
+  <p>Compaction 改写的是 model Surface，不会删除这些 log-only domain facts。于是 Plan active 与 Goal lifecycle 不依赖摘要是否记住它们；Todo projection 也可从完整日志恢复，但它的下一-Turn清空规则仍然生效。相反，goal-round prompt、tool calls 和 results 是 Surface 内容，未来可能只通过 checkpoint 向模型保留其语义。</p>
+</section>
+
+<section>
+  <h2>16. 三处已确认的文档漂移</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>文档表述</th><th>当前生产实现</th><th>判定</th></tr></thead>
+    <tbody>
+      <tr><td>tool-goal README 称自动 complete/blocked 会 <code>concludeTurn()</code></td><td>源码用 <code>deferContext()</code> 请求最后一条 closing message；测试断言不 conclude</td><td>README 过时</td></tr>
+      <tr><td>ui-goal README 称 Remote mutation 写 <code>agent/inbox/spliced</code> 并排队 goal context</td><td>GoalService 直接 append log-only <code>goal/change</code>，不注入模型 context</td><td>README 仍描述旧架构</td></tr>
+      <tr><td>command-goal README 称没有 continuous status widget</td><td>Web 已有 projection-driven GoalBar，提供 edit/pause/resume/clear</td><td>README 限制已失效</td></tr>
+    </tbody>
+  </table></div>
+  <p>这些结论来自固定 commit 上的生产源码与测试，不是仅凭文档措辞推测。Plan 与 Todo 的核心 README 在本章核对范围内基本匹配当前控制流；Goal 的跨包演进更快，出现了明显同步滞后。<evidence id="PLANSTATE-DOC-GOAL-TOOL"></evidence><evidence id="PLANSTATE-DOC-GOAL-UI"></evidence><evidence id="PLANSTATE-DOC-GOAL-COMMAND"></evidence></p>
+</section>
+
+<section>
+  <h2>17. 已确认的限制、缺口与有意取舍</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>发现</th><th>分类</th><th>实际影响</th></tr></thead>
+    <tbody>
+      <tr><td>Plan 只提供 guidance</td><td>明确设计</td><td>必须由独立 sandbox/approval 执行硬限制</td></tr>
+      <tr><td>Plan durable pending view 与 process intent 可在 crash 后分离</td><td>恢复限制</td><td>UI 可能显示目标模式，实际 prompt 仍按旧 committed state；需重新选择</td></tr>
+      <tr><td>只有 Web 有专门 plan-review 与 Plan chip</td><td>呈现边界</td><td>其它 provider 使用 generic questions/commands</td></tr>
+      <tr><td>Goal projection 不处理 admitted goal-round message</td><td>已确认 projection gap</td><td><code>roundsStarted</code> 可能停在最近 mutation，直到下一 <code>goal/change</code>；service read 仍准确</td></tr>
+      <tr><td>Goal projection 不含 activation</td><td>明确设计</td><td>GoalBar 无法区分 active-armed 与 active-disarmed，恢复后可能给出 pause 而非 resume affordance</td></tr>
+      <tr><td>GoalBar 不给 blocked goal 提供 resume 按钮</td><td>UI 功能缺口</td><td>需用 <code>/goal resume</code> 或其它 Remote/tool 路径</td></tr>
+      <tr><td>Goal 没有独立 evaluator 或资源预算</td><td>明确范围</td><td>完成与同一 blocker 的语义由模型判断，cap 只数 rounds</td></tr>
+      <tr><td>Todo projection 跨 Turn 主动清空</td><td>产品语义</td><td>它不是长期任务板；历史 event 仍在</td></tr>
+      <tr><td>Todo 没有 read、patch、CAS 或共享 scope</td><td>明确范围</td><td>模型必须整表重发；只属于一个 calling Agent Session</td></tr>
+      <tr><td>Todo invariant 不拒绝额外 item keys</td><td>invariant coverage gap</td><td>工具 schema 会拒绝，但受信插件直接伪造的 extra fields 不会被该 companion 检出</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Projection gap 的精确边界</div><p>GoalService 的严格 cache fold 会读取 goal-sourced <code>user/message</code> 并即时增加 roundsStarted；轻量 <code>goal</code> projection 的实现只在 <code>goal/change</code> 时替换 whole value，测试也固定了非 goal-change 事件的 same-reference fast path。因此这是浏览器 projection 新鲜度问题，不是 domain 丢失 round。<evidence id="PLANSTATE-GOAL-FOLD"></evidence><evidence id="PLANSTATE-GOAL-PROJECTION"></evidence><evidence id="PLANSTATE-GOAL-PROJECTION-TEST"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">Invariant gap 的精确边界</div><p>Todo tool 的 JSON schema 明确 <code>additionalProperties: false</code>；companion 只读取 content/status 并检查规范化、唯一性与 enum，没有比较 own keys。正常模型入口受保护，问题只涉及绕过 tool、直接写 Session 的受信 producer。<evidence id="PLANSTATE-TODO-TOOL"></evidence><evidence id="PLANSTATE-TODO-INVARIANT"></evidence></p></div>
+</section>
+
+<section>
+  <h2>18. 设计评价与验证状态</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>设计选择</th><th>收益</th><th>成本</th></tr></thead>
+    <tbody>
+      <tr><td>Plan 用稳定 tool catalog + 可变 system section</td><td>KV-cache 形状更稳定，review 协议清晰</td><td>硬限制必须在另一条权限轴实现</td></tr>
+      <tr><td>Goal 把 durable phase 与 activation 分离</td><td>恢复/Fork 不会意外启动自治</td><td>UI 需要额外 live channel 才能显示真实可续跑状态</td></tr>
+      <tr><td>Goal 用 revision CAS + 单 attempt driver</td><td>跨控制面冲突 fail closed，自动轮次串行可审计</td><td>生命周期与异常矩阵明显比 Plan/Todo 更复杂</td></tr>
+      <tr><td>Todo 用 whole-value snapshot</td><td>重放简单、无需 item identity、模型语义直观</td><td>长清单重复耗 token，也不支持多人增量编辑</td></tr>
+      <tr><td>三者都写 log-only domain event</td><td>Compaction 不会抹掉控制状态</td><td>必须始终区分完整日志、模型 Surface 与 UI projection</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">本章验证范围</div><p>本章逐层核对了 PlanModeController、command/user-question/Plan UI、GoalService/strict fold/invariant、goal tools/authority/wrap-up、same-session round driver、Goal command/Remote/API/GoalBar、Todo tool/invariant/projection/UI，以及对应 unit、integration 和真实 loop 测试源码。Upstream 依赖未安装，因此没有声称测试在本机执行通过；所有 drift 与 gap 都由固定 commit 的可达生产控制流交叉验证。</p></div>
+</section>

@@ -232,6 +232,9 @@ for (const lang of ["en", "zh"]) {
   const outputBase = lang === "en" ? outDir : join(outDir, "zh");
   for (const [index, chapter] of manifest.chapters.entries()) {
     const source = lang === "en" ? join(contentDir, "en", `${chapter.id}-${chapter.slug}.html`) : join(contentDir, `${chapter.id}-${chapter.slug}.html`);
+    if (chapter.status === "verified" && !existsSync(source)) {
+      fail(`${lang}: verified chapter ${chapter.slug} has no substantive source`);
+    }
     const raw = existsSync(source) ? readFileSync(source, "utf8") : placeholder(chapter, lang);
     const content = replaceEvidence(replaceComponents(raw, lang), evidenceUsage, lang);
     const isEnglish = lang === "en";

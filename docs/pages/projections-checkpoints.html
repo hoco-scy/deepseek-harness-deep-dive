@@ -6,7 +6,7 @@
 <body data-page="projections-checkpoints" data-baseline="47f943859bef60e4160492346772ded9b24f765a" data-lang="en">
   <header class="topbar"><button class="icon-button nav-toggle" type="button" data-nav-toggle aria-label="Open chapter directory" aria-expanded="false">☰</button>
     <a class="brand" href="../index.html"><span class="brand-mark">DS</span><span>Harness Systems Dissection</span></a>
-    <span class="topbar-meta">Pinned baseline 47f943859b · 13 verified / 1 in progress / 36 chapters</span>
+    <span class="topbar-meta">Pinned baseline 47f943859b · 17 verified / 1 in progress / 36 chapters</span>
     <div class="topbar-actions"><a class="language-switch" href="../zh/pages/projections-checkpoints.html" lang="zh-CN" aria-label="Read this chapter in Chinese">中文</a><button class="icon-button" type="button" data-theme-toggle aria-label="Toggle light or dark theme">◐</button></div></header>
   <div class="layout"><aside class="sidebar" data-sidebar aria-label="Chapter directory"><input class="filter" data-chapter-filter type="search" placeholder="Filter chapters…" aria-label="Filter chapters"><section class="nav-part" data-part><h2 class="part-title">Introduction</h2>
     <a class="chapter-link" data-chapter-item href="../pages/reading-guide.html">
@@ -23,16 +23,16 @@
     <a class="chapter-link" data-chapter-item href="../pages/session-event-model.html">
       <span class="chapter-number">09</span><span>Internal Sessions and the Event Model</span><span class="status-dot verified" title="Verified"></span></a><a class="chapter-link" data-chapter-item href="../pages/log-replay.html">
       <span class="chapter-number">10</span><span>Logs, Derived History, Replay, and Forking</span><span class="status-dot verified" title="Verified"></span></a><a class="chapter-link" data-chapter-item href="../pages/persistence-database.html">
-      <span class="chapter-number">11</span><span>Persistence and Database Design</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link current" data-chapter-item href="../pages/projections-checkpoints.html">
+      <span class="chapter-number">11</span><span>Persistence and Database Design</span><span class="status-dot verified" title="Verified"></span></a><a class="chapter-link current" data-chapter-item href="../pages/projections-checkpoints.html">
       <span class="chapter-number">12</span><span>Projections, Checkpoints, and Cold Start</span><span class="status-dot verified" title="Verified"></span></a></section><section class="nav-part" data-part><h2 class="part-title">Context Governance</h2>
     <a class="chapter-link" data-chapter-item href="../pages/compaction.html">
       <span class="chapter-number">13</span><span>Compaction and Context Pressure</span><span class="status-dot verified" title="Verified"></span></a><a class="chapter-link" data-chapter-item href="../pages/memory-knowledge.html">
-      <span class="chapter-number">14</span><span>Memory and Knowledge: Capabilities and Deliberate Omissions</span><span class="status-dot queued" title="Queued"></span></a></section><section class="nav-part" data-part><h2 class="part-title">Collaborative State</h2>
+      <span class="chapter-number">14</span><span>Memory and Knowledge: Capabilities and Deliberate Omissions</span><span class="status-dot verified" title="Verified"></span></a></section><section class="nav-part" data-part><h2 class="part-title">Collaborative State</h2>
     <a class="chapter-link" data-chapter-item href="../pages/plan-goal-todo.html">
-      <span class="chapter-number">15</span><span>Plan, Goal, and Todo</span><span class="status-dot queued" title="Queued"></span></a></section><section class="nav-part" data-part><h2 class="part-title">Tool System</h2>
+      <span class="chapter-number">15</span><span>Plan, Goal, and Todo</span><span class="status-dot verified" title="Verified"></span></a></section><section class="nav-part" data-part><h2 class="part-title">Tool System</h2>
     <a class="chapter-link" data-chapter-item href="../pages/tool-primitives.html">
       <span class="chapter-number">16</span><span>Tool Definition Primitives and the Execution Pipeline</span><span class="status-dot verified" title="Verified"></span></a><a class="chapter-link" data-chapter-item href="../pages/tool-catalog.html">
-      <span class="chapter-number">17</span><span>Complete Tool Catalog and Capability Taxonomy</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/tool-parallelism.html">
+      <span class="chapter-number">17</span><span>Complete Tool Catalog and Capability Taxonomy</span><span class="status-dot verified" title="Verified"></span></a><a class="chapter-link" data-chapter-item href="../pages/tool-parallelism.html">
       <span class="chapter-number">18</span><span>Tool Parallelism and Result Ordering</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/permission-approval.html">
       <span class="chapter-number">19</span><span>Permission Analysis, Approval, and Monotonic Guards</span><span class="status-dot queued" title="Queued"></span></a></section><section class="nav-part" data-part><h2 class="part-title">Execution Environment</h2>
     <a class="chapter-link" data-chapter-item href="../pages/sandbox-filesystem.html">
@@ -57,9 +57,254 @@
       <span class="chapter-number">35</span><span>Glossary, Evidence Catalog, and Source Index</span><span class="status-dot queued" title="Queued"></span></a></section></aside>
     <main class="main"><div class="page-shell"><article class="article" data-article><header><div class="page-kicker"><span>Sessions and Persistence</span><span>·</span><span>Chapter 12</span></div>
       <h1>Projections, Checkpoints, and Cold Start</h1><p class="subtitle">Which disposable acceleration state exists beyond the complete event log</p><div class="page-meta"><span class="status verified">Verified</span><span>Upstream 47f943859b</span><span>Scope: Distinguish semantic checkpoints, projection caches, watermarks, write-behind, tail replay, and recovery thresholds.</span></div></header>
-      <section class="placeholder"><p class="eyebrow">Research queue</p><h2>This chapter has not reached a conclusion state</h2>
-    <p><strong>Current scope:</strong> Distinguish semantic checkpoints, projection caches, watermarks, write-behind, tail replay, and recovery thresholds.</p><p>This page is part of the complete research map, but its source-level control-flow audit is not complete. It must cover all of the following before it can be marked Verified:</p>
-    <ul class="placeholder-checks"><li>Actual bundle and profile assembly entry points</li><li>Public types, events, and configuration schemas</li><li>Normal control flow and exact mutation points</li><li>Concurrency, scope, ownership, and cleanup</li><li>Error, cancellation, retry, and degradation branches</li><li>Persistence, projections, and replay semantics</li><li>Production-path tests and runtime invariants</li><li>Benefits, costs, limitations, and open questions</li></ul></section><section class="learning-notes" aria-labelledby="learning-notes-title"><h2 id="learning-notes-title">My Learning Notes</h2>
+      <section>
+  <h2>Conclusion: the event log owns truth; checkpoints and projections own timing and cost</h2>
+  <div class="thesis"><p>DeepSeek Harness does not persist a second conversational truth beside the Session log. It keeps the append-only <code>SessionEvent</code> stream and <code>SessionHeader</code> authoritative, then layers three different mechanisms over them: semantic flush barriers before irreversible work, in-memory projection cells for fast current views, and durable projection checkpoints that shorten some folds. A browser receives yet another derived layer—watermarked baselines and non-durable push frames—and converges them back toward the log.</p></div>
+  <p>The architecture is strongest when those layers remain distinct. A semantic checkpoint proves that earlier facts reached storage; a projection checkpoint merely remembers a fold; a watermark says how far a value has observed; a baseline is a transport cut; and a client row is disposable convergence state. Treating any one of them as the log itself creates exactly the recovery bugs the design is trying to avoid.</p>
+</section>
+
+<section>
+  <h2>1. Six names for six different contracts</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Layer</th><th>Representation</th><th>Authority</th><th>What it proves</th></tr></thead>
+    <tbody>
+      <tr><td>Durable fact</td><td><code>SessionHeader</code> + append-only <code>SessionEvent</code></td><td>Source of truth</td><td>Which metadata and committed events the backend actually stores</td></tr>
+      <tr><td>Semantic checkpoint</td><td>Awaited <code>sessions.flush(session)</code></td><td>Durability barrier, not data</td><td>All participating flush listeners settled for the admitted prefix</td></tr>
+      <tr><td>Live projection cell</td><td><code>{state, observedSeq}</code> per unit and live Session</td><td>Disposable derived state</td><td>The last event passed through that unit's fold</td></tr>
+      <tr><td>Projection checkpoint</td><td><code>{ver, seq, val}</code> per key</td><td>Durable cache only</td><td>A versioned fold shortcut bound to one log lifecycle</td></tr>
+      <tr><td>Host baseline</td><td><code>{asOfSeq, values}</code></td><td>Derived wire snapshot</td><td>One consistent cut suitable for seeding a client</td></tr>
+      <tr><td>Client row</td><td><code>key -&gt; {value, seq}</code></td><td>Disposable convergence state</td><td>The newest accepted host value for that key</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Persistence contract</div><p>The persisted unit is the existing Session event, not a parallel persisted-message model. Non-replayable metadata remains in the Header. Projection checkpoint types explicitly say that a row is never authoritative and must be discarded when its version or claimed log endpoint is unusable.<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/docs/architecture.md#L92-L102" title="Session log and capability seams: The log is the source of truth for model context; model-visible data must be reconstructable, and a seam includes definition, provider, and consumer." aria-label="Evidence ARCH-LOG">ARCH-LOG</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/session/src/types.ts#L33-L99" title="Session format version and durable header: The format version is fixed at zero with no compatibility promise; the header stores identity, creation time, cwd, fork parent and seed length, subagent origin and depth, and agent preset." aria-label="Evidence SESSION-FORMAT-HEADER">SESSION-FORMAT-HEADER</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-projection/src/index.ts#L88-L118" title="Projection baselines and non-authoritative checkpoint rows: ProjectionSnapshot defines one shared asOfSeq cut, while ProjectionCheckpointRow records version, watermark, and internal state and explicitly declares the row a fold shortcut rather than an authority." aria-label="Evidence PROJ-AUTHORITY-LAYERS">PROJ-AUTHORITY-LAYERS</a></p></div>
+</section>
+
+<section>
+  <h2>2. A semantic checkpoint is an awaited barrier, not a stored checkpoint object</h2>
+  <pre><code>append facts to the live Session
+        ↓
+sessions.flush(session)
+        ├─ persistence listener drains write-behind
+        ├─ any other scoped durability listener settles
+        └─ first failure is thrown only after all listeners settle
+        ↓
+construct model stream or enter top-level tool body</code></pre>
+  <p><code>SessionStore.flush()</code> resolves the exact live Session's scoped listeners, invokes all of them, waits with <code>Promise.allSettled</code>, and then throws the first rejection if any. Its return value only says whether a durability listener participated. There is no durable “checkpoint record” produced by this API.</p>
+  <div class="claim fact"><div class="claim-label">Semantic policy</div><p>The standard policy places this barrier before the downstream model stream is constructed, before a top-level tool body can run, and at every <code>agent/pre-step</code> boundary. Model and tool boundaries fail closed; nested tool dispatches reuse the already-durable outer call.<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-checkpoint-policy/src/index.ts#L20-L82" title="Semantic durability checkpoints before model and tool side effects: The policy flushes before model-stream construction, a top-level tool body, and every pre-step; a failed checkpoint prevents the adapter or tool side-effect body from running, while nested tool dispatch reuses the outer boundary." aria-label="Evidence LOG-CHECKPOINT-POLICY">LOG-CHECKPOINT-POLICY</a></p></div>
+  <aside class="caveat"><strong>Exact boundary:</strong> this records execution intent before a possible side effect; it does not make the effect exactly once. A crash after a durable call but before a durable result can only be recovered as <code>TOOL_OUTCOME_UNKNOWN</code>, not as inferred success or automatic retry.</aside>
+</section>
+
+<section>
+  <h2>3. Write-behind separates hot-path admission from durable quiescence</h2>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>Clone on admission</h3><p>Every committed event enters a persistence-owned queue through <code>structuredClone</code>.</p></div>
+    <div><span>2</span><h3>Batch on a fixed deadline</h3><p>The first pending event arms one bounded timer; the hot append path does not wait for disk.</p></div>
+    <div><span>3</span><h3>Retain failures</h3><p>A failed batch is prepended back in original order, and automatic retry pauses.</p></div>
+    <div><span>4</span><h3>Join one barrier</h3><p>Concurrent explicit flush callers share the same drain to a quiescent queue.</p></div>
+  </div>
+  <div class="claim fact"><div class="claim-label">Production controller</div><p>An explicit flush cancels the batching timer, waits for overlapping work, retries retained events, and drains until no active or pending write remains. Per-session-ID serialization prevents durable appends for one log from interleaving.<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-persistence/src/write-behind.ts#L18-L158" title="Per-session write-behind queue and explicit quiescence barrier: Events are cloned into a fixed-deadline queue; a failed stable batch is restored in order and pauses automatic retry, while concurrent flushes share a barrier that explicitly retries until the queue and active write are quiescent." aria-label="Evidence LOG-WRITE-BEHIND">LOG-WRITE-BEHIND</a></p></div>
+  <p>Persistence and checkpoint scheduling are separate plugins. Loading a backend without the semantic policy is valid, but a crash may then lose events still inside the batching window or an outstanding write. The shipped base composition mounts both the JSONL persistence provider and the checkpoint policy explicitly.<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/bundle/base/cordis.patch.yml#L98-L356" title="The shipped composition explicitly mounts persistence, projections, and checkpoint policy: The base patch mounts JSONL Session persistence, the shared projection registry, and the semantic checkpoint policy for model requests and top-level tools as separate rows rather than one implicit service." aria-label="Evidence PROJ-SHIPPED-COMPOSITION">PROJ-SHIPPED-COMPOSITION</a></p>
+</section>
+
+<section>
+  <h2>4. Projection units are synchronous folds over every committed event</h2>
+  <pre><code>ProjectionDefinition&lt;K, S&gt; = {
+  key,
+  schema,             // validates the wire-facing view
+  init(): S,
+  apply(S, event): S, // pure and synchronous
+  view(S): Value,
+  stateVersion
+}</code></pre>
+  <div class="claim fact"><div class="claim-label">Registry drive</div><p>The registry subscribes once to <code>session/event</code>. Every event passes every registered unit's <code>apply</code>; an uninterested unit must return the same state reference. Only a changed reference causes schema validation and a change notification. Missing cells lazily fold the full in-memory log, while <code>observedSeq</code> advances even when the state reference does not.<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-projection/src/index.ts#L130-L425" title="Per-Session projection cells, synchronous snapshots, and eager drive: The registry holds state and observedSeq in WeakMap cells and drives every unit from one subscription; missing cells lazily fold the in-memory log, Object.is gates notifications, and observedSeq advances for every event." aria-label="Evidence PROJ-REGISTRY-DRIVE">PROJ-REGISTRY-DRIVE</a></p></div>
+  <p>The synchronous requirement is load-bearing. A carrier can copy a Session's event snapshot and immediately call <code>snapshot()</code> in the same JavaScript turn, obtaining values whose shared <code>asOfSeq</code> is exactly <code>session.seq - 1</code>. An async unit would tear that cut.</p>
+  <aside class="caveat"><strong>Registration semantics:</strong> the implementation reference-counts repeated registrations of the same key when <code>stateVersion</code> matches, and throws only when versions differ. It cannot compare schemas or fold functions, so two semantically different definitions that reuse one key and version silently share the first definition and its cells.<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-projection/src/index.ts#L137-L220" title="Reference counting and version conflicts for registrations sharing one key: Registrants with the same key and stateVersion share the first unit and increment refs, while a different version is rejected; the final disposer removes the registration and all cells, and runtime cannot compare function semantics." aria-label="Evidence PROJ-REGISTRY-REGISTRATION">PROJ-REGISTRY-REGISTRATION</a></aside>
+</section>
+
+<section>
+  <h2>5. Thirteen production keys share one framework but encode different lifecycles</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Key / version</th><th>Fold semantics</th><th>Production source</th></tr></thead>
+    <tbody>
+      <tr><td><code>todos</code> v2</td><td>Latest whole <code>todo/write</code>; cleared by the next <code>turn/start</code></td><td><code>packages/todo/tool-todo/src/index.ts:122-147</code></td></tr>
+      <tr><td><code>plan</code> v1</td><td><code>command/run(plan)</code> records intent; <code>plan/mode</code> commits active state and clears pending</td><td><code>packages/plan/plan-mode/src/index.ts:235-265</code></td></tr>
+      <tr><td><code>goal</code> v4</td><td>Last-wins durable <code>goal/change</code> projection</td><td><code>packages/goal/goal/src/index.ts:201-212</code></td></tr>
+      <tr><td><code>title</code> v1</td><td>Latest <code>session/title</code></td><td><code>packages/session/session-title/src/index.ts:304-316</code></td></tr>
+      <tr><td><code>sessionStats</code> v1</td><td>Whole-log turn, Step, model, tool, TTFT, and decode totals</td><td><code>packages/session/session-stats/src/projection.ts:1-21,88-182</code></td></tr>
+      <tr><td><code>tokenUsage</code> v1</td><td>Usage samples replace the prior sample for the same Turn and Step</td><td><code>packages/llm/token-meter/src/usage-projection.ts:97-140</code></td></tr>
+      <tr><td><code>contextPressure</code> v4</td><td>Provider prompt sample plus signed Surface movement estimates the next request</td><td><code>packages/llm/token-meter/src/usage-projection.ts:142-205</code></td></tr>
+      <tr><td><code>contextBreakdown</code> v2</td><td>Latest request envelope plus message-surface shadow pricing</td><td><code>packages/llm/token-meter/src/breakdown-projection.ts:31-69</code></td></tr>
+      <tr><td><code>subagentTiming</code> v2</td><td>Completed and currently active post-descriptor Turn duration</td><td><code>packages/subagent/subagent/src/projection.ts:36-85</code></td></tr>
+      <tr><td><code>subagent</code> v2</td><td>Last valid durable mode/label descriptor, including its seq</td><td><code>packages/subagent/subagent/src/projection.ts:131-155</code></td></tr>
+      <tr><td><code>permissions</code> v1</td><td>Three whole-value knob events, viewed against composition defaults</td><td><code>packages/interaction/permission-presets/src/index.ts:227-251</code></td></tr>
+      <tr><td><code>sessionListMetadata</code> v1</td><td>Blank-to-nonblank state and latest human-prompt time for listing</td><td><code>packages/host/apiproxy/src/api-proxy.ts:1289-1300</code></td></tr>
+      <tr><td><code>imageLimits</code> v1</td><td>Per-boot attachment limits; constant state, live-service view, baseline only</td><td><code>packages/host/apiproxy/src/api-proxy.ts:1302-1323</code></td></tr>
+    </tbody>
+  </table></div>
+  <p>This is a repository-wide inventory of production registrations at the pinned commit, not a promise that all thirteen keys are active in every deployment. Registration is composition-dependent, and the process-wide table also means a key mounted by one preset can appear in snapshots for Sessions whose own preset never produces a meaningful value.</p>
+</section>
+
+<section>
+  <h2>6. A watermark advances on observation; a push occurs only on change</h2>
+  <pre><code>event seq N enters every unit
+  ├─ apply returns same reference
+  │    observedSeq = N
+  │    no session/projection frame
+  └─ apply returns new reference
+       observedSeq = N
+       schema.parse(view(state))
+       emit { key, value, seq: N }</code></pre>
+  <p>This distinction explains why <code>imageLimits</code> never emits a push yet still appears in a tail baseline, and why a quiet value in a full snapshot can legitimately be stamped at the log's current <code>asOfSeq</code>. The watermark means “observed through,” not “last changed at.”</p>
+  <div class="claim fact"><div class="claim-label">Host carrier</div><p>The Host translates registry changes into non-persistent <code>session/projection</code> mux frames. The history tail—and only the tail—carries a full baseline. An attached Session copies events and snapshots projections with no await between them; a detached Session folds its inspected events.<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/src/api-proxy.ts#L1273-L1323" title="Projection change frames and Host-owned projection units: The API Proxy broadcasts registry changes as session/projection frames and registers sessionListMetadata plus per-boot imageLimits; imageLimits always returns the same state from apply and therefore travels only through baselines." aria-label="Evidence PROJ-HOST-CARRIER">PROJ-HOST-CARRIER</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/src/api-proxy.ts#L1533-L1574" title="One synchronous cut for history events and the projection baseline: Attached history copies live events while cold history uses inspect; after all awaits, events and the projection watermark are read synchronously so one response cannot mix moments N and N+1." aria-label="Evidence LOG-HISTORY-CUT">LOG-HISTORY-CUT</a></p></div>
+</section>
+
+<section>
+  <h2>7. The durable projection cache is a versioned shortcut, never a read authority</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Guard</th><th>Why it exists</th><th>Failure behavior</th></tr></thead>
+    <tbody>
+      <tr><td><code>stateVersion</code></td><td>State shape or fold semantics may change</td><td>Discard that key's row and refold</td></tr>
+      <tr><td><code>createdAt</code> + <code>cwd</code></td><td>A Session ID names a slot, not a unique lifecycle forever</td><td>Discard the whole unrelated record</td></tr>
+      <tr><td>Anchored floor</td><td>A cached row may claim events beyond a shrunken or repaired stored log</td><td>Detect overreach and reread from seq 0</td></tr>
+      <tr><td>Lossless JSON boundary</td><td>Internal unit state must be durably serializable</td><td>Fail that cache write; never mutate the Session log</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Stored shape</div><p>The <code>session_projcache</code> domain is version 3. Each Session record binds one complete key-to-row checkpoint to a log identity. Domain-version incompatibility can discard the cache medium because the event log remains sufficient for reconstruction.<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-projection-cache/src/spec.ts#L16-L69" title="Versioned rows, log-lifecycle identity, and the cache domain: Each checkpoint row contains ver, seq, and a JSON value; a complete Session record binds rows to createdAt and cwd identity, and the version-3 session_projcache domain stores derived state that can be discarded." aria-label="Evidence PROJ-CACHE-SCHEMA">PROJ-CACHE-SCHEMA</a></p></div>
+  <div class="claim fact"><div class="claim-label">Restore mathematics</div><p><code>restoreFloor()</code> chooses one event below the lowest usable watermark. <code>restore()</code> accepts a row only when its version matches and its seq lies within the supplied suffix's provable bounds. An unsafe partial restore throws so the caller can reread from zero instead of blending incompatible state.<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-projection/src/index.ts#L284-L385" title="Anchored restore floors and safe tail folding: restoreFloor selects one event below the lowest usable watermark, while restore accepts only version-matching rows within the provable log endpoint and requires a reread from seq zero for an unsafe partial restore." aria-label="Evidence PROJ-REGISTRY-RESTORE">PROJ-REGISTRY-RESTORE</a></p></div>
+</section>
+
+<section>
+  <h2>8. The implemented cold-cache ladder is not wired into shipped cold History</h2>
+  <pre><code>implemented SessionProjectionCache.coldSnapshot(id)
+  cache rows → restoreFloor → persistence.readFrom(tail)
+  → registry.restore → fail-soft refreshed write-back
+
+shipped ordinary cold History
+  persistence.inspect(full logical log)
+  → registry.restore({}, all events, 0)
+
+shipped Session list
+  cachedSnapshot(header) only, zero log I/O</code></pre>
+  <div class="claim fact"><div class="claim-label">Implemented ladder</div><p><code>coldSnapshot()</code> validates log identity, tail-folds from an anchored floor, falls back to one full read after identity or endpoint failure, and writes refreshed rows back without failing the read.<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-projection-cache/src/index.ts#L154-L197" title="The projection cache cold tail-replay ladder: coldSnapshot reads checkpoints, computes a restore floor, and tail-folds persistence.readFrom; identity or watermark overreach falls back to a full read, followed by a fail-soft refreshed write-back." aria-label="Evidence PROJ-CACHE-LADDER">PROJ-CACHE-LADDER</a></p></div>
+  <div class="claim assessment"><div class="claim-label">Repository-wide call-site audit</div><p>At the pinned commit, production search finds the <code>coldSnapshot</code> method definition and generated API catalog, but no shipped caller. <code>session.list</code> uses only <code>cachedSnapshot</code>; ordinary and subagent cold History already load an inspected full log and fold from zero; subagent listing uses a cached row when conclusive and otherwise performs a full inspection. The cache is therefore a shipped list/metadata accelerator, not an active cold-History tail-replay accelerator.<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/src/api-proxy.ts#L841-L877" title="Shipped list and detached-History projection paths: Session list uses a registry snapshot for live rows and only cachedSnapshot for cold rows, while detached History restores the complete inspected event log from zero with an empty checkpoint." aria-label="Evidence PROJ-CACHE-INTEGRATION">PROJ-CACHE-INTEGRATION</a></p></div>
+  <aside class="caveat"><strong>Backend nuance:</strong> even a future <code>readFrom</code> caller is not uniformly physical O(tail). SQLite can seek to a suffix, while sequential JSONL media still parse the artifact and skip earlier events.</aside>
+</section>
+
+<section>
+  <h2>9. Inspect, prepare, and resume form a cold-start protocol, not three aliases</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Operation</th><th>Logical recovery</th><th>Durable mutation</th><th>Ownership / publication</th></tr></thead>
+    <tbody>
+      <tr><td><code>inspect(id)</code></td><td>Validates and adds deterministic closers in memory</td><td>No repair commit</td><td>No Agent; may retain an exact prepared graph for reuse</td></tr>
+      <tr><td><code>readFrom(id, seq)</code></td><td>None; returns valid physical stored suffix</td><td>None</td><td>No preparation cache or publication</td></tr>
+      <tr><td><code>prepare(id)</code></td><td>Builds the balanced exact Session</td><td>Commits repair if needed, then reloads</td><td>Exclusively reserves the unpublished Session</td></tr>
+      <tr><td>Agent <code>resume</code></td><td>Consumes the preparation</td><td>Persists later live suffixes normally</td><td>Runs setup, publishes exact Session + Agent, or rolls back</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Persistence read faces</div><p>Cold inspections can present a balanced logical turn while leaving a torn or interrupted physical tail untouched. Preparation uses phases <code>loading</code>, <code>ready</code>, <code>committing</code>, and <code>reserved</code>; same-ID inspectors share a load, while only the exact reserved Session may publish.<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-persistence/src/coordinator.ts#L720-L889" title="Four read contracts: prepare, load, inspect, and readFrom: Prepare reserves the sole publishable Session and commits recovery; load commits recovery and returns a balanced view; inspect performs logical repair without publication or writes; readFrom returns a physical stored suffix without recovery." aria-label="Evidence LOG-PERSISTENCE-READ-FACES">LOG-PERSISTENCE-READ-FACES</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-persistence/src/coordinator.ts#L891-L990" title="Revision checking and exact commit of prepared repair: A cold source synthesizes closers and validates them through Session seeding; after commitRepair changes revision it reloads instead of binding an old memory graph to a new revision, while live load flushes first and rejects an open turn." aria-label="Evidence LOG-PREPARED-COMMIT">LOG-PREPARED-COMMIT</a></p></div>
+  <div class="claim fact"><div class="claim-label">Agent transaction</div><p>The Agent factory fuses caller, owner-fiber, and factory cancellation around <code>persistence.prepare</code>. Setup runs before publication; failure disposes the prepared Agent and releases the reservation. <code>SessionStore.enter</code> is the final same-ID collision boundary.<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/index.ts#L624-L710" title="Setup, publication, and rollback for an exact prepared Session: Agent resume requires persistence.prepare under fused cancellation, runs setup before publishing the exact preparation, disposes on failure, releases the reservation in finally, and contains no automatic fresh-create branch after resume failure." aria-label="Evidence PROJ-COLD-RESUME">PROJ-COLD-RESUME</a></p></div>
+</section>
+
+<section>
+  <h2>10. Browser cold open is deliberately not Agent resume</h2>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>Restore selection</h3><p>The browser remembers its current Session address and selects it after the list arrives.</p></div>
+    <div><span>2</span><h3>Open History</h3><p><code>Session.open()</code> requests the tail page; it does not request an Agent.</p></div>
+    <div><span>3</span><h3>Inspect cold storage</h3><p>The Host uses an attached Session when available, otherwise persistence inspection.</p></div>
+    <div><span>4</span><h3>Resume only on demand</h3><p>Prompt, rename, model, command, and similar Agent operations enter the shared resolver.</p></div>
+  </div>
+  <p>A cold Session must be listed by persistence and carry a project <code>cwd</code> to be Web-servable. History can still degrade to generic tool cards when the recorded preset no longer supplies a standing presenter scope. A real resume is stricter: it must pass format, continuity, ownership, preset composition, setup, and final publication checks.</p>
+  <div class="claim fact"><div class="claim-label">No silent fresh fallback</div><p>The shared resolver reuses a live Agent, deduplicates same-ID resumes, inspects ownership and composition, then calls <code>agents.resume</code>. Not-found and subagent ownership receive typed errors; every other genuine resume failure remains an error. A fresh Session is created only on explicit create/adopt paths after persistence confirms the ID is absent.<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/src/api-proxy.ts#L1525-L1573" title="Cold History uses inspection without acquiring Agent ownership: History reads an attached Session when present and otherwise uses servable inspection; after all awaits it synchronously takes events and the projection cut without resuming or publishing an Agent." aria-label="Evidence PROJ-HOST-COLD-OPEN">PROJ-HOST-COLD-OPEN</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/index.ts#L624-L710" title="Setup, publication, and rollback for an exact prepared Session: Agent resume requires persistence.prepare under fused cancellation, runs setup before publishing the exact preparation, disposes on failure, releases the reservation in finally, and contains no automatic fresh-create branch after resume failure." aria-label="Evidence PROJ-COLD-RESUME">PROJ-COLD-RESUME</a></p></div>
+</section>
+
+<section>
+  <h2>11. Client convergence combines a full baseline, sparse pushes, and generation repair</h2>
+  <pre><code>history tail baseline { asOfSeq: N, values: all registered keys }
+                       ↓ seed
+resident ProjectionValueStore
+                       ↑ apply only if frame.seq is greater
+session/projection { key, value, seq }
+
+new mux generation:
+session/subscribed { lastSeq: D }
+→ remove client rows with seq &gt; D
+→ refetch list and resync opened History windows</code></pre>
+  <div class="claim fact"><div class="claim-label">Value store</div><p>The manager owns one projection store per Session even before a Session object exists. Both baselines and push frames use strict higher-seq-wins. A full History baseline also clears omitted keys at or below its cut; a partial <code>session.list</code> block applies only carried keys and deliberately clears nothing.<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/runtime/src/client/sessions/projection-store.ts#L67-L177" title="Higher-seq-wins, full seeding, and generation truncation in the client projection store: The value store rejects lower or equal seq for both baselines and pushes; a full seed clears old keys omitted at the cut, while subscribed truncation removes only rows beyond the Host&#39;s durable lastSeq." aria-label="Evidence PROJ-CLIENT-STORE">PROJ-CLIENT-STORE</a></p></div>
+  <div class="claim fact"><div class="claim-label">Restart recovery</div><p><code>session/subscribed.lastSeq</code> removes rows that claim state beyond the Host's durable endpoint, allowing lower-seq truth reconstructed after a crash to land. History installation then drains buffered live events, drops overlap, and refetches the tail when it detects a seq hole.<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/runtime/src/client/sessions/manager.ts#L438-L735" title="Convergence through list baselines, pre-instantiation pushes, and subscribed repair: The manager replays mutations that arrived during a list pull, applies only carried keys from partial list projections, stores session/projection frames before Session instantiation, and uses subscribed to truncate phantom rows and reset generation state." aria-label="Evidence PROJ-CLIENT-MANAGER">PROJ-CLIENT-MANAGER</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/runtime/src/client/sessions/session.ts#L614-L729" title="History-window stitching, live buffering, deduplication, and gap repair: The client installs a tail page, stitches events buffered during subscription by seq, drops overlap, and buffers plus refetches the tail on a seq hole so the conversation engine never receives a discontinuous window." aria-label="Evidence LOG-CLIENT-STITCH">LOG-CLIENT-STITCH</a></p></div>
+  <p>The mux and host feeds are independent streams with no shared total-order claim. <code>events.mux({since})</code> also ignores <code>since</code> in v1. The supported convergence story is reopen the streams, refresh list state, refetch History, and repair each domain—not resume one globally linear stream offset.</p>
+</section>
+
+<section>
+  <h2>12. Rebuild and invalidation operate at four different scopes</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Change</th><th>Invalidated state</th><th>How truth returns</th></tr></thead>
+    <tbody>
+      <tr><td>Another event appends</td><td>Live cell advances eagerly</td><td>Changed units push; full baseline later stamps every value through the new cut</td></tr>
+      <tr><td>Unit state or fold semantics change</td><td>Persisted row with old <code>stateVersion</code></td><td>Discard row and fold from a provable log prefix</td></tr>
+      <tr><td>Session ID is recreated or storage root changes</td><td>Whole checkpoint record with mismatched identity</td><td>Discard all rows for that unrelated lifecycle</td></tr>
+      <tr><td>Last registrant unloads</td><td>Registration and every live WeakMap cell for the key</td><td>A later snapshot omits the key; re-registration lazily folds the in-memory log</td></tr>
+      <tr><td>Projection-cache domain format changes</td><td>Entire derived medium</td><td>Drop it; the Session log remains sufficient</td></tr>
+    </tbody>
+  </table></div>
+  <p>No live registry API hydrates its WeakMap cells from a persisted checkpoint. The cache's detached <code>restore()</code> path returns a snapshot and refreshed checkpoint, but a resumed live Session still lazily folds its in-memory event array on first registry touch. There is also no cache eviction or retention surface; records accumulate until out-of-band maintenance removes them.</p>
+</section>
+
+<section>
+  <h2>13. Four documentation claims have drifted from current production control flow</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Documented claim</th><th>Current implementation</th><th>Evidence</th></tr></thead>
+    <tbody>
+      <tr><td>Duplicate projection keys throw</td><td>Same-version registrations share one ref-counted unit; only version mismatch throws</td><td><code>session-projection/README.md:11</code> vs <code>src/index.ts:194-220</code></td></tr>
+      <tr><td>Titles do not join <code>session.list</code></td><td>List rows carry projection blocks; cold cached titles seed the manager before open</td><td><code>host/apiproxy/README.md:33</code> vs <code>api-proxy.ts:1725-1764</code></td></tr>
+      <tr><td>History resumes an unattached Session and has no persistence-only read path</td><td>Cold History uses <code>inspect()</code> and explicitly does not publish an Agent</td><td><code>client/connection/README.md:23-26</code> vs <code>api/sessions.ts:264-283</code></td></tr>
+      <tr><td><code>skill.list</code> resolves a cold Session from its Header</td><td>The handler first requires <code>ctx.sessions.get(sessionId)</code>; unattached Sessions return not found</td><td><code>host/apiproxy/README.md:59</code> vs <code>api-proxy.ts:3205-3245</code></td></tr>
+    </tbody>
+  </table></div>
+  <aside class="caveat"><strong>CLI wording:</strong> the launcher's <code>--resume</code> example is explicitly TUI argument pass-through. The Web command parses only host, port, and trusted-host flags; this chapter does not claim a Web <code>--resume</code> flag exists.</aside>
+</section>
+
+<section>
+  <h2>14. Source-level risk: detach can briefly let the projection cache lead the log</h2>
+  <pre><code>Session detach
+  1. remove Session from SessionStore
+  2. emit contained, non-awaited session/disposed observers
+       ├─ persistence starts asynchronous retirement flush
+       └─ projection cache snapshots and writes
+            live-entry check now fails → no sessions.flush()</code></pre>
+  <div class="claim inference"><div class="claim-label">High-confidence static deduction; no crash injection performed</div><p>The cache documentation says the log always leads the cache. That is enforced for an ordinary live write, but not strictly at detach: the Session has already left the store, so the cache skips its explicit flush and relies on the persistence listener's separate retirement drain. The cache source itself acknowledges possible residual overreach. A process crash between the two durable writes can therefore leave a checkpoint whose seq is ahead of the stored log.<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-projection-cache/src/index.ts#L132-L230" title="The log-before-cache barrier for live checkpoints and its detach exception: A normal write flushes a still-live Session after taking the registry cut and before putting the cache, while the disposed listener starts flushSoft asynchronously after the live-store check can fail and skip the explicit flush; the source notes residual overreach is left for cold-read detection." aria-label="Evidence PROJ-CACHE-DETACH-WINDOW">PROJ-CACHE-DETACH-WINDOW</a></p></div>
+  <p><code>coldSnapshot()</code> could detect that overreach through its anchored floor, but no shipped caller uses it. The zero-I/O list read does not validate the stored log endpoint. A phantom list projection can consequently reach the client; a later lower-seq cold-History baseline loses under higher-seq-wins until a true resume emits <code>session/subscribed</code> and truncates the row, or the log advances beyond it.</p>
+  <aside class="caveat"><strong>Evidence boundary:</strong> this is a reachable ordering in the source, not a reproduced production incident. Normal turn-end cache writes already flush the log, so the window requires state not covered by a prior successful barrier plus a crash at the relevant detach interval.</aside>
+</section>
+
+<section>
+  <h2>15. Source-level risk: equal-seq replacement cannot cross a Host generation</h2>
+  <div class="claim inference"><div class="claim-label">Deterministic client-rule deduction; scenario not executed</div><p>The client rejects every update whose seq is lower than or equal to the resident row, while generation truncation removes only rows strictly beyond the new Host's durable <code>lastSeq</code>. If a Host restarts with the same log endpoint but a different value computed at that same endpoint, the old row survives and the new equal-seq baseline cannot replace it.<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/runtime/src/client/sessions/projection-store.ts#L128-L177" title="Equal-seq rejection and truncation only beyond lastSeq: apply returns immediately when seq is lower than or equal to the resident row, seed reuses that rule, and generation truncation removes only rows whose seq is greater than lastSeq, so a new-generation value at the same watermark cannot replace the old one." aria-label="Evidence PROJ-CLIENT-EQUAL-SEQ">PROJ-CLIENT-EQUAL-SEQ</a></p></div>
+  <p><code>imageLimits</code> makes the scenario concrete. Its state is always <code>null</code>, its view reads the current boot's attachment configuration, and it intentionally never pushes. A browser that remains alive across a Host restart can retain old limits at seq N; subscribed keeps the row because it is not beyond N, and the fresh baseline at N loses as equal. The value converges only after another event advances the baseline, a full client reset, or a protocol that carries a generation/version dimension.</p>
+  <p>The same edge applies to a unit's view semantics changing at an unchanged log watermark, and to unload/reload of the same key. <code>stateVersion</code> protects the Host's persisted cache but is absent from the client wire row, so it cannot resolve this client-generation ambiguity.<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/src/api-proxy.ts#L1302-L1323" title="The per-boot, baseline-only imageLimits projection: The imageLimits unit keeps null state, always returns the same reference from apply, and reads the current attachments-service configuration in view, so it emits no change frame within a boot and travels only through baselines." aria-label="Evidence PROJ-IMAGE-LIMITS">PROJ-IMAGE-LIMITS</a></p>
+</section>
+
+<section>
+  <h2>16. Source-level risk: one optional unit can make ordinary History unavailable</h2>
+  <div class="claim assessment"><div class="claim-label">Carrier inconsistency</div><p>A detached History baseline calls <code>registry.restore({}, events, 0)</code>, which folds every registered unit. If any unit's <code>apply</code>, <code>view</code>, or schema rejects the log, ordinary <code>session.history</code> returns <code>internal</code> instead of serving the transcript without projections. Session listing explicitly contains projection failure per row, and subagent History also degrades without the block; ordinary History does not.<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/src/api-proxy.ts#L2242-L2269" title="Ordinary History maps projection failures to an internal error: History obtains its source, composition, projection cut, and page inside one try; every error except SessionNotFound becomes history unavailable/internal, with no branch that degrades by omitting the projection block as list and subagent History do." aria-label="Evidence PROJ-HISTORY-FAILURE">PROJ-HISTORY-FAILURE</a></p></div>
+  <p>This is not merely corrupt state inside the failing domain: the registry's process-wide all-unit fold lets an unrelated projection block the base transcript read. Whether fail-loud is desired needs an explicit product decision. Current carrier behavior is inconsistent.</p>
+  <div class="claim assessment"><div class="claim-label">Capability invalidation lag</div><p>Unregistering the final unit deletes the registration and cells but emits no invalidation frame. Already connected clients retain that key until a later full tail baseline omits it. If the key is reloaded at the same log seq, the strict equal-seq rule can retain the previous value even after that baseline arrives.<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-projection/src/index.ts#L137-L220" title="Reference counting and version conflicts for registrations sharing one key: Registrants with the same key and stateVersion share the first unit and increment refs, while a different version is rejected; the final disposer removes the registration and all cells, and runtime cannot compare function semantics." aria-label="Evidence PROJ-REGISTRY-REGISTRATION">PROJ-REGISTRY-REGISTRATION</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/runtime/src/client/sessions/projection-store.ts#L67-L177" title="Higher-seq-wins, full seeding, and generation truncation in the client projection store: The value store rejects lower or equal seq for both baselines and pushes; a full seed clears old keys omitted at the cut, while subscribed truncation removes only rows beyond the Host&#39;s durable lastSeq." aria-label="Evidence PROJ-CLIENT-STORE">PROJ-CLIENT-STORE</a></p></div>
+</section>
+
+<section>
+  <h2>17. Design assessment and verification status</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Choice</th><th>Benefit</th><th>Cost</th></tr></thead>
+    <tbody>
+      <tr><td>One authoritative event log</td><td>Every derived layer can be discarded and rebuilt</td><td>Cold full folds remain expensive when acceleration is not connected</td></tr>
+      <tr><td>Synchronous, whole-value projection units</td><td>Atomic cuts and simple client replacement semantics</td><td>Every event touches every unit; large values ride every tail baseline</td></tr>
+      <tr><td>Versioned persisted fold shortcuts</td><td>No cache migrations are required for semantic changes</td><td>Version discipline is manual, and cache retention is unbounded</td></tr>
+      <tr><td>Inspect separately from resume</td><td>Cold browsing does not activate agents or mutate durable recovery state</td><td>Read and execution paths expose different logical/physical moments</td></tr>
+      <tr><td>Higher-seq-wins on the client</td><td>Stale baselines and replayed frames cannot regress current state</td><td>Seq alone cannot distinguish an equal-watermark Host generation</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Chapter verification scope</div><p>This chapter traced the fixed upstream commit through Session flush dispatch, checkpoint policy, persistence write-behind, projection registry and all production registrations, projection-cache schema and read/write paths, Host History/list carriers, cold inspection and exact preparation, Agent resume, and browser projection/gap-repair stores. It also reviewed relevant contract tests in source. Dependencies were not installed and no tests, crash injection, or live reconnect experiment ran locally; every risk section above is therefore labeled as static deduction rather than reproduced behavior.</p></div>
+</section>
+<section class="learning-notes" aria-labelledby="learning-notes-title"><h2 id="learning-notes-title">My Learning Notes</h2>
     <p class="privacy">Autosaved only in this browser. Nothing is uploaded or committed. Export Markdown whenever you want to keep a copy.</p><textarea data-learning-notes aria-label="My Learning Notes" placeholder="Record your understanding, questions, counterexamples, and transferable principles…"></textarea>
     <div class="note-footer"><span data-note-saved>Local draft</span><button type="button" data-note-export>Export Markdown</button>
     <button type="button" class="danger" data-note-clear>Clear</button><span data-note-count>0 characters</span></div></section><nav class="pagination" aria-label="Chapter pagination"><a href="../pages/persistence-database.html"><small>← Previous chapter · 11</small><strong>Persistence and Database Design</strong></a><a class="next" href="../pages/compaction.html"><small>Next chapter · 13 →</small><strong>Compaction and Context Pressure</strong></a></nav></article>

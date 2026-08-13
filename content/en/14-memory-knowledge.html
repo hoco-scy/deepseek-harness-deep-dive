@@ -1,0 +1,189 @@
+<section>
+  <h2>Verdict: DeepSeek Harness Has Durable History and Explicit Recall, but No Default Autonomous Long-Term Memory System</h2>
+  <div class="thesis"><p>At the pinned baseline, capabilities often collapsed into “memory” actually occupy six distinct layers. The current Session Surface is model working context; JSONL is the complete durable event history; a compaction checkpoint is a lossy same-Session context replacement; a session reference is an explicitly copied cross-Session snapshot; session query/FTS provides reads and lexical retrieval; and Skills are a trusted instruction catalog. Actual external memory databases, knowledge graphs, or other recall backends enter only through default-off Memory MCP examples.</p></div>
+  <div class="claim fact"><div class="claim-label">Source conclusion</div><p>“The log is durable” does not mean “a new Session automatically remembers old Sessions.” Every Provider request is still derived only from the current Session Surface, and the shipped composition contains no first-party pipeline that automatically searches other Sessions, ranks results, and injects them into the prompt. <evidence id="MEMORY-AGENT-CONTEXT"></evidence><evidence id="SESSION-SURFACE-PROJECTION"></evidence></p></div>
+  <aside class="caveat"><strong>Terminology boundary:</strong> the repository's Ralph workflow describes the shared workspace as cross-round “long-term memory.” That is a workflow design using the filesystem as the authoritative handoff surface, not a service for automatic conversational-fact extraction, semantic indexing, or implicit recall.</aside>
+</section>
+
+<section>
+  <h2>1. Put the Six Core Layers and the External Boundary in One Matrix</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Mechanism</th><th>Authoritative data</th><th>How the model sees it</th><th>Cross-Session?</th><th>Shipped default</th></tr></thead>
+    <tbody>
+      <tr><td>Working context</td><td>Current Session Surface + current system/tools</td><td><code>deriveMessages()</code> directly forms the request</td><td>No</td><td>Yes; minimal disables dynamic runtime context</td></tr>
+      <tr><td>Durable history</td><td>Append-only Session event log</td><td>Only messages remaining on the folded Surface enter requests</td><td>Explicitly readable, not automatically recalled</td><td>JSONL in Base</td></tr>
+      <tr><td>Compaction</td><td>Summary audit event + replacement checkpoint</td><td>A checkpoint replaces an older Surface span</td><td>No</td><td>Present in standard; absent from minimal</td></tr>
+      <tr><td>Session reference</td><td>Bounded snapshot of a source Session's current Surface</td><td>Injected as sourced user-role context</td><td>Yes, as an explicit one-time copy</td><td>Opt-in and not mounted by shipped compositions</td></tr>
+      <tr><td>Session query / FTS</td><td>Live or persisted logs; disposable derived SQLite index</td><td>Read by the Host/UI or optional model tools</td><td>Yes, subject to caller authorization</td><td>Exact reads on; FTS and model tools off</td></tr>
+      <tr><td>Skills</td><td>Instruction definitions from filesystems or runtime providers</td><td>Catalog summaries + full bodies on demand</td><td>Discovered by workspace/scope; not learned from conversation</td><td>Present in standard; absent from minimal</td></tr>
+      <tr><td>Memory MCP</td><td>A third-party provider's own storage</td><td>The model explicitly calls MCP tools</td><td>Provider-defined</td><td>All examples off</td></tr>
+    </tbody>
+  </table></div>
+  <p>“Default” is a composition result, not one boolean. Base mounts JSONL and <code>sessionQuery</code> but configures FTS as <code>openAt: never</code>; the standard preset additionally mounts Skills and compaction; minimal explicitly omits compaction and suppresses dynamic runtime-context snapshots. <evidence id="MEMORY-DEFAULT-COMPOSITION"></evidence><evidence id="MEMORY-STANDARD-PRESET"></evidence><evidence id="MEMORY-MINIMAL-PRESET"></evidence></p>
+</section>
+
+<section>
+  <h2>2. Working Context Is the Current Surface, Not the Entire Log</h2>
+  <pre><code>claim inbox messages
+→ assemble system prompt and tools
+→ project dynamic runtime context
+→ run agent/pre-step injections
+→ append accepted user/context messages durably
+→ derive current Surface messages
+→ snapshot request header
+→ call Provider</code></pre>
+  <p>The Agent claims input, assembles the prompt, computes runtime context, and lets plugins append context during pre-step. Only accepted messages are then recorded as <code>user/message</code> events. The model call reads <code>session.deriveMessages()</code>, while canonical provider/model, system, and tools are recorded separately in <code>request/header</code>. <evidence id="MEMORY-AGENT-CONTEXT"></evidence></p>
+  <div class="claim fact"><div class="claim-label">Visibility rule</div><p>Only <code>user/message</code>, nonempty <code>assistant/message</code>, and <code>tool/result</code> can become Surface messages. Turn and Step boundaries, raw stream chunks, request headers, and other log-only events never directly enter model history. A replacement-generation change makes the derived cache rebuild from the new Surface. <evidence id="SESSION-SURFACE-PROJECTION"></evidence><evidence id="SESSION-DERIVED-CACHE"></evidence></p></div>
+  <p>A Session therefore has two kinds of “past” at once: the raw log records what happened, while the current Surface determines what the next model request actually sees. Every later memory claim must first identify which layer it reads.</p>
+</section>
+
+<section>
+  <h2>3. Durable History Is a Recovery Foundation, Not an Automatic Recall Policy</h2>
+  <p>The Base bundle writes Session logs to <code>$DSH_HOME/sessions</code> by default. The persistence coordinator advances its durable cursor only after a backend batch append succeeds; resume and load use reservations plus a stable revision to obtain the exact repaired logical history. Live events enter bounded write-behind, explicit <code>session/flush</code> is the immediate durability barrier, and Session disposal drains remaining writes. <evidence id="MEMORY-DEFAULT-COMPOSITION"></evidence><evidence id="MEMORY-PERSISTENCE-TRANSACTION"></evidence><evidence id="MEMORY-PERSISTENCE-FLUSH"></evidence></p>
+  <div class="claim fact"><div class="claim-label">File boundary</div><p>On POSIX, directories are created with <code>0700</code>, synchronized temporary files with <code>0600</code>, and publication uses linking, directory fsync, and cleanup without overwriting an existing log. This reduces same-machine disclosure and power-loss corruption risk, but it does not introduce a tenant authorization model. <evidence id="MEMORY-JSONL-PERMISSIONS"></evidence></p></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>What it guarantees</th><th>What it does not guarantee</th></tr></thead>
+    <tbody>
+      <tr><td>Events append in contiguous seq order and become recovery facts after flush</td><td>No stable user profile or fact extraction</td></tr>
+      <tr><td>Cold Sessions can be read explicitly by the Host or query service</td><td>A new Session does not automatically search old Sessions</td></tr>
+      <tr><td>Original events shadowed by compaction remain auditable</td><td>The model does not automatically regain that shadowed source text</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>4. Compaction Is a Lossy Same-Session Transformation, Not a Second Memory Store</h2>
+  <p>Compaction start, summary, and end form a log-only bracket. The following user-message checkpoint with <code>surfaceOp: replace</code> is what actually changes model-visible history. The summary event retains shadowed seqs, estimated token price, provider/model, usage, and complete <code>rawOutput</code>, so both old source events and auxiliary model output remain in durable history. <evidence id="COMPACT-EVENTS"></evidence></p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Dimension</th><th>Compaction semantics</th><th>Why this is not long-term memory</th></tr></thead>
+    <tbody>
+      <tr><td>Scope</td><td>One head-anchored span of the current Session Surface</td><td>It reads no other Session or external fact store</td></tr>
+      <tr><td>Result</td><td>A shorter checkpoint plus a retained recent tail</td><td>It serves the next request's context budget</td></tr>
+      <tr><td>Fidelity</td><td>The prompt asks for a structured summary; code checks only nonempty and shorter</td><td>There is no factual-consistency or entity-memory invariant</td></tr>
+      <tr><td>Recovery</td><td>Raw events remain; the Surface sees the replacement</td><td>Auditability does not automatically recall source text to the model</td></tr>
+    </tbody>
+  </table></div>
+  <p>The default basic policy triggers near 80% pressure, retains roughly a 16% recent tail, and allows bounded retries. Its summary directive explicitly requires English, adding a translation-loss surface for non-English Sessions. An automatic summary failure only warns and continues the Turn, so high-pressure history may remain uncompacted. <evidence id="COMPACT-CONFIG"></evidence><evidence id="COMPACT-SUMMARIZER"></evidence></p>
+  <aside class="caveat"><strong>Retention boundary:</strong> compaction shortens the model view; it is not data deletion. A privacy-erasure or retention requirement cannot treat “compacted” as “the old content is gone.”</aside>
+</section>
+
+<section>
+  <h2>5. Session Reference Is an Explicit, Immutable, Sourced Cross-Session Snapshot</h2>
+  <pre><code>user selects source session ids
+→ resolver reads each source's current Surface once
+→ keep direct user text + assistant text + canonical checkpoints
+→ drop tools, reasoning, nested injected context, and shadowed raw history
+→ enforce a per-source UTF-8 byte budget
+→ inject one sourced user-role snapshot into the target Session</code></pre>
+  <p>The resolver defaults to at most three sources, 50 candidates, and 65,536 UTF-8 bytes per source. Its prompt explicitly marks the snapshot untrusted and read-only and tells the model not to follow instructions, permission claims, or tool requests inside it unless the current user repeats them. <evidence id="MEMORY-REFERENCE-RESOLVER"></evidence></p>
+  <p>Projection retains only direct-user messages, assistant text, and canonical compact checkpoints. Under budget pressure it preserves checkpoints and the newest message, drops older non-checkpoint units first, then head/tail truncates the longest text with an exact omission count. <evidence id="MEMORY-REFERENCE-PROJECTION"></evidence></p>
+  <div class="claim fact"><div class="claim-label">Snapshot, not link</div><p><code>prepare()</code> reads each source once. Later appends, compaction, or deletion of the source cannot mutate context already written to the target Session; tests also require a fresh replay to reproduce the same target messages. <evidence id="MEMORY-REFERENCE-CONTRACT-TEST"></evidence></p></div>
+  <p>It is not a fork, resume, subscription, or live share, and it does not run automatically when the model judges an old Session relevant. The context package overview explicitly classifies <code>session-reference</code> as opt-in. <evidence id="MEMORY-REFERENCE-OPT-IN"></evidence></p>
+</section>
+
+<section>
+  <h2>6. Session-Reference Authorization Belongs to the Host, Not the Resolver</h2>
+  <p><code>listCandidates()</code> lists every non-self Session exposed by <code>sessionQuery</code>; matching cwd affects rank, not filtering. Given an exact Session ID, <code>prepare()</code> directly calls <code>readSurface()</code>. The package README likewise states that the resolver assumes its Host may read every Session exposed by the query service. <evidence id="MEMORY-REFERENCE-RESOLVER"></evidence><evidence id="MEMORY-REFERENCE-TRUST"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Trust boundary, not a default exploit</div><p>At the pinned commit, the package is not mounted by default and there is no shipped Web candidate picker, so no stock UI path directly exposes this read capability. Any future multi-user Host that exposes it must filter discovery and independently reauthorize exact <code>prepare</code> requests. Cwd ranking must not be mistaken for access control.</p></div>
+  <div class="claim assessment"><div class="claim-label">Confirmed documentation drift</div><p>The README says the standard TUI installs a one-shot pre-step wrapper and describes idle/running inject-and-steer integration paths. No corresponding production adapter, consumer, or shipped composition row exists at the pinned commit. The verifiable implementation ends at the resolver, URI/parser, projection, and replay UI components. <evidence id="MEMORY-REFERENCE-DOC-DRIFT"></evidence><evidence id="MEMORY-REFERENCE-OPT-IN"></evidence></p></div>
+</section>
+
+<section>
+  <h2>7. Session Query Is a Unified Read Surface; FTS5 Is a Disposable Lexical Read Model</h2>
+  <p>The query corpus prefers a detached live snapshot and inspects persistence only when the target is not live, checking again for an attachment race after the read. Batched cold reads have bounded concurrency and isolate one Session's failure as that item's rejected result. <evidence id="MEMORY-QUERY-CORPUS"></evidence></p>
+  <p>Search documents are extracted event by event from the complete raw log and classified by the canonical Surface fold as <code>current</code>, <code>shadowed</code>, or <code>log-only</code>. Searchable text includes user and assistant text, tool names/arguments/results, Todos, and some Turn errors. Reasoning, raw chunks, request headers, unknown events, and unknown blocks are excluded. <evidence id="MEMORY-QUERY-DOCUMENTS"></evidence><evidence id="MEMORY-QUERY-EXTRACTION"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Search-semantics risk</div><p><code>user/message</code> extraction does not inspect <code>source</code>. Once FTS is enabled, plugin-injected user-role context—such as Skill catalogs, Skill invocations, or session-reference snapshots—may therefore enter the index. The Web Host filters to current user/assistant event types but performs no second message-source filter. This is a confirmed static indexing and privacy boundary, not evidence that the default configuration has created such an index.</p></div>
+  <p>The SQLite backend uses FTS5 with the <code>unicode61</code> tokenizer, not embeddings or semantic retrieval. A persistent path duplicates extracted plaintext into a derived database. New directories and files are owner-only, foreign databases are refused, and a recognized but incompatible derived schema may be rebuilt. <evidence id="MEMORY-QUERY-SQLITE-SCHEMA"></evidence></p>
+</section>
+
+<section>
+  <h2>8. Exact Reads Are On by Default; Full-Text and Model Query Tools Are Off</h2>
+  <p>Both Base and Web patches set <code>path: ':memory:'</code> and <code>openAt: never</code>. This mode never imports or opens SQLite and makes <code>searchSessions</code>/<code>searchEvents</code> return <code>SESSION_QUERY_SEARCH_DISABLED</code>, while titles, lineage, Surface reads, and exact event reads remain available through the unified service. <evidence id="MEMORY-DEFAULT-COMPOSITION"></evidence><evidence id="MEMORY-QUERY-SQLITE-MODE"></evidence><evidence id="LOG-QUERY-TRACE"></evidence></p>
+  <p>Model-facing <code>tool-session-query</code> is a separate opt-in package registering <code>session_search</code>, <code>session_event_search</code>, <code>session_trace</code>, <code>session_event_trace</code>, and <code>session_event_read</code>. Shipped Host compositions do not mount it by default. It also deliberately applies no byte or character truncation; deployments needing bounded inline output must add a spill policy. <evidence id="MEMORY-QUERY-TOOL-CONTRACT"></evidence></p>
+  <div class="claim fact"><div class="claim-label">Model-tool authorization</div><p>When mounted, the caller must come from <code>exec.agent</code>. Self access is permitted; cross-Session access requires exact cwd equality with the caller Session and is rechecked against the observed header after reads. Unauthorized lineage branches become markers that disclose no hidden Session ID. <evidence id="MEMORY-QUERY-TOOL-AUTH"></evidence></p></div>
+  <p>The precise default statement is therefore: “The Host has a cross-Session exact-query seam, but the model receives no cross-Session search or read tools by default,” not the looser “Session memory is supported.”</p>
+</section>
+
+<section>
+  <h2>9. The Web UI Is Local-Metadata-First and Degrades Content Search by Configuration</h2>
+  <p>For a nonblank query, Workspace Browser immediately matches titles and Workspace names, then issues a debounced Host content search after 250 ms. Remote failure leaves local results visible and adds a warning. Local-first and remote results are deduplicated, merged, and capped at 20. <evidence id="MEMORY-WEB-SEARCH"></evidence></p>
+  <p>The Host defines its visible baseline as attached Sessions plus servable cold Sessions carrying cwd. After querying the provider it accepts only hits in that visible set whose Session IDs agree and whose types are current user/assistant messages. This Host gate is the Web path's authorization boundary. <evidence id="MEMORY-WEB-HOST-GATE"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Default-composition mismatch</div><p>Stock Web still sends a content request for every nonblank query, but Base's <code>openAt: never</code> deterministically rejects FTS. The user therefore gets title/workspace-only results plus an unavailable warning. The UI README describes the content-match interaction without explaining the shipped-off backend at that point, so “the UI can request it” and “the default deployment searches bodies” must remain distinct.</p></div>
+  <aside class="caveat"><strong>Deployment boundary:</strong> the search handler currently interpolates the underlying error string into the response and carries a source TODO to redact it before deployment beyond the current single-user local model. This must be tightened before a public multi-user Host. <evidence id="MEMORY-WEB-HOST-GATE"></evidence></aside>
+</section>
+
+<section>
+  <h2>10. Skills Are Trusted Knowledge and Operating Instructions, Not Learned Conversation Memory</h2>
+  <p>The Skill registry merges host/global and per-scope provider/runtime layers. The nearest scope wins same-name conflicts across layers, with rank resolving duplicates inside one layer. <code>list()</code> returns summaries and <code>get()</code> loads complete definitions on demand. There is no path in the registry for extracting, reinforcing, resolving, or forgetting facts learned from Sessions. <evidence id="MEMORY-SKILL-REGISTRY"></evidence></p>
+  <p>The filesystem provider discovers flat <code>.md</code> files or one-level <code>SKILL.md</code> directories from the nearest Git root's <code>.dsh/skills</code> and <code>.agents/skills</code>, custom roots, user roots, and the bundled root. Watching and symlink following are on by default with at most 128 project watchers; non-bundled roots pass through the optional filesystem policy. <evidence id="MEMORY-SKILL-FILESYSTEM-CONFIG"></evidence><evidence id="MEMORY-SKILL-FILESYSTEM-ROOTS"></evidence><evidence id="MEMORY-SKILL-FILESYSTEM-LOAD"></evidence></p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Path</th><th>Content entering the model</th><th>Durable semantics</th></tr></thead>
+    <tbody>
+      <tr><td>Catalog publication</td><td>Name + truncated description</td><td>A sourced user message records the complete current catalog</td></tr>
+      <tr><td>Model calls <code>skill</code></td><td>Full <code>&lt;skill_content&gt;</code> on demand</td><td>Ordinary tool call/result remains in the Session</td></tr>
+      <tr><td>User types whitespace-bounded <code>/name</code></td><td>Full instructions context injected directly</td><td>User message with a <code>skill-invocation</code> source</td></tr>
+    </tbody>
+  </table></div>
+  <p>Both load paths check the actual definition's invocation policy, and only direct user input can trigger the unforgeable <code>/name</code> gesture. Full bodies are deliberately treated as trusted local content and embedded verbatim. This is knowledge injection, not memory retrieval. <evidence id="MEMORY-SKILL-INVOCATION"></evidence></p>
+</section>
+
+<section>
+  <h2>11. The Main Skill Risks Are Repository Trust and Context Amplification</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Finding</th><th>Classification</th><th>Practical effect</th></tr></thead>
+    <tbody>
+      <tr><td>Project Skills are discovered automatically with no per-repository or per-Skill consent</td><td>Host trust boundary</td><td>An untrusted repository's descriptions may enter the catalog, and a loaded body becomes strong instructions</td></tr>
+      <tr><td>Each description defaults to a 500-character cap, but Skill count and aggregate catalog size are unbounded</td><td>Static resilience gap</td><td>Many Skills can linearly amplify every catalog publication</td></tr>
+      <tr><td>Complete Skill bodies have no byte cap</td><td>Static resilience gap</td><td>One model or user load may consume substantial context</td></tr>
+      <tr><td>Bodies render verbatim as trusted instructions</td><td>Design boundary</td><td>This can produce prompt injection but does not automatically execute repository scripts</td></tr>
+      <tr><td>Provider-config JSDoc says the default name is <code>local</code>; schema/constructor use <code>filesystem</code></td><td>Documentation drift</td><td>An embedding host relying on the comment can infer the wrong provider identity</td></tr>
+    </tbody>
+  </table></div>
+  <p>The per-description cap, whole-catalog publication, and absence of a body cap are directly visible in implementation. The filesystem provider's JSDoc/default mismatch appears in the same configuration definition. <evidence id="MEMORY-SKILL-FILESYSTEM-CONFIG"></evidence><evidence id="MEMORY-SKILL-FILESYSTEM-LOAD"></evidence><evidence id="MEMORY-SKILL-INVOCATION"></evidence></p>
+  <p>Web <code>skill.list</code> resolves a host-owned cwd/scope only for an attached Session and returns user-invocable entries. The client caches per Session, offers candidates on <code>/</code>, and inserts only literal <code>/name </code> text after selection. Listing failures silently drop the menu group; there is no consent or risk-preview layer. <evidence id="MEMORY-SKILL-HOST-UI"></evidence><evidence id="MEMORY-SKILL-CLIENT-UI"></evidence></p>
+</section>
+
+<section>
+  <h2>12. External Memory MCP Is an Interoperability Boundary; Providers Own Data and Recall Semantics</h2>
+  <p><code>examples/mcp-memory</code> supplies version-pinned overlays for Memorix, MCP Reference Memory, and Engram. Harness parses the overlay, launches a stdio child or connects to Streamable HTTP, discovers tools, and registers them as <code>mcp__&lt;server&gt;__&lt;tool&gt;</code>. It does not download the service, initialize its database, choose its model or embedding provider, migrate data, or supervise an independent HTTP service. The shipped composition contains no memory server, so all three remain disabled without <code>--patch</code>. <evidence id="MEMORY-MCP-BOUNDARY"></evidence></p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Provider example</th><th>Storage/retrieval described by its README</th><th>What Harness can guarantee</th></tr></thead>
+    <tbody>
+      <tr><td>Memorix</td><td>Provider-owned local heuristic mode and data directory</td><td>MCP transport, tool discovery, and calls</td></tr>
+      <tr><td>Reference Memory</td><td>Local knowledge graph; case-insensitive substring search</td><td>Configuration passes a storage path to the child</td></tr>
+      <tr><td>Engram</td><td>Provider-owned storage and project selection</td><td>Launch configuration and environment boundary</td></tr>
+    </tbody>
+  </table></div>
+  <p>Write triggers, search timing, conflict resolution, forgetting, cross-project identity, and licensing are not core Harness contracts. The examples even recommend adding an instruction to write when asked to remember and search when history may matter if tool descriptions do not reliably trigger use, making the prompt/tool-policy dependency explicit. <evidence id="MEMORY-MCP-BOUNDARY"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Test boundary</div><p>Existing tests prove overlays parse, pins are present, obvious hard-coded keys are absent, and a keyless fixture replacing the real command can be discovered. They run no real provider and prove neither write behavior, restart persistence, fresh-Session recall, permission isolation, nor semantic quality. <evidence id="MEMORY-MCP-CONTRACT-TEST"></evidence></p></div>
+</section>
+
+<section>
+  <h2>13. The Shipped First-Party Default Deliberately Lacks an Autonomous Memory Loop</h2>
+  <pre><code>not present as a shipped first-party default:
+conversation → fact extraction → durable semantic store
+             → relevance retrieval → ranking/dedup
+             → permission-filtered automatic prompt injection
+             → conflict resolution / forgetting / provenance feedback</code></pre>
+  <p>Source and shipped composition establish a Session event log, Surface replacement, exact and lexical query, explicit snapshots, and instruction catalogs. They do not support describing the default as embedding memory, vector retrieval, episodic/semantic memory, learned user profiles, or automatic recall. External MCP can add some of those capabilities, but capability, data ownership, and risk vary by provider.</p>
+  <div class="claim assessment"><div class="claim-label">Why this restraint matters</div><p>Explicit boundaries make replay, authorization, and token cost easier to reason about: history reads cross a Host/tool seam, cross-Session content carries provenance, Skills must be loaded, and external databases must be mounted deliberately. The cost is that “remember me over time” does not emerge automatically; a deployment must choose storage, triggers, authorization, conflict, and forgetting policy.</p></div>
+  <p>The most accurate product description is <strong>durable, replayable session history with explicit cross-session retrieval seams</strong>, not an autonomous memory platform.</p>
+</section>
+
+<section>
+  <h2>14. Confirmed Issues, Static Risks, and Verification Status</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Item</th><th>Conclusion level</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td>Session-reference README describes a standard-TUI integration not present in the pinned tree</td><td>Confirmed documentation drift</td><td>Not mounted by default</td></tr>
+      <tr><td>Stock Web requests content search while the backend deterministically disables FTS by default</td><td>Confirmed composition/UI mismatch</td><td>Falls back to title/workspace + warning</td></tr>
+      <tr><td>Enabled FTS may index plugin-injected user messages</td><td>High-confidence static inference</td><td>No index is created by default</td></tr>
+      <tr><td>Persistent FTS duplicates extracted plaintext</td><td>Confirmed data boundary</td><td>Owner-only and explicit opt-in</td></tr>
+      <tr><td>Skill catalog/body lacks aggregate size caps and project discovery has no consent</td><td>Confirmed static resilience/trust gap</td><td>Relevant to the standard preset</td></tr>
+      <tr><td>Compaction retains shadowed raw events and summarizer rawOutput</td><td>Confirmed retention boundary</td><td>Not a deletion mechanism</td></tr>
+      <tr><td>Web search returns underlying error text</td><td>Source-acknowledged deployment boundary</td><td>Currently declared single-user local only</td></tr>
+      <tr><td>Memory MCP has no real-provider E2E</td><td>Confirmed verification gap</td><td>Configuration and fixture discovery only</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Verification scope</div><p>This chapter is pinned to upstream commit <code>47f943859bef60e4160492346772ded9b24f765a</code> and cross-checked the Agent request path, Session/Surface, persistence, compaction, session reference, session query/SQLite/model tools, Web Host/UI, Skills, Memory MCP examples, and their test source. Dependency installation stalled on unrelated platform packages, so no test execution succeeded in this pass. The chapter reports source and existing test-contract audit, not a claim that runtime tests passed.</p></div>
+</section>

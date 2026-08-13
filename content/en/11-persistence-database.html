@@ -1,0 +1,213 @@
+<section>
+  <h2>Conclusion: persistence is a portfolio of ownership contracts, not “the database”</h2>
+  <div class="thesis"><p>DeepSeek Harness has three deliberately separate persistence families. <code>SessionPersistence</code> owns the authoritative event log and its non-replayable header. The generic Storage/Domain stack owns host-side records whose meaning comes from a consumer-owned schema. The attachment store owns immutable binary objects while Session events retain only content-addressed references. Workspace then composes Domain state with Session headers; it does not own either project directories or Session logs.</p></div>
+  <p>This separation is the chapter's most important result. JSONL and SQLite are alternative physical providers for the same Session contract, but the generic JSON and SQLite backends are not Session databases. Likewise, a Workspace account is not a foreign-key ownership claim over a transcript, and an attachment reference is not the object itself.</p>
+</section>
+
+<section>
+  <h2>1. The ownership map prevents accidental cascades</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Owner</th><th>Durable data</th><th>Authoritative for</th><th>Explicitly does not own</th></tr></thead>
+    <tbody>
+      <tr><td><code>SessionPersistence</code></td><td><code>SessionHeader</code> plus contiguous <code>SessionEvent</code>s</td><td>Model-visible history, replay, resume, and fork facts</td><td>Workspace labels, binary image bytes, project files</td></tr>
+      <tr><td>Storage backend</td><td>Opaque JSON KV units</td><td>Atomic, durable media operations</td><td>Record schemas, write ordering, domain meaning</td></tr>
+      <tr><td>Domain</td><td>Schema-validated records and optional global state</td><td>In-memory current view, serialized writes, change events</td><td>Session-event semantics or cross-domain transactions</td></tr>
+      <tr><td>Attachment store</td><td>Immutable content-addressed bytes</td><td>Object integrity and verified image metadata</td><td>Message ordering and reference lifetime</td></tr>
+      <tr><td>Workspace</td><td>Canonical path, title, ordered candidate ids, registry order/archive state</td><td>Host-side grouping and display order</td><td>The directory, its files, or the referenced Session logs</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Session authority</div><p>The Service Definition says that backends store existing <code>SessionEvent</code>s as the event-sourced log and keep non-replayable <code>SessionHeader</code> metadata separately. Its API distinguishes raw artifact location, lazy creation, durable append, mutating load, non-mutating inspect, physical suffix read, and lightweight listing.<evidence id="PERSIST-SEAM-API"></evidence></p></div>
+</section>
+
+<section>
+  <h2>2. SessionPersistence is a behavioral seam, not a CRUD repository</h2>
+  <pre><code>create(header)              // reserve identity; may remain purely in memory
+append(id, contiguousBatch) // resolve only after durability
+inspect(id)                 // balanced logical view; no physical repair
+load(id)                    // commit repair when cold, then return a balanced view
+prepare(id)                 // reserve the exact unpublished Session for resume
+readFrom(id, seq)           // detached, non-mutating stored suffix
+list / listSnapshots        // materialized logs only</code></pre>
+  <p>The seam makes crash semantics part of the interface. A complete, valid interrupted final turn is preserved and deterministically closed, while a provider returns a contiguous prefix plus an opaque marker for the suffix it classifies as unrecoverable. That abstraction is broader than a literally partial physical record; Sections 6 and 8 audit the concrete classification. A created-but-never-appended Session may leave no artifact at all. SQLite therefore cannot be substituted by implementing ordinary create/read/update/delete calls—the provider must implement append continuity, identity, repair, and quiescent shutdown.</p>
+  <div class="claim fact"><div class="claim-label">Backend obligations</div><p>The shared backend contract requires atomic header-plus-first-batch materialization, an opaque torn-tail marker, source-qualified revisions, and durability before <code>appendBatch</code> resolves. It explicitly permits repair to be non-atomic so a file backend can truncate and append closers in two synced steps.<evidence id="PERSIST-BACKEND-CONTRACT"></evidence></p></div>
+</section>
+
+<section>
+  <h2>3. The coordinator is the real portability layer</h2>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>Snapshot admission</h3><p>Headers and event batches are losslessly JSON-snapshotted before they wait on a chain.</p></div>
+    <div><span>2</span><h3>Serialize by id</h3><p>Every operation for one Session ID joins the same promise chain.</p></div>
+    <div><span>3</span><h3>Validate and commit</h3><p>Format and seq continuity are checked before the provider's one durable primitive.</p></div>
+    <div><span>4</span><h3>Publish state</h3><p>The in-memory cursor advances and prepared views invalidate only after durability.</p></div>
+  </div>
+  <p><code>PersistenceCoordinator</code> owns lazy identity collision checks, write-behind controllers, per-ID serialization, prepared-session caching, live adoption, crash-repair sequencing, revision retries, and disposal. Providers contribute media primitives rather than reimplementing this state machine.</p>
+  <div class="claim fact"><div class="claim-label">Shared protocol</div><p>The coordinator keeps backend state by Session ID, lifecycle/write-behind state by exact live Session, retirement drains, a four-phase preparation pool, and one promise chain per ID. A committed append advances <code>materialized</code> and <code>cursor</code> only after <code>appendBatch</code> returns.<evidence id="PERSIST-COORDINATOR"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">Read faces</div><p><code>inspect</code> may reuse an immutable prepared graph without repair; <code>load</code> and <code>prepare</code> reserve and commit repair; <code>readFrom</code> bypasses that cache and never repairs. These are deliberately different ownership operations.<evidence id="PERSIST-READ-FACES"></evidence></p></div>
+</section>
+
+<section>
+  <h2>4. Write-behind separates hot-path admission from a durable quiescent point</h2>
+  <pre><code>session/event → structuredClone → pending queue
+                 first item arms one fixed deadline
+deadline → stable batch → backend append
+failure  → batch restored at queue head; automatic retries pause
+flush    → cancel timer → join active write → retry and drain to empty</code></pre>
+  <p>Later events do not extend the current batching deadline. Events admitted during one write form a follow-up batch. A background failure is reported while the exact batch remains retained; explicit flush is the retry and quiescence barrier. Backend disposal drains controllers before it closes media.</p>
+  <div class="claim fact"><div class="claim-label">Failure-safe queue</div><p><code>SessionWriteBehind</code> copies admitted events, shares concurrent flush callers through one barrier, and restores a failed batch in front of newer pending events. The queue never silently acknowledges a failed durable write.<evidence id="PERSIST-WRITE-BEHIND"></evidence></p></div>
+</section>
+
+<section>
+  <h2>5. JSONL is a logical event stream with two physical encodings</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Property</th><th>Raw <code>.jsonl</code></th><th>Default <code>.jsonl.zstd</code></th></tr></thead>
+    <tbody>
+      <tr><td>Header</td><td>First newline-terminated record</td><td>One checksummed header frame</td></tr>
+      <tr><td>Append batch</td><td>New JSONL lines</td><td>One independent checksummed frame</td></tr>
+      <tr><td>Chunk packing</td><td colspan="2">Eligible delta runs may become lossless packed rows; load expands them back to events</td></tr>
+      <tr><td>Suffix seek</td><td colspan="2">None: <code>readFrom</code> still scans the physical prefix, then returns only the suffix</td></tr>
+      <tr><td>Raw export</td><td colspan="2">Returns the exact logical JSONL text, preserving packed rows and serialization</td></tr>
+    </tbody>
+  </table></div>
+  <p>The configured root is required, then resolved once in the constructor so later <code>process.cwd()</code> changes cannot split one backend. Session IDs are injectively escaped before becoming path segments. Header identity and the derived cwd/id path are checked before repair or append, and a root mixing compression suffixes or the retired flat layout is rejected rather than guessed.</p>
+  <div class="claim fact"><div class="claim-label">File identity</div><p>The provider resolves its root once, exposes an absolute location, and deliberately omits seek-capable <code>loadStoredFrom</code>. The format uses a dedicated header record followed by verbatim or packed storage rows, with path-safe encoding for unvalidated branded Session IDs.<evidence id="PERSIST-JSONL-ROOT"></evidence><evidence id="PERSIST-JSONL-FORMAT"></evidence></p></div>
+</section>
+
+<section>
+  <h2>6. JSONL durability is strong, but its repair is intentionally two-stage</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Operation</th><th>Durability boundary</th><th>Failure behavior</th></tr></thead>
+    <tbody>
+      <tr><td>First append</td><td>Synced temporary file; no-overwrite publish; parent-directory sync on POSIX</td><td>Same-ID publication collision rejects instead of replacing a log</td></tr>
+      <tr><td>Later append</td><td>Append encoded batch and fsync file</td><td>Write/sync failure truncates back to the previous byte length</td></tr>
+      <tr><td>Repair</td><td>Truncate and fsync, then append recovered records plus synthetic closers and fsync</td><td>A crash between the two steps can leave a shorter but still recoverable open tail</td></tr>
+    </tbody>
+  </table></div>
+  <p>Raw mode tolerates only an incomplete final record or a defect strictly after the last committed <code>turn/end</code>. Zstandard mode rejects a broken complete frame, but can salvage complete JSONL records emitted from a structurally incomplete final frame. It truncates at that frame's start, then rewrites only recovered records and closers—not the earlier committed prefix.</p>
+  <div class="claim fact"><div class="claim-label">Physical repair scope</div><p>The reader returns a byte-offset marker plus any complete events recovered from an incomplete final frame. <code>commitRepair</code> first fsyncs truncation, then appends recovered events and closers through the normal synced append path. The coordinator contract makes this non-atomic sequence legal.<evidence id="PERSIST-JSONL-REPAIR"></evidence></p></div>
+  <div class="claim assessment"><div class="claim-label">Classification is broader than byte tearing</div><p>The raw scanner also accepts complete newline-terminated rows. If such a row is invalid JSON, has an invalid storage shape, or expands to a sequence gap, the scanner records the issue but throws only if a later decoded row closes the Turn. Otherwise <code>finish()</code> returns the byte offset before the defect, so repair may discard a physically complete row and all later rows in the final open Turn. The policy protects every closed Turn, but it cannot prove that this suffix was never durably committed.<evidence id="PERSIST-JSONL-SCAN"></evidence><evidence id="PERSIST-JSONL-REPAIR"></evidence></p></div>
+  <aside class="caveat"><strong>Suffix scope:</strong> JSONL's <code>readFrom</code> limits returned and refolded events, not I/O or parsing. Because the medium is sequential, an unsupported required event earlier in the artifact can still make a suffix request refuse even though a seek backend would not inspect it.</aside>
+</section>
+
+<section>
+  <h2>7. Session SQLite maps the same log contract onto strict rows</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Table</th><th>Role</th><th>Identity/durability detail</th></tr></thead>
+    <tbody>
+      <tr><td><code>persistence_state</code></td><td>Singleton store UUID</td><td>Prevents equal local counters from comparing across stores</td></tr>
+      <tr><td><code>sessions</code></td><td>Header columns, incarnation UUID, revision counter</td><td>Row existence is lazy materialization</td></tr>
+      <tr><td><code>events</code></td><td>One row per event, primary key <code>(session_id, seq)</code></td><td>Foreign-key cascade and strict columns</td></tr>
+    </tbody>
+  </table></div>
+  <p>The database carries both <code>application_id</code> and <code>user_version</code>. A pristine database is initialized and stamped; a nonempty unversioned database, a foreign application identity, or any version other than <code>SCHEMA_VERSION = 15</code> refuses. Despite the word “version,” there is no migration path in this pre-release implementation.</p>
+  <div class="claim fact"><div class="claim-label">Schema ownership</div><p>Initialization holds <code>BEGIN IMMEDIATE</code>, checks schema ownership, creates three STRICT tables, assigns the store identity, and stamps application/schema versions before applying the requested journal mode. Existing incompatible media is rejected rather than altered into a guessed shape.<evidence id="PERSIST-SQLITE-SCHEMA"></evidence></p></div>
+</section>
+
+<section>
+  <h2>8. SQLite append and repair gain transaction atomicity and real suffix reads</h2>
+  <p>First materialization and every event in its batch commit in one transaction. Later append batches do the same and increment the Session revision once. Load scans a transactionally consistent full row set, identifies the first invalid tail seq, then repairs by deleting <code>seq &gt;= tornMarker</code>, inserting deterministic closers, and incrementing the revision in one transaction.</p>
+  <div class="claim fact"><div class="claim-label">Row repair</div><p><code>scanRows</code> rejects an unparsable row or sequence gap at or before the last valid <code>turn/end</code>, but treats a later defect as a torn tail. <code>commitRepair</code> atomically deletes only that suffix and inserts closers; no valid committed row before the marker is rewritten.<evidence id="PERSIST-SQLITE-SCAN"></evidence><evidence id="PERSIST-SQLITE-REPAIR"></evidence></p></div>
+  <div class="claim assessment"><div class="claim-label">The same policy exists at row granularity</div><p>A SQLite row can be transactionally present yet contain bad JSON or the wrong sequence. When that defect lies after the last valid <code>turn/end</code>, <code>scanRows</code> labels the row and every later row a never-committed torn tail, and mutating load can delete them. This is a reasonable availability choice, but “after the last closed Turn” is a semantic recovery rule—not physical evidence that the rows were torn.<evidence id="PERSIST-SQLITE-SCAN"></evidence><evidence id="PERSIST-SQLITE-REPAIR"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">Seek semantics</div><p><code>loadStoredFrom</code> executes <code>WHERE session_id = ? AND seq &gt;= ? ORDER BY seq</code> and scans only that selected region. It is explicitly non-mutating: a bad selected tail is shortened in the returned view, not repaired.<evidence id="PERSIST-SQLITE-SUFFIX"></evidence></p></div>
+  <aside class="caveat"><strong>Validation scope is deliberately asymmetric:</strong> a SQLite suffix read does not prove payload validity below <code>fromSeq</code>; JSONL normally parses the whole artifact. Full <code>load</code>/<code>prepare</code> still inspect the complete log before mutating recovery.</aside>
+</section>
+
+<section>
+  <h2>9. The documented WAL default has a direct-constructor trap</h2>
+  <div class="claim assessment"><div class="claim-label">Static finding</div><p>The plugin schema defaults <code>journalMode</code> to <code>wal</code>, but <code>SqliteSessionPersistence</code>'s constructor supplies fallback values only for cache size and batch delay. It casts the still-optional <code>journalMode</code> to required and passes it onward; <code>openDatabase</code> calls <code>journalMode.toUpperCase()</code>. Therefore <code>new SqliteSessionPersistence(ctx, { path })</code> fails asynchronously instead of using WAL. The direct-constructor test avoids the defect by explicitly passing <code>journalMode: 'wal'</code>.<evidence id="PERSIST-SESSION-SQLITE-CONSTRUCTOR"></evidence><evidence id="PERSIST-SESSION-SQLITE-CONSTRUCTOR-TEST"></evidence><evidence id="PERSIST-SQLITE-SCHEMA"></evidence></p></div>
+  <p>The same shape appears in the generic SQLite storage backend: Schemastery promises a WAL default, while its public constructor casts an omitted optional value and the open path dereferences it. Loader-normalized plugin construction is safe; direct programmatic construction without <code>journalMode</code> is not.</p>
+  <div class="claim assessment"><div class="claim-label">Repeated boundary leak</div><p><code>SqliteStorageBackend({ path })</code> passes an undefined journal mode to a later <code>toUpperCase()</code> for the same reason. Defaults that are part of a public config contract need constructor-side normalization or a constructor type that requires already-normalized config.<evidence id="PERSIST-STORAGE-SQLITE-CONSTRUCTOR"></evidence><evidence id="PERSIST-STORAGE-SQLITE-OPEN"></evidence></p></div>
+</section>
+
+<section>
+  <h2>10. Generic Storage deliberately knows less than SessionPersistence</h2>
+  <pre><code>Storage hub
+  ├─ backend registry: name → one medium and optional facets
+  └─ mounted forms: domain today
+
+KV backend contract
+  open(unit descriptor) → loadAll / putRecord / deleteRecord / setGlobal / close
+
+Domain form
+  spec + zod schemas + route → authoritative memory + one write chain + change events</code></pre>
+  <p>KV values are opaque JSON to the backend. A unit guarantees each single call is atomic and durable, but explicitly does not serialize concurrent calls. The Domain layer supplies that ordering, validates data when opening, applies backend durability before changing its in-memory map, and emits <code>domain/changed</code> only after both agree.</p>
+  <div class="claim fact"><div class="claim-label">Layer boundary</div><p>The backend contract assigns media ownership and per-call durability to <code>KvUnit</code>, while leaving schemas and concurrent ordering to callers. A backend unregister operation does not close the medium; the provider plugin owns that lifecycle.<evidence id="PERSIST-STORAGE-SEAM"></evidence><evidence id="PERSIST-STORAGE-REGISTRY"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">Domain ordering</div><p>One per-domain promise chain makes update functions observe the value at their queue slot. A rejected backend write leaves memory untouched; a successful write updates memory before emitting a contained notification.<evidence id="PERSIST-DOMAIN-ORDER"></evidence></p></div>
+  <p>The generic SQLite provider gives each unit a row in <code>units</code>, an optional row in <code>unit_globals</code>, and one STRICT <code>u_&lt;unit&gt;_&lt;table&gt;</code> table per declared table. Its physical <code>user_version</code> is 1; any other stamped layout refuses instead of migrating. Each KV mutation is one prepared statement, so the provider supplies per-call atomicity while Domain still supplies write order.<evidence id="PERSIST-STORAGE-SQLITE-SCHEMA"></evidence><evidence id="PERSIST-STORAGE-SQLITE-UNIT"></evidence></p>
+</section>
+
+<section>
+  <h2>11. JSON KV publication is carefully durable, but relative roots remain dynamic</h2>
+  <p>Every JSON KV mutation republishes the entire human-readable unit file. The writer creates a same-directory owner-only temporary file, writes and fsyncs it, atomically renames it over the target, then fsyncs the parent directory on POSIX. Windows receives atomic replacement through libuv but no explicit write-through flag. There is no cross-process writer lock.</p>
+  <div class="claim fact"><div class="claim-label">Replace protocol</div><p>Temp-file and target share a directory, so rename is the publication point; file sync precedes it and POSIX directory sync follows it. A failed path removes the temporary file and propagates the error.<evidence id="PERSIST-JSON-ATOMIC"></evidence></p></div>
+  <div class="claim assessment"><div class="claim-label">Post-publication error ambiguity</div><p><code>rename()</code> happens before the parent-directory fsync. If that fsync rejects, <code>writeAtomic</code> rejects after the target may already expose the new bytes. <code>JsonKvUnit</code> then rolls its state back, and Domain leaves its own memory unchanged because the backend call failed. The caller therefore receives failure while a reopen may observe the new file; crash durability is also uncertain. The backend needs an explicit post-publication policy—such as poisoning/reloading the unit or preserving enough state to reconcile—rather than treating every rejection as pre-publication failure.<evidence id="PERSIST-JSON-ATOMIC"></evidence><evidence id="PERSIST-JSON-UNIT-ROLLBACK"></evidence><evidence id="PERSIST-DOMAIN-ORDER"></evidence></p></div>
+  <div class="claim assessment"><div class="claim-label">Static root gap</div><p>The config correctly requires an explicit <code>root</code>, but its schema accepts relative strings and <code>JsonStorageBackend</code> stores the string verbatim. <code>mkdir(root)</code> and <code>join(root, unit.json)</code> run later, so a process-wide cwd change can redirect later unit opens. The Session JSONL provider avoids this exact class by resolving its root once in its constructor.<evidence id="PERSIST-JSON-ROOT-GAP"></evidence><evidence id="PERSIST-JSONL-ROOT"></evidence></p></div>
+</section>
+
+<section>
+  <h2>12. Domain close has a one-way failure state</h2>
+  <p>The happy path is sound: <code>close()</code> immediately rejects new writes, drains the settled write-chain tail, closes the backend unit, marks reads closed, then releases the facility's name reservation. Repeated close calls share one promise.</p>
+  <div class="claim assessment"><div class="claim-label">Static lifecycle gap</div><p>If <code>unit.close()</code> rejects, <code>disposing</code> remains true, <code>closed</code> remains false, <code>onClosed()</code> never frees the name, and <code>disposal</code> permanently retains the rejected promise. The resulting handle rejects all new writes but still permits reads; reopening the name also remains impossible.<evidence id="PERSIST-DOMAIN-CLOSE-GAP"></evidence></p></div>
+  <aside class="caveat"><strong>Why it matters:</strong> this is not data corruption—the write chain was drained—but it is a lifecycle leak and an ambiguous service state. A robust close path needs an explicit policy for retry, terminal closure, reservation release, and aggregation of medium-close failures.</aside>
+</section>
+
+<section>
+  <h2>13. Attachments use commit-before-reference and content-addressed ownership</h2>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>Admission</h3><p>Limit encoded bytes, fully decode the raster, verify format, dimensions, and pixel count.</p></div>
+    <div><span>2</span><h3>Address</h3><p>Hash exact encoded bytes into an opaque <code>sha256:</code> attachment id.</p></div>
+    <div><span>3</span><h3>Publish</h3><p>Sync a private staging file, publish with an exclusive hard link, and sync directory ancestors.</p></div>
+    <div><span>4</span><h3>Reference</h3><p>Only then may a Session event contain id, media type, byte length, dimensions, and sanitized display name.</p></div>
+  </div>
+  <p>Deduplication is safe because an existing object is read and hashed before it is accepted. Reads re-hash bytes, compare stored metadata with the logged reference, and preserve cancellation. Objects are retained indefinitely because resumed and forked Sessions may share them; no Session or Workspace deletion implicitly garbage-collects them.<evidence id="PERSIST-ATTACH-LIMITS"></evidence></p>
+  <div class="claim fact"><div class="claim-label">Binary ownership</div><p>The attachment seam exposes immutable references rather than paths or provider URLs. The local provider stores owner-private objects beneath a versioned root and publishes a durable reference only after content and namespace durability checks.<evidence id="PERSIST-ATTACH-SEAM"></evidence><evidence id="PERSIST-ATTACH-STORE"></evidence></p></div>
+</section>
+
+<section>
+  <h2>14. Attachment read-time decoding is documented incorrectly</h2>
+  <div class="claim assessment"><div class="claim-label">Documentation drift</div><p>The local-backend README says both write admission and reads fully decode the raster. Production source says the opposite: admission calls <code>image.raw().toBuffer()</code> for a full decode, while a digest-verified read calls <code>probeImage()</code>, which only asks Sharp for header metadata. The code's rationale is to avoid replay-time pixel amplification because the digest proves these are the exact bytes admitted earlier.<evidence id="PERSIST-ATTACH-DECODE-DOC"></evidence><evidence id="PERSIST-ATTACH-DECODE-SOURCE"></evidence><evidence id="PERSIST-ATTACH-DECODE-IMPL"></evidence></p></div>
+  <p>The implementation still verifies integrity and reference metadata; the drift is about computational work and malformed-payload revalidation, not about skipping digest verification. Documentation should say “full decode at admission, header probe after digest verification on read.”</p>
+</section>
+
+<section>
+  <h2>15. Workspace is a recoverable two-write registry over Domain state</h2>
+  <p>The <code>workspace</code> domain (version 2) stores one record per Workspace—canonical path, title, ordered candidate Session IDs, and timestamps—plus global initialization, Workspace order, archive IDs, and an optional pending create/delete marker. First startup lists only Session headers, canonicalizes valid cwd directories, groups them, and writes the initialized marker last.<evidence id="PERSIST-WORKSPACE-INIT"></evidence><evidence id="PERSIST-WORKSPACE-BOOTSTRAP"></evidence></p>
+  <p>Create/delete cannot be one generic cross-record transaction, so the registry writes a pending marker before the record/order pair can diverge. Startup completes only the named mutation; unexplained order/table, duplicate-path, or duplicate-session ownership still fails loud. Workspace deletion removes the registration and account only, never the directory, files, live Session, persisted log, or attachment.<evidence id="PERSIST-WORKSPACE-MUTATION"></evidence><evidence id="PERSIST-WORKSPACE-OWNERSHIP"></evidence></p>
+  <div class="claim fact"><div class="claim-label">Stored shape</div><p>The zod spec projects one <code>workspaces</code> table and one global state slot through Domain storage. Runtime validation separately checks order completeness, unique paths, and one-Workspace-per-session accounting.<evidence id="PERSIST-WORKSPACE-SCHEMA"></evidence><evidence id="PERSIST-WORKSPACE-INVARIANTS"></evidence></p></div>
+</section>
+
+<section>
+  <h2>16. Workspace title, schema, and refresh contracts have visible gaps</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Finding</th><th>What source does</th><th>Consequence</th></tr></thead>
+    <tbody>
+      <tr><td>Stale title parameter</td><td><code>create(path, title?)</code> remains public, but a source TODO says its last production caller was deleted</td><td>README/API surface advertises a branch that shipped consumers no longer exercise</td></tr>
+      <tr><td>Loose scalar schemas</td><td>Workspace id, path, title, Session ids, and timestamps are plain <code>z.string()</code></td><td>Empty/whitespace title, non-UUID ids, non-ISO timestamps, and non-canonical stored paths pass the schema</td></tr>
+      <tr><td>Partial compensation</td><td>Startup separately checks duplicate order ids, missing/orphan rows, duplicate paths, and duplicate Session accounting</td><td>Cross-record integrity is stronger than the zod shape, but scalar semantics remain unchecked</td></tr>
+      <tr><td>No public full refresh</td><td>Only startup clears/replaces the header index; uncached lookup calls <code>list()</code> and incrementally indexes returned headers</td><td>An externally deleted cached Session is not removed by that incremental pass; restart is the only guaranteed full purge</td></tr>
+      <tr><td>Cached fast path</td><td><code>readSessionHeader</code> returns a cached header without re-listing or re-statting cwd</td><td>External cwd damage is observed only when another path happens to re-index that header or on restart</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">Title and schema gap</div><p>The implementation accepts an optional raw title at create and any string at <code>setTitle</code>; the durable record schema imposes no nonblank or timestamp/UUID/path refinements. The source itself marks the create-time title parameter for removal.<evidence id="PERSIST-WORKSPACE-TITLE-GAP"></evidence><evidence id="PERSIST-WORKSPACE-TITLE-SETTER"></evidence><evidence id="PERSIST-WORKSPACE-SCHEMA"></evidence></p></div>
+  <div class="claim assessment"><div class="claim-label">Refresh gap and README overstatement</div><p>The README says external deletion or cwd damage appears after the “next refresh or restart,” but production has no public full-refresh operation. Runtime misses call incremental <code>indexHeaders</code> without clearing absent ids, while cached hits do no refresh at all. Restart is the only explicit full replacement path.<evidence id="PERSIST-WORKSPACE-REFRESH"></evidence><evidence id="PERSIST-WORKSPACE-REFRESH-DOC"></evidence></p></div>
+</section>
+
+<section>
+  <h2>17. A useful Codex comparison: similar media, different authority topology</h2>
+  <p>For Codex users, the filenames can look deceptively familiar. At official public Codex commit <code>66919805ea080053d1933b6b43afeb0d8bf70c91</code>, the <a href="https://github.com/openai/codex/blob/66919805ea080053d1933b6b43afeb0d8bf70c91/codex-rs/rollout/src/recorder.rs#L1-L1">rollout module</a> says JSONL Session rollouts are persisted for replay or later inspection, and its <a href="https://github.com/openai/codex/blob/66919805ea080053d1933b6b43afeb0d8bf70c91/codex-rs/rollout/src/recorder.rs#L77-L84">recorder</a> writes canonical rollout items to JSONL. The public config labels <code>sqlite_home</code> as the directory for the <a href="https://github.com/openai/codex/blob/66919805ea080053d1933b6b43afeb0d8bf70c91/codex-rs/config/src/config_toml.rs#L315-L326">SQLite state DB</a>; the App Server's <code>thread/list</code> contract says its default path may <a href="https://github.com/openai/codex/blob/66919805ea080053d1933b6b43afeb0d8bf70c91/codex-rs/app-server/README.md#L429-L435">scan JSONL rollouts to repair metadata</a>, while <code>useStateDbOnly</code> opts out.</p>
+  <aside class="caveat"><strong>Evidence asymmetry:</strong> every DeepSeek Harness claim in this chapter is traced against the chapter baseline <code>47f943859bef60e4160492346772ded9b24f765a</code>. This Codex comparison is a smaller snapshot of the official public repository at the separate commit above. It supports only the four client-side storage facts linked here; it makes no claim about OpenAI service-side or private implementations.</aside>
+  <div class="claim assessment"><div class="claim-label">Architectural difference</div><p>DeepSeek Harness makes JSONL and SQLite interchangeable <em>authoritative Session-log providers</em> behind one behavioral seam. Its generic SQLite state, Workspace records, and attachment objects remain separate ownership domains. The transferable lesson is not “JSONL versus SQLite”; it is to state which medium can reconstruct which facts, which medium is merely an index or projection, and which repairs are allowed to mutate authority.</p></div>
+</section>
+
+<section>
+  <h2>18. Audit result: strong contracts, with seven concrete follow-ups</h2>
+  <ul class="audit-list">
+    <li><strong>Normalize SQLite defaults at constructor boundaries.</strong> Fix both direct-constructor <code>journalMode</code> paths or require a normalized config type.</li>
+    <li><strong>Name the torn-tail policy precisely.</strong> Document that both providers may discard physically complete defective records after the last closed Turn; consider preserving diagnostics or requiring explicit repair when physical tearing is not established.</li>
+    <li><strong>Resolve JSON KV post-publication failures.</strong> Keep Domain, unit memory, and the published target in a defined state when directory sync fails after rename.</li>
+    <li><strong>Freeze JSON KV root identity.</strong> Resolve an explicit relative root once, matching Session JSONL behavior.</li>
+    <li><strong>Specify failed Domain closure.</strong> Decide retry and name-release semantics so a close error cannot strand a readable-but-unwritable handle.</li>
+    <li><strong>Correct attachment documentation.</strong> State full decode on admission and digest-plus-header verification on read.</li>
+    <li><strong>Tighten or document Workspace boundaries.</strong> Remove the dead create-time title branch, validate user-facing title/timestamps/ids as intended, and expose or stop promising a runtime full refresh.</li>
+  </ul>
+  <p>The system's central design remains coherent: durable facts have explicit owners and providers share one Session contract. Recovery is conservative through the last closed Turn, while the final open tail follows a broader policy that should be named explicitly. The static gaps cluster around repair classification, post-publication failure, configuration, lifecycle, documentation, and cache refresh—not around confusion over which component owns the event log.</p>
+</section>
