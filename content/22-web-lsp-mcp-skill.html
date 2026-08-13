@@ -1,0 +1,243 @@
+<section>
+  <h2>结论：四种扩展面，四套不同契约</h2>
+  <div class="thesis"><p>DeepSeek Harness 没有把所有外部能力压成一个通用插件 API。Web 在可替换 provider 之上保留产品自有的稳定工具名；LSP 在按扩展名路由的语言服务器之上保留一组封闭操作；MCP 动态导入 provider 自有的名称与 schema；Skill 先发布精简路由目录，只在需要时揭示受信任的指令正文。共同哲学不是“万物皆工具”，而是“把稳定、类型化的 seam 放在能够诚实拥有语义的最窄层”。</p></div>
+  <p>这种拆分尤其利于审计，因为每个表面回答不同的问题：公开名称由谁拥有、provider 由谁选择、每次模型请求付出多少上下文、非信任内容或高权限内容在哪里进入执行。把四者视为同一种机制，会掩盖它们最重要的安全与缓存属性。</p>
+</section>
+
+<section>
+  <h2>1. 能力拓扑：每个表面把“稳定性”放在不同层</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>表面</th><th>稳定的模型可见单元</th><th>可替换／动态单元</th><th>选择时点</th><th>默认暴露</th></tr></thead>
+    <tbody>
+      <tr><td>Web</td><td><code>web_search</code> / <code>web_fetch</code></td><td>search 与 fetch provider</td><td>执行时按配置 ID 或唯一可用 provider</td><td>仅 Search</td></tr>
+      <tr><td>LSP</td><td>包含四种操作的单一 <code>lsp</code> 工具</td><td>扩展名到语言服务器的路由</td><td>文件最后一个扩展名</td><td>可选示例，不在发布的 base 中</td></tr>
+      <tr><td>MCP</td><td>每个发现工具一个 <code>mcp__server__raw</code></td><td>完整远端工具代际</td><td>服务器发现与重新同步</td><td>默认关闭的示例</td></tr>
+      <tr><td>Skill</td><td>单一 <code>skill</code> loader 加摘要目录</td><td>胜出的 provider candidate 与加载正文</td><td>先 scope layer，再在 layer 内按 rank</td><td>随编码 preset 发布</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">设计解读</div><p>架构把稳定性花在收益最大的地方。Web 与 LSP 能定义可移植的产品词汇，因此 schema 固定；MCP 的存在目的正是接受外部服务器词汇，因此稳定的是身份和代际替换；Skill 则稳定发现元数据，把昂贵且有权威性的正文延后。</p></div>
+</section>
+
+<section>
+  <h2>2. Web：Provider 选择确定且每次调用重新判断</h2>
+  <pre><code>web_search(query)
+  → ctx.web.search(request)
+      ├─ 已配置 ID 存在且可用 → 使用
+      ├─ 已配置 ID 缺失／不可用 → 类型化失败
+      ├─ 未配置 + 恰好一个可用   → 自动选择
+      ├─ 未配置 + 多个可用       → 歧义失败
+      └─ 没有可用 provider       → 不可用失败
+  → 将 source 截断到 maxResults</code></pre>
+  <div class="claim fact"><div class="claim-label">没有注册顺序抽签</div><p>Search 与 fetch 使用不同 registry，重复 ID 会失败，provider 可用性在执行时检查。环境覆盖写入同两个配置字段，而不是另建隐藏优先级链。未配置时若有多个 provider 可用，执行会失败并要求显式选择。<evidence id="CAP-WEB-SELECTION"></evidence></p></div>
+  <p>结果词汇有意保持很小：search 返回可选回答文本与可引用来源；fetch 返回最终 URL、状态码、封闭的 HTML/text 正文联合以及截断标志。非 2xx 是资源状态而不是传输异常。<evidence id="CAP-WEB-TYPES"></evidence></p>
+</section>
+
+<section>
+  <h2>3. 稳定工具可见性与 Provider 健康状态解耦</h2>
+  <p><code>dsh-tool-web</code> 拥有 schema、提示指引、结果上限和呈现；它的 <code>search</code>/<code>fetch</code> 开关决定工具是否注册，具体 provider 不参与。因此，即便配置的 provider 暂时缺失或不可用，已启用工具仍留在模型目录中，只在真正调用时以结构化元数据失败。<evidence id="CAP-WEB-TOOL"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">取舍</div><p>这在凭证故障与 provider HMR 期间保护工具 schema 和 KV 前缀稳定。代价是“模型看得到工具”不再是 readiness 信号；运维必须另有 provider 健康视图，否则第一次用户可见探测就是失败调用。</p></div>
+</section>
+
+<section>
+  <h2>4. 发布版 Web 仅启用 Search，因为 Fetch 明确缺少 SSRF 防线</h2>
+  <div class="claim fact"><div class="claim-label">真实 base 组合</div><p>Base composition 挂载 <code>ctx.web</code>，把 search 固定到 <code>deepseek-official</code>，挂载 DeepSeek provider，以 60 秒工具预算暴露 <code>web_search</code>，并设置 <code>fetch:false</code>；没有挂载 fetch provider。配置注释明确给出原因：本地 fetcher 延后了 SSRF／私网保护，而目标由模型选择。<evidence id="CAP-WEB-SHIPPED"></evidence></p></div>
+  <p>可选 HTTP fetcher 仍执行有效的传输卫生：仅允许 HTTP(S)、禁止 URL 内嵌凭证、限制 URL 长度、仅跟随同源重定向、限制为可支持的文本类型、按声明 charset 解码、统一超时、字节与字符上限，并且不携带浏览器 cookie 或环境凭证。它明确警告私网阻断尚未实现。<evidence id="CAP-WEB-FETCH-POLICY"></evidence><evidence id="CAP-WEB-FETCH-TRANSPORT"></evidence><evidence id="CAP-WEB-FETCH-CAPS"></evidence></p>
+  <aside class="caveat"><strong>安全边界：</strong>同源重定向防止初始目标静默把请求转发到别处，但不会让初始主机自动安全。缺失的仍是部署可达性策略。</aside>
+</section>
+
+<section>
+  <h2>5. DeepSeek Search 是辅助模型调用，不复用主 LLM Adapter</h2>
+  <pre><code>web_search query
+  → 解析一份 settings + credential 快照
+  → 追加无密钥 web/deepseek-search-llm-request
+  → POST Anthropic-compatible /messages
+       model: deepseek-v4-flash
+       tool: web_search_20250305
+  → 必须存在 web_search_tool_result block
+  → 按 URL 连接 cited_text、去重并归一化</code></pre>
+  <div class="claim fact"><div class="claim-label">私有 wire，公共 seam</div><p>Provider 使用自己的原生 <code>fetch</code> 客户端和 Anthropic-compatible 请求，而不是 <code>ctx.llm</code>。每个操作只快照一次 endpoint、密钥来源、model、token 上限和 search-use 上限；dispatch 前记录完整无密钥辅助请求；拒绝重定向；同时发送两种支持的 API key header。<evidence id="CAP-WEB-DEEPSEEK-WIRE"></evidence><evidence id="CAP-WEB-DEEPSEEK-REQUEST"></evidence><evidence id="CAP-WEB-DEEPSEEK-SETTINGS"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">没有 prose fallback</div><p>响应若没有原生搜索结果 block 就是错误。结果项按 URL 去重，snippet 则来自分离的 citation text block。最终 <code>maxResults</code> 截断仍由 Web seam 拥有，而非该 adapter。<evidence id="CAP-WEB-DEEPSEEK-MAP"></evidence></p></div>
+  <div class="claim assessment"><div class="claim-label">成本后果</div><p>一次可见 <code>web_search</code> 是一条额外计费模型请求，拥有独立失败与延迟路径。它在发起 Session 中可观察，但不会经过主 adapter 的 retry、model selection 或 streaming 实现。</p></div>
+</section>
+
+<section>
+  <h2>6. LSP 刻意拒绝变成通用 JSON-RPC</h2>
+  <p>LSP service 只导出 <code>goToDefinition</code>、<code>findReferences</code>、<code>goToImplementation</code> 和 <code>hover</code>。Provider 原子保留一个 ID 和一组互斥的归一化文件扩展名。Registry 在任何 mutation 前验证完整映射；冲突不会发布任何内容，dispose 会一起释放全部路由。Query 按文件最后一个小写扩展名选择——<code>foo.d.ts</code> 按 <code>.ts</code> 路由——且没有原始 JSON-RPC 逃生口。<evidence id="CAP-LSP-REGISTRY"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">封闭集合的价值</div><p>Seam 因为理解所有操作，才能统一 position、result、cap、error、cancellation 与只读 retry。任意 JSON-RPC 虽能最大化协议覆盖，却会把兼容和安全重新推回 prompt 与 provider 特有行为。</p></div>
+</section>
+
+<section>
+  <h2>7. <code>lsp</code> 是精确辅助，不是通用代码浏览器</h2>
+  <div class="claim fact"><div class="claim-label">模型契约</div><p>单一只读工具接受封闭 operation enum、文件路径以及从 1 开始的 UTF-16 行／字符。它必须取得调用 Session 的 workspace，绝不 fallback；随后转换到归一化 seam，限制 location 数和渲染字符，并携带 60 秒超时。其 prompt 明确建议普通导航先用 search/read，只有文本导航歧义或修改需要精确符号关系时才用 LSP。<evidence id="CAP-LSP-TOOL"></evidence></p></div>
+  <p>这是重要克制：LSP 不替代源码读取。它只针对当前文件文本回答语义导航问题，再返回有界 location 或 hover 内容供模型继续读取核验。</p>
+</section>
+
+<section>
+  <h2>8. Stdio LSP Backend 与文件系统、进程共享同一执行世界</h2>
+  <pre><code>query(file, workspace)
+  → ctx.fs 规范化 workspace 并证明 containment
+  → ctx.fs 流式读取一份完整、有字节上限的 source
+  → 每 canonical workspace 一个队列
+      → 经 ctx.subprocess 懒启动单一 server process
+      → didOpen → query → didClose
+      → transport failure 时替换一次并重放只读 query</code></pre>
+  <div class="claim fact"><div class="claim-label">事务化激活</div><p>插件在注册任何 provider 前验证所有 server config 并解析所有 executable；registry 冲突会回滚已注册项。进程在首个匹配 query 时才启动；teardown 前先移除路由；所有兄弟进程 dispose 结算后才传播错误。<evidence id="CAP-LSP-STDIO-LOAD"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">Workspace 串行化</div><p>每个 canonical workspace 拥有一个池化 server 和一条覆盖 source read、document open、query、close 的队列。源码字节来自 <code>ctx.fs</code>，server 经 <code>ctx.subprocess</code> 启动。因为操作集合只读，transport failure 可以替换选中进程并透明重试一次。<evidence id="CAP-LSP-STDIO-POOL"></evidence><evidence id="CAP-LSP-HOST-FS"></evidence></p></div>
+</section>
+
+<section>
+  <h2>9. LSP 已实现，并以可选能力形式提供示例</h2>
+  <p>仓库在可选的 Headless/E2B composition 中演示 LSP，由 operator 提供具体 server command 和 extension map。该示例固定了 <code>typescript-language-server</code>，并且只有在 service 与 stdio provider 同时存在时才暴露 tool。<evidence id="CAP-LSP-OPTIONAL"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">部署后果</div><p>包存在不等于产品可用。有效的 UI 或能力清单必须区分“代码存在”“provider 已配置”“工具对该 Agent 可见”和“provider 当前 ready”。</p></div>
+</section>
+
+<section>
+  <h2>10. MCP 把 Server 自有工具代际导入原生 Registry</h2>
+  <p>一个 MCP client 实例拥有一个 stdio 或 Streamable HTTP server。稳定的本地 <code>serverName</code> 保留 namespace，每个发现的 raw name 变成 <code>mcp__&lt;serverName&gt;__&lt;rawName&gt;</code>。非法字符或超长名称会附加由身份确定的 hash 后缀，因此重连顺序不会重命名工具，归一化碰撞也变得极不可能。<evidence id="CAP-MCP-CONFIG"></evidence><evidence id="CAP-MCP-NAMING"></evidence></p>
+  <div class="claim fact"><div class="claim-label">启动语义</div><p>Activation 等待首次连接与完整工具发现。<code>failOnStartupError:true</code> 会拒绝并回滚插件；否则可以在没有工具的情况下完成激活，由 supervisor 继续 retry。重复的 live server namespace 在连接开始前就失败。<evidence id="CAP-MCP-STARTUP"></evidence></p></div>
+</section>
+
+<section>
+  <h2>11. 工具重同步的 Fetch 阶段事务化，但注册冲突会丢弃旧代际</h2>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>取完所有分页</h3><p>不接触 registry，先构建完整下一代 definition map。</p></div>
+    <div><span>2</span><h3>Fetch 失败时保留</h3><p>网络、schema 或重复列表失败会保留上一代。</p></div>
+    <div><span>3</span><h3>替换</h3><p>先 dispose 上一代，再注册全部下一代 definition。</p></div>
+    <div><span>4</span><h3>碰撞时 fail closed</h3><p>若外来工具占据 namespace，回滚部分新代际到零。</p></div>
+  </div>
+  <div class="claim fact"><div class="claim-label">精确原子边界</div><p>Fetch 阶段是 last-known-good，注册阶段则是全新或全无，而不是回滚到旧代。所有首次、notification 和 reconnect sync 都跨 client generation 串行化，避免替换交错。<evidence id="CAP-MCP-SYNC"></evidence><evidence id="CAP-MCP-RECONNECT"></evidence></p></div>
+  <aside class="caveat"><strong>运维含义：</strong>“re-sync failed”有两种可观察结果。发现失败保留旧工具；registry collision 则移除该 server 的工具。</aside>
+</section>
+
+<section>
+  <h2>12. MCP Recovery 在耗尽尝试预算前保留最后一份有效目录</h2>
+  <p>Transport close 启动有界指数退避。故障期间最后一代有效注册仍可见，但调用会因 generation 不可用而失败。连接稳定足够久会重置 outage budget；crash loop 最终会注销所有工具并停止，直到 reload/restart。若一个 generation 无法在有界 barrier 内证明 close，系统会停止重连，而不是重叠两个 stdio server process。Dispose 会取消 timer、关闭当前 client、drain 连接 attempt 与 sync chain，最后注销当前代际。<evidence id="CAP-MCP-RECONNECT"></evidence><evidence id="CAP-MCP-GENERATION"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">同一种 visibility/readiness 分裂</div><p>与 Web 类似，MCP schema 可以在执行暂时不可能时仍然可见；不同之处在于，MCP recovery 若发现 server 工具列表变化，可以替换完整模型可见目录。</p></div>
+</section>
+
+<section>
+  <h2>13. Canonical MCP Result 丰富，原生模型历史则刻意有损</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>数据</th><th>执行本地 canonical value</th><th>Native 模型渲染</th></tr></thead>
+    <tbody>
+      <tr><td>Text block</td><td>完整 JSON block</td><td>以换行连接文本</td></tr>
+      <tr><td>Image/audio/resource</td><td>完整 JSON block</td><td>简短“content discarded”占位符</td></tr>
+      <tr><td><code>structuredContent</code></td><td>保留；支持的广告 schema 会执行校验</td><td>不会单独渲染成 rich content</td></tr>
+      <tr><td><code>isError:true</code></td><td>转成抛出的执行失败</td><td>ToolRuntime 的归一化 error result</td></tr>
+      <tr><td>要求 task 的工具</td><td>拒绝</td><td>不支持执行错误</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">信任边界归一化</div><p>Bridge 防御性验证网络值，为 programmatic／Code Mode caller 保留完整 JSON；若 advertised output schema 使用不支持的词汇，则退回无约束 JSON。Native context 有意丢弃非文本 payload。<evidence id="CAP-MCP-RESULT"></evidence></p></div>
+</section>
+
+<section>
+  <h2>14. MCP Stdio 不经过 Harness 的 Subprocess／Sandbox Spawn 路径</h2>
+  <p>Stdio transport 复用 subprocess 包的环境清洗定义，再合并显式配置环境；但真正 child spawn 由 MCP SDK 拥有，不调用 <code>ctx.subprocess</code>。因此它不会自动继承 Shell 与 LSP 使用的执行世界、sandbox runner、remote process provider、process-tree contract 或 output collector。Streamable HTTP 同样把 transport 交给 SDK，并接受配置 header。<evidence id="CAP-MCP-TRANSPORT"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">安全发现</div><p>这是本章最重要的跨表面不一致。LSP 刻意把文件读取与 server process 放在共享 seam 后；MCP stdio 只共享按名称清理凭证的规则。除非另行约束 Host 或 MCP command，部署方若假设“所有 child process 都在 sandbox 内”，就是错误的。</p></div>
+</section>
+
+<section>
+  <h2>15. MCP 互操作很广，但 Bridge 比协议本身窄</h2>
+  <p>Bridge 只消费 Tools；MCP Resources、Prompts 与 server instructions 都没有 consumer。连接／发现 timeout 继承 SDK，没有暴露为插件配置。Streamable HTTP request failure 不一定触发 stdio 风格 supervisor 路径。Native 非文本 projection 有损，要求 task 的执行不支持，不支持的 output-schema 词汇失去验证。<evidence id="CAP-MCP-LIMITS"></evidence></p>
+  <p>默认组合不发布任何 MCP server。仓库中的 memory 集成明确是默认关闭的参考 overlay；operator 自己安装配置第三方 server，并拥有其存储、身份、model、embedding 和 licensing 行为。<evidence id="CAP-MCP-DEFAULT-OFF"></evidence></p>
+</section>
+
+<section>
+  <h2>16. Skill 是两阶段 Prompt 能力：廉价路由，按需加载权威</h2>
+  <pre><code>provider list() → SkillCandidate summary
+  → layered merge 与 cache
+  → durable &lt;available_skills&gt; name + description
+  → 模型调用 skill(name) 或用户显式调用 /name
+  → provider get(winning candidate)
+  → canonical &lt;skill_content&gt; body + resource base</code></pre>
+  <p>Summary 把路由数据与完整 definition 分离，并带有两个独立权限：<code>modelInvocable</code> 与 <code>userInvocable</code>。Resource base 可以是 directory、URL 或 opaque provider instruction。完整 body 是异步 provider load，不会存进每个目录项。<evidence id="CAP-SKILL-TYPES"></evidence></p>
+  <div class="claim fact"><div class="claim-label">受信正文契约</div><p>Wrapper 会转义 framing metadata，但逐字嵌入 instruction body，因为 Skill 被定义为 trusted local content。Resource hint 要求模型仅在需要时加载被引用的 asset。<evidence id="CAP-SKILL-RENDER"></evidence></p></div>
+</section>
+
+<section>
+  <h2>17. Scope 高于 Rank；Rank 只在同一 Layer 内裁决</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Filesystem source</th><th>Rank</th><th>同一 layer 内含义</th></tr></thead>
+    <tbody>
+      <tr><td>Project <code>.dsh/skills</code></td><td>100</td><td>本地最高优先级</td></tr>
+      <tr><td>Project <code>.agents/skills</code></td><td>200</td><td>低于 project-native skill</td></tr>
+      <tr><td>Runtime registration</td><td>250</td><td>位于 project 与 custom/user root 之间</td></tr>
+      <tr><td>Custom root</td><td>300</td><td>Operator 提供的 root</td></tr>
+      <tr><td>User <code>.dsh/skills</code></td><td>400</td><td>User-native fallback</td></tr>
+      <tr><td>User <code>.agents/skills</code></td><td>500</td><td>Shared-agent fallback</td></tr>
+      <tr><td>Bundled</td><td>600</td><td>最低 filesystem 优先级</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Layer merge</div><p>Registry 按 global、ancestor、exact-Agent layer 合并；更近 layer 的同名 entry 直接替换外层 entry。只有同一 layer 中的 candidate 才按 rank 和注册顺序排序。完整 observation 按 cwd、scope chain 和 revision 缓存；不完整 discovery 从不缓存；一次 revision race 会得到有界重试。<evidence id="CAP-SKILL-LAYERS"></evidence><evidence id="CAP-SKILL-COLLECT"></evidence></p></div>
+  <aside class="caveat"><strong>常见误读：</strong>rank 100 不会击败更近 scoped layer 中的 rank 600。每层选出自己的 winner 后，才做 scope shadowing。</aside>
+</section>
+
+<section>
+  <h2>18. Filesystem Provider 经执行世界 FS 读取，却用 Host Watcher 检测变化</h2>
+  <p>Workspace-sensitive discovery 按上述 rank 构建 project、custom、user 和 bundled root。存在 <code>ctx.fs</code> 时，普通 root 经它列举和读取；受信 bundled host root 可以直接使用 Node filesystem。面向模型的 write/edit observation 会同步 invalidate 匹配 root。Host-local watcher 受最大保留 project 数约束，并合并 invalidation。<evidence id="CAP-SKILL-FS-ROOTS"></evidence><evidence id="CAP-SKILL-FS-TRUST"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">分裂执行世界的后果</div><p>Discovery 内容可以来自 remote/sandbox filesystem，而 watcher 机制仍位于 Host。Provider 会把 watcher failure 明确表示为 incomplete observation，使模型目录保留最后有效版本并稍后重试，而不是发布瞬时空列表。</p></div>
+</section>
+
+<section>
+  <h2>19. 模型调用与用户调用经过不同、均会重新验证的路径</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>路径</th><th>Discovery gate</th><th>Load gate</th><th>耐久／模型可见结果</th></tr></thead>
+    <tbody>
+      <tr><td>模型调用 <code>skill(name)</code></td><td>Summary 仍存在且 model-invocable</td><td>重新检查 loaded definition</td><td>包含正文的普通 tool call/result</td></tr>
+      <tr><td>User message 调用 <code>/name</code></td><td>只扫描直接 <code>source.kind=user</code> 文本</td><td>Loaded definition 必须 user-invocable</td><td>最后追加的 instructions-form user context</td></tr>
+      <tr><td>未知／user-disabled gesture</td><td>没有被认可的权威</td><td>不注入</td><td>保持普通 prose</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">不信任陈旧目录</div><p>Model tool 先 list 再 load，并在两个边界都检查 <code>modelInvocable</code>。显式用户路径直接 load 并检查 <code>userInvocable</code>，因此它是 model-disabled/user-enabled Skill 的唯一入口。两条路径使用同一 canonical renderer。<evidence id="CAP-SKILL-TOOL-LOAD"></evidence><evidence id="CAP-SKILL-USER-INVOKE"></evidence></p></div>
+</section>
+
+<section>
+  <h2>20. Skill Catalog 是耐久替换状态，不是每次重建的 System Prompt 大块</h2>
+  <p>每个合格 pre-step 中，插件只发布排序后的 model-invocable name 与有界 description，而且只在自己的精确 <code>skill</code> registration 可见时发布。Durable source 直接存储这些 entry。Digest 变化会追加一份完整 replacement catalog；空 replacement 显式废止旧名称；incomplete discovery 不发布；compaction 隐藏可见目录后，下一次完整 observation 会重新建立它。<evidence id="CAP-SKILL-CATALOG"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">缓存友好的渐进披露</div><p>新增 Skill 不会把每份正文塞进每次请求。Catalog change 是 append-only suffix fact，正文只出现在被选中的 tool result 或显式 invocation 中。代价是历史重复：whole-list replacement 按目录大小付 token；只修改 body 不改变 summary digest；旧的 loaded body 仍是历史 Session fact。</p></div>
+  <p>Base 拥有分层 Skill registry，coding preset 则把 filesystem discovery 与 loader 挂到自身 Agent scope，使 global repository contribution 与 preset-local shadow 可以共存。<evidence id="CAP-SKILL-BASE"></evidence><evidence id="CAP-SKILL-SHIPPED"></evidence></p>
+</section>
+
+<section>
+  <h2>21. 信任矩阵：“外部”在这些表面中并非同一含义</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>边界</th><th>数据权威</th><th>执行权威</th><th>主要风险</th></tr></thead>
+    <tbody>
+      <tr><td>Web search result</td><td>远端、不受信内容</td><td>本身不启动本地进程</td><td>Prompt injection 与引用质量</td></tr>
+      <tr><td>Web fetch URL</td><td>模型选择的远端目标</td><td>Host 网络可达性</td><td>SSRF／私网访问</td></tr>
+      <tr><td>LSP server</td><td>本地 source 加 server response</td><td>共享执行世界中的进程</td><td>Operator 选择的 executable 与 workspace 内容</td></tr>
+      <tr><td>MCP server</td><td>远端 schema 与 result block</td><td>外部 action 或 SDK-spawn child</td><td>动态能力、认证与 spawn confinement</td></tr>
+      <tr><td>Skill body</td><td>按设计即 trusted instruction</td><td>间接支配后续工具选择</td><td>可写 Skill root 成为 prompt-authority root</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">安全综合</div><p>最值得复用的经验是显式命名 prompt authority。转义类 XML framing 无法把 Skill body 变成不受信内容，因为遵循正文就是它的目的；反过来，Web page 不能仅因来自第一方搜索工具就获得同等权威。Path policy、provider authentication 与 prompt provenance 解决的是不同问题。</p></div>
+</section>
+
+<section>
+  <h2>22. 聚焦 Codex 对比：相似的渐进披露，更丰富的文档化 MCP 策略</h2>
+  <p>本节只使用 OpenAI 公开的 <a href="https://learn.chatgpt.com/docs/web-search.md">Web search</a>、<a href="https://learn.chatgpt.com/docs/extend/mcp.md">Model Context Protocol</a> 与 <a href="https://learn.chatgpt.com/docs/customization/overview.md">Customization</a> 文档，读取日期为 2026-08-13。DeepSeek Harness 一侧是固定源码级分析；Codex 一侧仅作公开文档级描述。本节不推断私有服务或未公开实现。</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>维度</th><th>DeepSeek Harness 固定源码</th><th>Codex 公开文档</th></tr></thead>
+    <tbody>
+      <tr><td>Web</td><td>Provider registry；发布 DeepSeek 辅助 search；因缺 SSRF 防线而关闭 fetch</td><td>第一方 search；本地默认 cached，可选 live/disabled；明确把结果视作不受信输入</td></tr>
+      <tr><td>MCP transport</td><td>Stdio 与 Streamable HTTP；仅 Tools</td><td>Stdio 与 Streamable HTTP；文档覆盖 server instructions 与更丰富认证</td></tr>
+      <tr><td>MCP control</td><td>每 server 启动严格度、call timeout、reconnect；本 bridge 没有 tool allow/deny 或 per-tool approval</td><td>文档化 startup/tool timeout、required server、tool allow/deny、server/per-tool approval mode、OAuth 与 bearer 选项</td></tr>
+      <tr><td>Skill</td><td>摘要目录、按需正文、独立 model/user invocation、耐久替换 fact</td><td>先 metadata，选择后加载 <code>SKILL.md</code>，按需读取 reference/script；implicit 或显式 <code>$</code> invocation</td></tr>
+      <tr><td>LSP</td><td>封闭四操作 seam 与可选 stdio backend</td><td>本次读取的官方手册未记录独立 LSP tool surface；不做 parity 结论</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">各自特别清晰之处</div><p>DeepSeek Harness 源码使 provider selection、catalog durability、result projection 与 process seam 极易审计；Codex 的公开 MCP 表面则记录了更完整的 operator policy plane——authentication、filtering、required startup、server guidance 与 per-tool approval。两者都公开描述 Skill 的渐进披露；DeepSeek 源码还直接展示 replacement catalog 如何成为 Session fact。</p></div>
+  <aside class="caveat"><strong>证据不对称：</strong>本次 Codex 手册没有相关内容，只能证明这份公开手册未记录独立 LSP 表面；不能证明内部、实验性、插件提供或未来能力不存在。</aside>
+</section>
+
+<section>
+  <h2>23. 可迁移的设计规则</h2>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>稳定最窄且诚实的词汇</h3><p>产品语义用固定工具；只有互操作确实需要时才导入动态 schema。</p></div>
+    <div><span>2</span><h3>分离可见性与 readiness</h3><p>稳定目录有利缓存，但 provider health 必须独立可观察。</p></div>
+    <div><span>3</span><h3>显式定义 generation swap</h3><p>分别定义 discovery failure、registration conflict、transport loss 与 recovery 耗尽。</p></div>
+    <div><span>4</span><h3>把 instruction store 当作 authority store</h3><p>可写 Skill root 不只是文档存储，它能引导后续高权限调用。</p></div>
+  </div>
+  <div class="claim assessment"><div class="claim-label">最终评价</div><p>本章最深的模式是“带类型所有权的渐进能力披露”。Web 把 provider 多样性藏在稳定产品语义后；LSP 把庞大协议压成四个可靠问题；MCP 接受动态性，却用确定性身份与生命周期代际约束它；Skill 让路由廉价、指令权威显式。剩余债务正出现在表面跨越自己不拥有的 seam 处：没有网络策略的 fetch、绕开 subprocess 世界的 MCP spawn，以及扎根可变文件的受信 Skill body。</p></div>
+  <div class="claim fact"><div class="claim-label">验证范围</div><p>以上全部 DeepSeek 结论均绑定固定 baseline 的生产源码、发布配置、示例与 package 文档。本次交付还在隔离临时根目录下运行了覆盖 Web、LSP、MCP 与 Skill 的 16 个聚焦 Vitest 文件：454 项全部通过。Codex 对比则单独限定为三个链接的官方页面及读取日期。运行时验证不会把可选组合变成发布默认，package test 通过也不证明真实网络安全或第三方 server 正确性。</p></div>
+</section>

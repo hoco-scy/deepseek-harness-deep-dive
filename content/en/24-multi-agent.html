@@ -1,0 +1,276 @@
+<section>
+  <h2>Conclusion: This Is Not a Swarm Scheduler, but a Composition of Delegation Lifecycles</h2>
+  <div class="thesis"><p>DeepSeek Harness builds multi-agent behavior from four pieces: a named <code>SubagentProvider</code> seam, one-shot <code>SubagentRun</code>s, cold-resumable continuable child Sessions with process-local <code>Activation</code> epochs, and model-visible delegation/control tools. This subagent subsystem has no single swarm, shared blackboard, voting layer, or task DAG. Collaboration emerges from parent-child Sessions, inboxes, durable descriptors, and optional providers.</p></div>
+  <p>This distinction matters. Seeing a <code>subagent</code> call does not tell you whether the child inherits history, remains conversational, is managed as a Job, or even runs in the same process. A provider promises only its declared capabilities. Unsupported <code>outputSchema</code>, depth limit, tool filter, or persona requests fail before startup instead of degrading silently. <evidence id="MULTIAGENT-SEAM"></evidence></p>
+  <div class="claim fact"><div class="claim-label">Effective composition</div><p>The base bundle registers the service, spawn/fork backends, control and listing tools, and binds spawn to continuable while fork remains one-shot. The Web bundle keeps the global registry/backends but moves model-visible tools into per-Session presets. “Multi-agent” is therefore both a runtime capability and a composition choice. <evidence id="MULTIAGENT-BASE-COMPOSITION"></evidence><evidence id="MULTIAGENT-WEB-PLANE"></evidence></p></div>
+</section>
+
+<section>
+  <h2>1. The Real Topology: Providers Create Nodes; the Manager Owns Continuable Conversations</h2>
+  <pre><code>Model tools (names are configurable)
+  subagent / subagent_fork
+        │
+        ├─ foreground ─────────→ SubagentRuntime.start(provider)
+        │                            └→ provider.start() → SubagentRun
+        ├─ one-shot background → Jobs → provider.start() → SubagentRun
+        └─ continuable bg ─────→ ContinuationManager
+                                     ├→ provider.prepareContinuable() (seed data only)
+                                     ├→ Agent create / resume + inbox
+                                     └→ durable Session + Activation epoch
+
+Global controls: send_message / interrupt_agent / list_agents
+Child return path: report (continuable in-process children only)</code></pre>
+  <p><code>SubagentProvider.start()</code> owns pre-publication creation for a one-shot child. After it returns a run, the holder owns result observation and disposal. For a continuable child, the provider contributes only detached data describing whether to seed parent history; the continuation manager owns identity, composition, the Agent handle, messages, cold resume, ownership, and teardown. <evidence id="MULTIAGENT-SEAM"></evidence></p>
+  <aside class="caveat"><strong>Vocabulary boundary:</strong> this repository has no universal runtime command fixed as <code>delegate</code> or <code>spawn_agent</code>. Delegation tool names are configuration; shipped configurations use <code>subagent</code> and <code>subagent_fork</code>, while the control tools have global fixed names.</aside>
+</section>
+
+<section>
+  <h2>2. One Tool Definition Actually Selects Three Execution Routes</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Route</th><th>Trigger</th><th>Return commit point</th><th>Later control</th></tr></thead>
+    <tbody>
+      <tr><td>Foreground one-shot</td><td><code>run_in_background:false</code></td><td>Return output after the child ends and the run is disposed</td><td>No continuable ID</td></tr>
+      <tr><td>Background one-shot</td><td><code>backgroundMode:one-shot</code> plus explicit <code>true</code></td><td>Return <code>jobId</code> after Job registration</td><td><code>job_output</code>/<code>job_kill</code></td></tr>
+      <tr><td>Background continuable</td><td><code>backgroundMode:continuable</code> plus omitted or <code>true</code></td><td>Return <code>subagentId</code> when the child inbox accepts the initial message</td><td><code>send_message</code>/<code>interrupt_agent</code></td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Routing fact</div><p><code>backgroundMode</code> chooses both the background mechanism and the default when the argument is omitted. Even when a provider supports continuation, an explicit foreground request uses the one-shot <code>start()</code> contract. A continuable start can return before any model request begins and before the initial prompt is claimed into a <code>user/message</code> event; acceptance itself is already recorded as an Inbox splice. <evidence id="MULTIAGENT-TOOL-ROUTES"></evidence><evidence id="MULTIAGENT-CONTINUABLE-START"></evidence><evidence id="MULTIAGENT-CONTINUATION-ACCEPTANCE-TEST"></evidence><evidence id="MULTIAGENT-INBOX-SPLICE"></evidence></p></div>
+  <p>“Background agent” is therefore not one state. One-shot background work is an ordinary Job; continuable background work is a conversation with a durable Session ID. Flattening both into running/done erases the most important control distinction.</p>
+</section>
+
+<section>
+  <h2>3. Provider Matrix: One Seam, Six Different Isolation Boundaries</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Provider</th><th>Process/context</th><th>Parent conversation</th><th>Continuable</th><th>Start capabilities</th></tr></thead>
+    <tbody>
+      <tr><td><code>spawn</code></td><td>Same process, separate Agent/Session</td><td>None</td><td>Yes</td><td>Schema, depth, filter, and persona</td></tr>
+      <tr><td><code>fork</code></td><td>Same process, separate Agent/Session</td><td>Completed-Turn prefix</td><td>Implemented</td><td>All four</td></tr>
+      <tr><td><code>acp</code></td><td>External ACP process</td><td>None</td><td>No</td><td>None</td></tr>
+      <tr><td><code>codex</code></td><td>Fresh app-server process per call</td><td>None</td><td>No</td><td>None</td></tr>
+      <tr><td><code>claude-code</code></td><td>Official SDK/CLI subprocess</td><td>None</td><td>No</td><td>None</td></tr>
+      <tr><td><code>dsh-sdk</code></td><td>Complete independent runtime process</td><td>None</td><td>No</td><td>None</td></tr>
+    </tbody>
+  </table></div>
+  <p>Spawn and fork are the backends that enter the local parent-child graph. External providers inherit no parent conversation; their only possible parent-derived context is the workspace cwd (ACP/SDK may instead use a configured cwd), and they return through the one-shot result seam. The ACP, Codex, Claude Code, and SDK packages are optional capabilities, not the default product surface: the Codex and Claude Code tool rows in the Standard/Code presets are explicitly <code>disabled</code>. <evidence id="MULTIAGENT-SPAWN-PROVIDER"></evidence><evidence id="MULTIAGENT-FORK-PROVIDER"></evidence><evidence id="MULTIAGENT-ACP-PROVIDER"></evidence><evidence id="MULTIAGENT-SDK-PROVIDER"></evidence><evidence id="MULTIAGENT-CODEX-PROVIDER"></evidence><evidence id="MULTIAGENT-CLAUDE-PROVIDER"></evidence><evidence id="MULTIAGENT-STANDARD-PRESET"></evidence><evidence id="MULTIAGENT-CODE-PRESET"></evidence></p>
+</section>
+
+<section>
+  <h2>4. Spawn Versus Fork Differs in the Session Seed, Not in Whether the Child Is Independent</h2>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>Spawn</h3><p>Supplies no seed. The child starts with an empty conversation, so the delegated prompt must be self-contained.</p></div>
+    <div><span>2</span><h3>Fork</h3><p>Copies the balanced parent Session prefix from sequence zero through the last <code>turn/end</code>.</p></div>
+    <div><span>3</span><h3>Open Turn excluded</h3><p>The Turn currently invoking delegation is not closed and cannot be a valid child seed.</p></div>
+    <div><span>4</span><h3>Independent thereafter</h3><p>Both forms own a new Session ID, inbox, Turns, and output suffix.</p></div>
+  </div>
+  <div class="claim fact"><div class="claim-label">Context semantics</div><p>Fork “inherits context” only in the sense of completed conversation history. It does not share current reasoning, a live inbox, or the same Session. A test forks while the parent's second Turn is hanging and verifies that the child seed contains only the first completed Turn. <evidence id="MULTIAGENT-SPAWN-PROVIDER"></evidence><evidence id="MULTIAGENT-FORK-PROVIDER"></evidence><evidence id="MULTIAGENT-FORK-OPEN-TURN-TEST"></evidence></p></div>
+  <p>Both in-process forms join the exact preset generation the parent is currently running—the same plugin instances, tool registrations, and prompt sections—instead of resolving a possibly changed configuration again by preset name. <evidence id="MULTIAGENT-PRESET-INHERITANCE"></evidence></p>
+</section>
+
+<section>
+  <h2>5. Inheritance Matrix: Route, Workspace, and Capabilities Are Separate Dimensions</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Item</th><th>Rule</th><th>Durability</th></tr></thead>
+    <tbody>
+      <tr><td>Provider / model / maxTokens</td><td>Default from parent; child request may override</td><td>Continuable descriptor stores provider/model, not maxTokens</td></tr>
+      <tr><td>Workspace / lineage</td><td>Inherit cwd; record direct parent, origin, depth, and a nonzero seedLength when present</td><td>Session header</td></tr>
+      <tr><td>Prompt / tools</td><td>Join parent's exact live preset, then layer child persona/filter</td><td>Preset ID and descriptor support reconstruction</td></tr>
+      <tr><td>Conversation</td><td>Only fork copies the completed-Turn prefix</td><td>The seed becomes the child's own log prefix</td></tr>
+      <tr><td>Sandbox / approval</td><td>Copy only the explicit Session sandbox override when sandbox policy is composed; pin approval to <code>never</code> when approval is composed</td><td>Only defined overrides become delegation-source events</td></tr>
+    </tbody>
+  </table></div>
+  <p>What does not inherit is equally important: spawn cannot see the parent transcript; fork cannot see the open Turn; one-shot approval grants do not flow down; the deployment sandbox default is not snapshotted; and a child's persona/tool filter remains in its own scope without mutating its parent or siblings. <evidence id="MULTIAGENT-CHILD-INHERITANCE"></evidence><evidence id="MULTIAGENT-CHILD-COMPOSITION"></evidence><evidence id="MULTIAGENT-DELEGATED-POLICY"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Design assessment</div><p>Inheritance here is not a shallow object copy. It is deliberately separated into Session seed, Agent options, preset scope, and durable policy events. That is much easier to audit than an ambiguous <code>inheritContext=true</code>.</p></div>
+</section>
+
+<section>
+  <h2>6. Recursion Budget and Authority Narrow Monotonically Along the Lineage</h2>
+  <p>The tool loader defaults <code>maxDepth</code> to 3; <code>provider-managed</code> is used for external providers the parent runtime cannot constrain. The lower-level depth reads the greater of the durable header and runtime option, then adds one for the child, so a resumed child cannot masquerade as depth zero. Direct apply without a cap remains uncapped, which means “3” is a tool-configuration default, not a service-wide law. <evidence id="MULTIAGENT-TOOL-CONFIG"></evidence><evidence id="MULTIAGENT-DEPTH"></evidence></p>
+  <div class="claim fact"><div class="claim-label">Call authority</div><p><code>send_message</code> admits only the exact live direct parent; <code>interrupt_agent</code> may target a deeper descendant from an exact live ancestor. Identity is checked against live Agent objects and durable parent lineage, not merely a caller-supplied, guessable Session string. <evidence id="MULTIAGENT-CONTROL-TOOLS"></evidence><evidence id="MULTIAGENT-COLD-RESUME"></evidence><evidence id="MULTIAGENT-INTERRUPT"></evidence></p></div>
+  <p>This is not a role-based team. There is no leader/member table or sibling direct-message path. Current authority is tree-shaped and intentionally narrow; teams, shared queues, or arbitrary Agent routing would require a new explicit protocol, not reinterpretation of <code>parentSession</code> as a universal ACL.</p>
+</section>
+
+<section>
+  <h2>7. The One-Shot Core Contract: Provider-Owned Before Publication, Run-Holder-Owned After</h2>
+  <pre><code>validate provider + capabilities + schema + descriptor
+  → provider.start()
+      → unpublished setup / rollback on failure
+      → publish child or external run
+  → emit subagent/start
+  → await run.result ──────────→ emit subagent/end
+  → map stopReason / preserve partial output
+  → holder runs dispose() to quiescence</code></pre>
+  <div class="claim fact"><div class="claim-label">Commit point</div><p>A provider-start rejection produces no run and no lifecycle edge. Once startup returns, Turn and transport failures belong to <code>result</code>. The in-process driver submits exactly one user prompt after child publication and waits for idle; the AbortSignal cancels the child, while <code>dispose()</code> is the idempotent release boundary. <evidence id="MULTIAGENT-RUNTIME-DISPATCH"></evidence><evidence id="MULTIAGENT-ONE-SHOT-DRIVER"></evidence></p></div>
+  <p>The result is read from the child-owned suffix after the seed/activation boundary. <code>completed</code>, <code>aborted</code>, <code>error</code>, <code>max-tokens</code>, and <code>refusal</code> are not collapsed to a boolean; cancelled or truncated work can still carry partial output. One-shot <code>subagent/end</code> follows result settlement and may precede holder disposal; a continuable epoch's end waits for the teardown outcome. A background Job treats only completed final text as successful output, maps other reasons to killed/failed, and always disposes after settlement. <evidence id="MULTIAGENT-ONE-SHOT-RESULT"></evidence><evidence id="MULTIAGENT-LIFECYCLE"></evidence><evidence id="MULTIAGENT-RUN-SETTLEMENT"></evidence></p>
+</section>
+
+<section>
+  <h2>8. “Final Answer” and “Structured Result” Use Separate Commit Protocols</h2>
+  <p>The canonical ordinary-output rule selects the last non-empty assistant message. If none exists, it uses accumulated text deltas; if neither exists, output is empty. Selection is independent of stop reason, so an error or max-token ending can still retain diagnostically useful partial text. <evidence id="MULTIAGENT-ASSISTANT-OUTPUT"></evidence></p>
+  <div class="claim fact"><div class="claim-label">Structured output</div><p>Only capable in-process providers install a real-schema <code>structured_output</code> tool, dedicated prompt, and monotonic guard in the child scope. A model call merely stages the value; capture commits only after the authoritative <code>tools/result</code> succeeds and, under Code Mode, after the outer invocation succeeds. A child that reports completed without a valid capture is reclassified as an error. <evidence id="MULTIAGENT-STRUCTURED-OUTPUT"></evidence><evidence id="MULTIAGENT-ONE-SHOT-RESULT"></evidence></p></div>
+  <p>This explains why external providers advertise zero capabilities: sharing a working directory does not let the parent runtime enforce their tool catalog, persona, recursion budget, or structured-result commit point.</p>
+</section>
+
+<section>
+  <h2>9. A Continuable Durable Session Is Not the Same Object as a Process-Local Activation</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>State</th><th>Derived from</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td><code>running</code></td><td>The Agent runs, or a waking message is accepted but has not left the inbox</td><td>The current epoch cannot settle</td></tr>
+      <tr><td><code>waiting</code></td><td>The Agent is idle but still owns undisposed child Activations</td><td>Descendant ownership pins the parent</td></tr>
+      <tr><td><code>settled</code></td><td>The Agent is idle and has no owned children</td><td>Dispose the live handle; the durable Session may resume later</td></tr>
+    </tbody>
+  </table></div>
+  <p>An <code>Activation</code> is a residency epoch, not a durable Task. It holds the exact handle, weak ancestry, owned-child set, accepted message IDs, and one memoized disposal transaction. The child Session ID is stable; every cold-resumed residency gets a new lifecycle <code>runId</code>. <evidence id="MULTIAGENT-ACTIVATION-MODEL"></evidence><evidence id="MULTIAGENT-ACTIVATION-OWNERSHIP"></evidence><evidence id="MULTIAGENT-LIFECYCLE"></evidence></p>
+  <aside class="caveat"><strong>Boundary:</strong> only a continuation-managed parent enters <code>waiting</code> because a child is live. A top-level parent is outside this ownership graph; its own Turn and inbox scheduling decide whether it continues working.</aside>
+</section>
+
+<section>
+  <h2>10. Inbox Acceptance Is the Authoritative Follow-up Commit; Cold Resume Does Not Reinvoke the Provider</h2>
+  <pre><code>send_message(childId)
+  ├─ resident + running → enqueue in the same Agent inbox; wait behind current Turn
+  ├─ resident + waiting → wake the same Agent
+  └─ no Activation      → inspect durable Session
+                           → authorize exact direct parent
+                           → fold the child's own descriptor suffix
+                           → ctx.agents.resume()
+                           → enqueue in inbox</code></pre>
+  <p>Delivery, release, and disposal for each child pass through the same <code>ChildLock</code>; the Agent inbox is the sole FIFO. The caller's AbortSignal owns only the work before acceptance. Once admitted, that <code>send_message</code> call cannot cancel the accepted Turn. <evidence id="MULTIAGENT-FOLLOWUP"></evidence></p>
+  <div class="claim fact"><div class="claim-label">Provider-independent resume</div><p>Cold resume reconstructs provider/model, persona, and tool filter from the durable Session header and the descriptor in the child's own suffix, then calls <code>agents.resume()</code> directly. It does not dispatch the original provider. Provider unload blocks new starts but need not prevent an existing continuable child from resuming. The descriptor stores neither <code>maxTokens</code> nor <code>outputSchema</code>, so those activation-local constraints cannot be assumed on resume. <evidence id="MULTIAGENT-COLD-RESUME"></evidence><evidence id="MULTIAGENT-DESCRIPTOR"></evidence></p></div>
+</section>
+
+<section>
+  <h2>11. Four Return Channels Exist; Reporting and Completion Are Not Synonyms</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Channel</th><th>Sender</th><th>Ends child?</th><th>What the parent receives</th></tr></thead>
+    <tbody>
+      <tr><td>Foreground result</td><td>Run holder</td><td>Yes, one-shot</td><td>Direct tool result</td></tr>
+      <tr><td>Background Job outcome</td><td>Job runtime</td><td>Yes, one-shot</td><td>Job state/notice</td></tr>
+      <tr><td><code>report</code></td><td>Continuable child, explicitly</td><td>No</td><td>Relay in the direct parent's inbox</td></tr>
+      <tr><td>Settlement notice</td><td>Continuation manager</td><td>Sent after teardown</td><td>Stop reason plus available closing message</td></tr>
+    </tbody>
+  </table></div>
+  <p><code>send_message</code> returns only the accepted <code>messageId</code>, not the child's answer. The child-scoped <code>report</code> can target only its direct parent, may use <code>wakeup</code> or <code>quiet</code> scheduling, and does not end the Turn or Activation. <evidence id="MULTIAGENT-CONTROL-TOOLS"></evidence><evidence id="MULTIAGENT-REPORT-TOOL"></evidence><evidence id="MULTIAGENT-REPORT-DELIVERY"></evidence></p>
+  <div class="claim fact"><div class="claim-label">Fallback notice</div><p>Once a caller has received a child ID, Activation settlement independently attempts a runtime notice outside <code>report</code>. Even max-tokens, failure, cancellation, or a child that forgot to report can reach the parent. If the parent is no longer live, delivery is dropped without blocking teardown and the child Session remains the durable record. <evidence id="MULTIAGENT-SETTLEMENT-NOTICE"></evidence></p></div>
+</section>
+
+<section>
+  <h2>12. <code>list_agents</code> Is a Discovery Surface, Not a Task-Result Surface</h2>
+  <p>The service merges the live Session store with optional persistence, identifies direct children/descendants through durable <code>origin:subagent</code> headers, then classifies mode and label through projections. Cold-read concurrency is fixed at four. A corrupt or temporarily unreadable child becomes its own <code>corrupt</code>/<code>unavailable</code> diagnostic instead of failing the whole listing. The scan does not consult the Activation manager or provider state. <evidence id="MULTIAGENT-LIST-SERVICE"></evidence><evidence id="MULTIAGENT-LIST-CONCURRENCY"></evidence></p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Model status</th><th>Actual meaning</th><th>It is not</th></tr></thead>
+    <tbody>
+      <tr><td><code>running</code></td><td>A live Agent is being driven</td><td>A particular Job's running state</td></tr>
+      <tr><td><code>idle</code></td><td>A live Agent is between Turns and may await descendants</td><td>Completed with a collectible result</td></tr>
+      <tr><td><code>ready</code></td><td>Only a stored record remains; the direct parent can resume it</td><td>Terminal success</td></tr>
+    </tbody>
+  </table></div>
+  <p>The model tool filters out one-shot children because <code>send_message</code> cannot continue them; descendant traversal can still pass through those nodes in stable pre-order. Only depth-one entries accept follow-up, while deeper entries remain ancestor-interrupt candidates. <evidence id="MULTIAGENT-LIST-TOOL"></evidence></p>
+</section>
+
+<section>
+  <h2>13. Concurrency Means “Overlap Across Children, Linearize Per Child,” Not Global Scheduling</h2>
+  <div class="claim fact"><div class="claim-label">What may overlap</div><p>The provider contract explicitly permits starts for distinct children to overlap. The delegation tool declares itself concurrency-safe and its continuable guidance encourages independent delegations in one assistant message. One-shot background work additionally enters the Job registry's owner-capacity policy. <evidence id="MULTIAGENT-SEAM"></evidence><evidence id="MULTIAGENT-TOOL-CONCURRENCY"></evidence><evidence id="MULTIAGENT-JOB-CAPACITY"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">What must serialize</div><p>Follow-up, release, and disposal for one durable child queue behind its <code>ChildLock</code>. The accepted-ID set closes the microtask window where a message is synchronously inserted but Agent status has not yet become running, preventing settlement from beating already accepted work. The parent's owned-child set includes the descendant lifetime in the parent's settlement condition. <evidence id="MULTIAGENT-CHILD-LOCK"></evidence><evidence id="MULTIAGENT-FOLLOWUP"></evidence><evidence id="MULTIAGENT-ACTIVATION-OWNERSHIP"></evidence></p></div>
+  <p>The subagent layer has no global worker pool, fair queue, priorities, quota allocation, or result reducer. It supplies correct concurrency boundaries; the model prompt, Job layer, or a higher-order workflow still decides how many children to start, when to start them, and how to synthesize their work.</p>
+</section>
+
+<section>
+  <h2>14. Interrupt Stops One Current Turn; Drain Tears Down the Whole Activation Tree</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Operation</th><th>Immediate action</th><th>What survives</th><th>Completion wait</th></tr></thead>
+    <tbody>
+      <tr><td>Foreground AbortSignal</td><td>Cancel the one-shot child/run</td><td>Already-produced partial output</td><td>Holder eventually disposes</td></tr>
+      <tr><td>Job kill</td><td>Abort the task-owned controller</td><td>Job identity until settlement</td><td>Producer settlement plus disposal</td></tr>
+      <tr><td><code>interrupt_agent</code></td><td><code>cancel(..., keepInbox:true)</code></td><td>Activation, unclaimed messages, descendants</td><td>None; fire-and-return</td></tr>
+      <tr><td>Manager/scoped drain</td><td>Close admission synchronously; cancel top-down</td><td>Only durable Sessions</td><td>Release bottom-up and aggregate failures</td></tr>
+    </tbody>
+  </table></div>
+  <p>Interrupting an absent, completed, or one-shot ID is an accepted no-op; it is not a subtree kill. When local cancellation wins for an external one-shot provider, the result normalizes to aborted and the idempotent handle teardown waits for the managed process tree to exit. <evidence id="MULTIAGENT-INTERRUPT"></evidence><evidence id="MULTIAGENT-OUTPROCESS-SETTLEMENT"></evidence></p>
+  <div class="claim fact"><div class="claim-label">Tree quiescence</div><p>Drain first closes admission, waits for admitted materializations to publish or roll back, then processes all roots in parallel. Within each tree it propagates cancellation top-down and releases handles child-first. Failure in one branch does not skip siblings; an aggregate reports after all settle. Final Session flush is best-effort: failure warns that resume may be missing or stale, but cannot pin ancestors forever. <evidence id="MULTIAGENT-DRAIN"></evidence><evidence id="MULTIAGENT-ACTIVATION-DISPOSAL"></evidence></p></div>
+</section>
+
+<section>
+  <h2>15. Durability Comes from the Session Descriptor, Not a Resident Agent or Task Queue</h2>
+  <pre><code>Session header
+  parentSession / origin=subagent / delegationDepth / seedLength / agentPreset
+
+subagent/descriptor v2 (model-hidden, log-only)
+  one-shot:    mode / provider / optional label
+  continuable: mode / provider / label / agentProvider / agentModel / persona / toolFilter
+  intentionally omitted: outputSchema / maxTokens / subagentDepth</code></pre>
+  <p>Continuable creation appends a between-Turn descriptor after any fork prefix, then accepts the initial prompt. The descriptor is lossless-JSON snapshotted first; the current parser rejects unknown fields, while an unsupported version is not resumable. <evidence id="MULTIAGENT-DESCRIPTOR"></evidence><evidence id="MULTIAGENT-DESCRIPTOR-SEED"></evidence><evidence id="MULTIAGENT-DESCRIPTOR-FOLD"></evidence></p>
+  <div class="claim fact"><div class="claim-label">Preventing ancestor identity bleed</div><p>A fork seed can contain an ancestor descriptor. Cold resume therefore folds only the child-owned suffix after <code>seedLength</code>; the projection instead uses last-valid-descriptor wins so the child's own record overrides the ancestor identity in its seed. The two rules have the same goal but different fold boundaries. <evidence id="MULTIAGENT-DESCRIPTOR-PROJECTION"></evidence><evidence id="MULTIAGENT-COLD-RESUME"></evidence></p></div>
+  <p>After process restart, the recoverable object is the child conversation and its declared composition—not the prior Activation, run handle, accepted set, or background Job. If final flush fails, the runtime still releases the graph, explicitly choosing “possibly stale resume” over “certainly deadlocked ancestor.” <evidence id="MULTIAGENT-FINAL-FLUSH"></evidence></p>
+</section>
+
+<section>
+  <h2>16. Codex Comparison: the DeepSeek Seam Sees One One-Shot Worker, While Codex May Orchestrate Subagents Internally</h2>
+  <p>The repository's <code>codex</code> provider launches a new official <code>codex app-server --stdio</code> for every delegation and inherits only the parent Session cwd. It advertises zero start capabilities, has no <code>prepareContinuable</code>, shares no parent transcript/preset/tool scope, and returns no local Agent handle. DeepSeek Harness therefore wraps the entire Codex run as one one-shot child. Even if that Codex Turn uses its own subagents, the internal tree does not become addressable nodes in the DeepSeek continuation graph. <evidence id="MULTIAGENT-CODEX-PROVIDER"></evidence><evidence id="MULTIAGENT-CODEX-RUN"></evidence></p>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>Start</h3><p>Run a fixed command and initialize JSON-RPC; do not publish before thread creation succeeds.</p></div>
+    <div><span>2</span><h3>Isolate</h3><p><code>thread/start</code> requires <code>ephemeral:true</code> in the parent's workspace.</p></div>
+    <div><span>3</span><h3>Execute</h3><p>Accept only non-empty text blocks and start exactly one Turn.</p></div>
+    <div><span>4</span><h3>Reclaim</h3><p>Close the wire, end stdin, terminate, and await the entire managed process tree.</p></div>
+  </div>
+  <p>The wire returns only the last <code>final_answer</code>, falling back to the last unphased answer when no explicit final exists; commentary and reasoning are excluded. Context-window exhaustion becomes max-tokens, while other faults pass through shared out-of-process settlement as error with possible partial output. <evidence id="MULTIAGENT-CODEX-RUN"></evidence><evidence id="MULTIAGENT-CODEX-WIRE"></evidence></p>
+  <div class="claim fact"><div class="claim-label">Unattended safety</div><p>Command/file approvals choose only <code>cancel</code> or <code>decline</code>; permission requests receive an empty grant, user-input requests receive empty answers, and MCP elicitation is declined. The child never turns the absence of a human into implied consent. Protocol tests also verify the ephemeral thread, cross-thread/Turn filtering, commentary exclusion, and last-final selection. <evidence id="MULTIAGENT-CODEX-UNATTENDED"></evidence><evidence id="MULTIAGENT-CODEX-WIRE-TEST"></evidence></p></div>
+  <h3>Codex's Public Multi-Agent Contract Versus This Seam</h3>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Dimension</th><th>DeepSeek Harness pinned source</th><th>Codex public documentation</th></tr></thead>
+    <tbody>
+      <tr><td>Orchestration unit</td><td>Provider-bound child Session/run; continuable children have durable IDs</td><td>Subagent workflows and inspectable agent threads</td></tr>
+      <tr><td>Coordination owner</td><td>The model calls tools explicitly; direct parents own follow-up, while runtime separates report from settlement</td><td>Codex handles spawn, follow-up routing, wait, and close; the main thread consolidates results</td></tr>
+      <tr><td>Concurrency boundary</td><td>Distinct children may overlap; the subagent seam itself has no global concurrency cap</td><td><code>agents.max_concurrent_threads_per_session</code> can cap concurrently open threads</td></tr>
+      <tr><td>Roles and configuration</td><td>Provider, preset, persona/filter, and Agent options compose</td><td>Built-in default/worker/explorer and project/personal TOML custom agents can override model, reasoning, sandbox, MCP, and skills</td></tr>
+      <tr><td>Permissions</td><td>When the corresponding services are composed, in-process children copy the explicit sandbox override and pin approval to never</td><td>Subagents inherit current sandbox/permission mode and live parent-Turn overrides; noninteractive runs fail when approval cannot surface</td></tr>
+    </tbody>
+  </table></div>
+  <p>The Codex column uses only OpenAI's public <a href="https://learn.chatgpt.com/docs/agent-configuration/subagents.md" rel="noreferrer">Subagents</a> documentation, retrieved on 2026-08-13. DeepSeek is source-level at the pinned commit; this comparison makes no claim about undocumented implementation.</p>
+  <div class="claim assessment"><div class="claim-label">Comparison</div><p>The adapter's strengths are crisp isolation, normalized failure, and reclaimable process trees. The tradeoff is that the DeepSeek parent receives only a one-shot final result and cannot see or directly steer Codex's internal agent threads. Exposing a Codex child as a node in DeepSeek's persistent message graph cannot be inferred from the <code>codex</code> provider name; it requires a backend with explicit durability and authority contracts.</p></div>
+</section>
+
+<section>
+  <h2>17. Failure Layers: The Commit Point Determines Who Owns Cleanup</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Failure location</th><th>Externally visible result</th><th>Resource semantics</th></tr></thead>
+    <tbody>
+      <tr><td>Provider/capability/schema validation</td><td>Immediate tool failure, no child ID</td><td>No provider work began</td></tr>
+      <tr><td>Unpublished create/handshake</td><td>Start rejects, no lifecycle edge</td><td>Provider/Agent factory rolls back partial resources</td></tr>
+      <tr><td>Post-publication model/transport</td><td><code>stopReason:error</code>, possibly partial output</td><td>Holder must still dispose</td></tr>
+      <tr><td>One corrupt catalog child</td><td>Diagnostic row</td><td>Other children still list</td></tr>
+      <tr><td>Parent already gone</td><td>Settlement notice is dropped</td><td>Child Session retains the facts</td></tr>
+      <tr><td>Final flush/teardown failure</td><td>Warning or error lifecycle</td><td>Ownership is still released to avoid permanent waiting</td></tr>
+    </tbody>
+  </table></div>
+  <p>The service checks capabilities before provider dispatch, out-of-process helpers normalize post-publication transport rejection into a stable result, and listing contains read damage to a single row. <evidence id="MULTIAGENT-RUNTIME-DISPATCH"></evidence><evidence id="MULTIAGENT-OUTPROCESS-SETTLEMENT"></evidence><evidence id="MULTIAGENT-LIST-SERVICE"></evidence></p>
+  <div class="claim fact"><div class="claim-label">Runtime invariants</div><p>Each lifecycle listener's throw or rejection is contained. One-shot runs and each Activation epoch require paired start/end identity. The invariant companion also checks provider add/remove consistency, non-empty identities, no duplicate live run IDs, and matching provider/child/local fields between end and start. <evidence id="MULTIAGENT-LIFECYCLE"></evidence><evidence id="MULTIAGENT-INVARIANTS"></evidence></p></div>
+</section>
+
+<section>
+  <h2>18. Two Composition Audit Findings at the Pinned Baseline</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Finding</th><th>Evidence</th><th>Impact</th></tr></thead>
+    <tbody>
+      <tr><td>Fork-continuable claim conflicts with shipped presets</td><td>The provider comment says no shipped caller; base is indeed one-shot, but Standard, Code, and Cordis presets all configure continuable</td><td>Those presets enter the implemented <code>prepareContinuable</code> path and add the report prompt/tool to a fork child—the exact prefix-reuse condition the comment says must be avoided</td></tr>
+      <tr><td>Codex/Claude Code are optional packages, not default tools</td><td>Presets contain provider-bound tool rows but keep them disabled and do not load the corresponding provider plugins</td><td>“An adapter exists in the repository” must not be reported as “users can call it by default”</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Reproducible drift</div><p>The fork code does implement continuable seeding. Base configuration and its rationale agree with the source comment, while three agent presets carry the opposite value. Because the tool mounts successfully whenever the provider has <code>prepareContinuable</code>, this is not inert configuration. The project should standardize on one-shot, or update the design and prove that the report delta does not defeat the intended prefix/cache semantics. <evidence id="MULTIAGENT-FORK-PROVIDER"></evidence><evidence id="MULTIAGENT-BASE-COMPOSITION"></evidence><evidence id="MULTIAGENT-STANDARD-PRESET"></evidence><evidence id="MULTIAGENT-CODE-PRESET"></evidence><evidence id="MULTIAGENT-CORDIS-PRESET"></evidence></p></div>
+  <p>The Codex boundary needs the same precision: the provider package is complete, while the preset supplies only a disabled model-facing entry. <evidence id="MULTIAGENT-CODEX-PROVIDER"></evidence></p>
+</section>
+
+<section>
+  <h2>19. Guarantee Matrix and Final Assessment</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Form</th><th>Parent history</th><th>Continue after process restart</th><th>Later messages</th><th>Result channel</th></tr></thead>
+    <tbody>
+      <tr><td>Spawn one-shot</td><td>None</td><td>No</td><td>No</td><td>Foreground result or Job</td></tr>
+      <tr><td>Fork one-shot</td><td>Completed-Turn prefix</td><td>No</td><td>No</td><td>Foreground result or Job</td></tr>
+      <tr><td>Spawn continuable</td><td>None</td><td>Yes, with Session persistence</td><td>Direct-parent FIFO</td><td>Report plus settlement notice</td></tr>
+      <tr><td>Fork continuable</td><td>Completed prefix captured once at creation</td><td>Technically supported; shipped configuration drifts</td><td>Direct-parent FIFO</td><td>Report plus settlement notice</td></tr>
+      <tr><td>ACP/Codex/Claude/SDK</td><td>None; at most the parent cwd (ACP/SDK may override)</td><td>No</td><td>No</td><td>One-shot result</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">Final assessment</div><p>The mature part is not merely “it can delegate,” but its commit points: pre-publication failure exposes no ID, inbox acceptance transfers ownership, interrupt does not pretend to prove quiescence, Session and Activation remain distinct, and tree teardown does not skip siblings after one branch fails. The omissions are equally explicit: no global scheduler, shared team state, automatic result reducer, durable Job queue, or arbitrary inter-Agent message bus. Naming those as boundaries is more valuable than marketing composable primitives as a complete swarm.</p></div>
+  <div class="claim fact"><div class="claim-label">Verification status</div><p>This chapter traced production source, shipped configuration, and tests at pinned commit <code>47f943859bef60e4160492346772ded9b24f765a</code>, then ran the 28 Vitest <code>*.spec.ts</code> files under <code>packages/subagent</code> (E2E files use a separate configuration): all 603 tests passed. The Codex comparison is separately bounded to OpenAI public documentation retrieved on 2026-08-13. The configuration drift is a cross-file static-audit finding and does not disappear because package tests pass.</p></div>
+</section>

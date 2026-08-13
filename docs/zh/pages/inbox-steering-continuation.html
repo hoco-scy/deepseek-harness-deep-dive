@@ -6,7 +6,7 @@
 <body data-page="inbox-steering-continuation" data-baseline="47f943859bef60e4160492346772ded9b24f765a" data-lang="zh">
   <header class="topbar"><button class="icon-button nav-toggle" type="button" data-nav-toggle aria-label="打开章节目录" aria-expanded="false">☰</button>
     <a class="brand" href="../index.html"><span class="brand-mark">DS</span><span>Harness 系统拆解</span></a>
-    <span class="topbar-meta">固定基线 47f943859b · 21 已复核 / 1 撰写中 / 36 章</span>
+    <span class="topbar-meta">固定基线 47f943859b · 26 已复核 / 1 撰写中 / 36 章</span>
     <div class="topbar-actions"><a class="language-switch" href="../../pages/inbox-steering-continuation.html" lang="en" aria-label="阅读本章英文版">English</a><button class="icon-button" type="button" data-theme-toggle aria-label="切换明暗主题">◐</button></div></header>
   <div class="layout"><aside class="sidebar" data-sidebar aria-label="章节目录"><input class="filter" data-chapter-filter type="search" placeholder="筛选章节……" aria-label="筛选章节"><section class="nav-part" data-part><h2 class="part-title">导论</h2>
     <a class="chapter-link" data-chapter-item href="../pages/reading-guide.html">
@@ -38,12 +38,12 @@
     <a class="chapter-link" data-chapter-item href="../pages/sandbox-filesystem.html">
       <span class="chapter-number">20</span><span>Sandbox、Filesystem 与观察策略</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link" data-chapter-item href="../pages/shell-terminal-jobs.html">
       <span class="chapter-number">21</span><span>Shell、PTY、Terminal 与后台作业</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link" data-chapter-item href="../pages/web-lsp-mcp-skill.html">
-      <span class="chapter-number">22</span><span>Web、LSP、MCP 与 Skill</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/code-mode-self-modification.html">
-      <span class="chapter-number">23</span><span>Code Mode、自修改与动态插件</span><span class="status-dot queued" title="待研究"></span></a></section><section class="nav-part" data-part><h2 class="part-title">编排</h2>
+      <span class="chapter-number">22</span><span>Web、LSP、MCP 与 Skill</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link" data-chapter-item href="../pages/code-mode-self-modification.html">
+      <span class="chapter-number">23</span><span>Code Mode、自修改与动态插件</span><span class="status-dot verified" title="已复核"></span></a></section><section class="nav-part" data-part><h2 class="part-title">编排</h2>
     <a class="chapter-link" data-chapter-item href="../pages/multi-agent.html">
-      <span class="chapter-number">24</span><span>多 Agent 协同</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/workflow-ralph.html">
-      <span class="chapter-number">25</span><span>Workflow 与 Ralph</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link current" data-chapter-item href="../pages/inbox-steering-continuation.html">
-      <span class="chapter-number">26</span><span>Inbox、Steering 与 Continuation</span><span class="status-dot queued" title="待研究"></span></a></section><section class="nav-part" data-part><h2 class="part-title">可靠性与产品面</h2>
+      <span class="chapter-number">24</span><span>多 Agent 协同</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link" data-chapter-item href="../pages/workflow-ralph.html">
+      <span class="chapter-number">25</span><span>Workflow 与 Ralph</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link current" data-chapter-item href="../pages/inbox-steering-continuation.html">
+      <span class="chapter-number">26</span><span>Inbox、Steering 与 Continuation</span><span class="status-dot verified" title="已复核"></span></a></section><section class="nav-part" data-part><h2 class="part-title">可靠性与产品面</h2>
     <a class="chapter-link" data-chapter-item href="../pages/failure-recovery.html">
       <span class="chapter-number">27</span><span>重试、错误、取消与恢复</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/observability.html">
       <span class="chapter-number">28</span><span>可观测、Telemetry 与轨迹</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/api-sdk-acp.html">
@@ -56,10 +56,319 @@
       <span class="chapter-number">34</span><span>缺口、限制与待验证问题</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/glossary-evidence.html">
       <span class="chapter-number">35</span><span>术语、证据目录与源码索引</span><span class="status-dot queued" title="待研究"></span></a></section></aside>
     <main class="main"><div class="page-shell"><article class="article" data-article><header><div class="page-kicker"><span>编排</span><span>·</span><span>第 26 章</span></div>
-      <h1>Inbox、Steering 与 Continuation</h1><p class="subtitle">运行中输入如何被排队、认领、注入或定向到子 Agent</p><div class="page-meta"><span class="status queued">待研究</span><span>上游 47f943859b</span><span>范围: 分析消息类别、wake/next-step、claim、steer、follow-up、activation 与 turn 边界。</span></div></header>
-      <section class="placeholder"><p class="eyebrow">研究队列</p><h2>本章尚未进入结论状态</h2>
-    <p><strong>当前范围:</strong> 分析消息类别、wake/next-step、claim、steer、follow-up、activation 与 turn 边界。</p><p>页面已经纳入全量研究地图，但尚未完成源码控制流复核。以下是升级为“已复核”之前必须覆盖的检查面：</p>
-    <ul class="placeholder-checks"><li>实际 bundle / profile 装配入口</li><li>公开类型、事件与配置 schema</li><li>正常控制流与状态突变时机</li><li>并发、scope、所有权与 cleanup</li><li>错误、取消、重试和降级分支</li><li>持久化、projection 与 replay 语义</li><li>生产路径测试与运行时不变量</li><li>优势、代价、限制与待验证问题</li></ul></section><section class="learning-notes" aria-labelledby="learning-notes-title"><h2 id="learning-notes-title">我的学习体会</h2>
+      <h1>Inbox、Steering 与 Continuation</h1><p class="subtitle">运行中输入如何被排队、认领、注入或定向到子 Agent</p><div class="page-meta"><span class="status verified">已复核</span><span>上游 47f943859b</span><span>范围: 分析消息类别、wake/next-step、claim、steer、follow-up、activation 与 turn 边界。</span></div></header>
+      <section>
+  <h2>结论：Inbox 是可回放的调度协议，不是聊天输入框的临时数组</h2>
+  <div class="thesis"><p>DeepSeek Harness 用两个有序 Inbox 列表表达输入意图：<code>next-turn</code> 保存“以后各开一个 Turn”的工作，<code>next-step</code> 保存“在最近可用 Step 边界一起进入”的 steering 或 context。<code>followup</code>、<code>steer</code> 与 <code>inject</code> 只是对目标列表与 wake 行为的三种固定组合；真正决定消息何时可见的是 claim、pre-step admission、Turn 关闭检查与取消收敛。</p></div>
+  <p>其关键优点不是支持“运行中再发一句”，而是把待处理输入本身写进 Session Event Log：稳定 MessageId、插入、编辑、取消、认领、恢复和 UI 分类都能围绕同一事实工作。代价也很明确：<em>已接受</em>只表示 Inbox 已接收，不表示已执行、已产生回复，甚至不必然表示已经 fsync；<code>running</code> 表示整个 driver 活动，也不是某一条消息的完成句柄。</p>
+</section>
+
+<section>
+  <h2>1. 先拆开六个容易混名的机制</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>名称</th><th>进入哪里</th><th>是否 wake</th><th>边界语义</th></tr></thead>
+    <tbody>
+      <tr><td><code>followup</code></td><td><code>next-turn</code></td><td>是</td><td>普通后续输入；成功路径中每条各占一个后续 Turn</td></tr>
+      <tr><td><code>steer</code></td><td><code>next-step</code></td><td>是</td><td>尽量进入当前 Turn 的下一个 Step；空闲时会自己打开 Turn</td></tr>
+      <tr><td><code>inject</code></td><td><code>next-step</code></td><td>否</td><td>安静地放入模型上下文；空闲时一直停放到别的 wake 到来</td></tr>
+      <tr><td>Tool continuation</td><td>工具结果已在日志；additional context 进入 <code>next-step</code></td><td>由当前 driver 继续</td><td>同一 Turn 的后续 Step，不是新的 follow-up</td></tr>
+      <tr><td>Continuable child follow-up</td><td>子 Agent 的 <code>next-turn</code></td><td>是</td><td>永远是子 Agent 的后续 FIFO Turn，不能 redirect 当前 Turn</td></tr>
+      <tr><td>Child report / settlement notice</td><td>父 Agent 的 <code>next-turn</code> 或 <code>next-step</code></td><td>按策略</td><td>子→父消息；与父→子的 follow-up 完全不是同一方向</td></tr>
+    </tbody>
+  </table></div>
+  <aside class="caveat"><strong>阅读规则：</strong>“continuation”可能指工具调用后的同 Turn 继续、可继续子 Agent 的 residency，或普通后续 Turn。只看名词会把三个状态机误画成一个。</aside>
+</section>
+
+<section>
+  <h2>2. 队列类别不是 Message role：身份、来源和调度位置彼此正交</h2>
+  <p>进入 Inbox 的对象仍是统一的不可变 <code>UserMessage</code>：有稳定 <code>id</code>、<code>role: user</code>、精确 content blocks 和必填 source。<code>MessageSourceMap</code> 可由插件扩展；<code>freezeMessage</code> 会 structured-clone 后深冻结，创建函数则分配新的 UUID。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/llm/llm/src/message.ts#L96-L199" title="统一消息身份、来源与冻结: 消息具有稳定 ID、角色、精确内容和可扩展来源；既有消息深冻结，新消息分配 UUID。" aria-label="证据 INBOX-MESSAGE-IDENTITY">INBOX-MESSAGE-IDENTITY</a></p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>维度</th><th>回答的问题</th><th>例子</th></tr></thead>
+    <tbody>
+      <tr><td>Message role</td><td>怎样进入 provider-neutral conversation</td><td><code>user</code></td></tr>
+      <tr><td>Source</td><td>谁产生它、UI 应怎样解释</td><td><code>user</code>、plugin notice、coordinator relay、subagent report</td></tr>
+      <tr><td>Inbox target</td><td>在哪个调度边界被 claim</td><td><code>next-turn</code> / <code>next-step</code></td></tr>
+      <tr><td>Web placement</td><td>pending 状态显示在哪里</td><td><code>queued</code> / <code>steering</code> / <code>context</code></td></tr>
+    </tbody>
+  </table></div>
+  <p>因此，“steering message”不是第三种消息结构。它是 user-source 消息先从 <code>next-step</code> 被认领这一历史事实；同一个 role 的非用户 source 则会被 UI 解释为 context。</p>
+</section>
+
+<section>
+  <h2>3. 两个列表由同一种 durable splice 重建；提交先于 live mutation</h2>
+  <pre><code>agent/inbox/spliced {
+  target: next-turn | next-step,
+  start,
+  removedCount?,
+  inserted: full UserMessage[],
+  outcome?: canceled
+}</code></pre>
+  <div class="claim fact"><div class="claim-label">唯一事件词汇</div><p>插入、编辑、删除、claim 和 clear 都归一化成同一种 splice；事件携带完整插入消息，删除只有在用户/API/取消路径上才标 <code>outcome: canceled</code>，loop claim 的纯删除不标取消。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent/src/types.ts#L9-L25" title="两类 Inbox 与 durable splice 事件: 只定义 next-turn/next-step 两个目标；agent/inbox/spliced 记录坐标、完整插入消息和可选 canceled outcome。" aria-label="证据 INBOX-EVENT-SCHEMA">INBOX-EVENT-SCHEMA</a></p></div>
+  <div class="claim fact"><div class="claim-label">Commit-first</div><p><code>Inbox.mutate()</code> 先验证坐标与跨两列表的 MessageId 唯一性，再调用 <code>session.append</code>，成功后才修改内存数组并发 live notification。append 抛错时，Inbox 保持原样；同步 Session observer 看到的是 splice 之前的列表，可用事件坐标恢复被移除对象。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent/src/inbox.ts#L128-L219" title="Splice 的 commit-first 与身份不变量: 坐标先归一化并验证，Session append 成功后才改 live projection；MessageId 在两列表间唯一。" aria-label="证据 INBOX-COMMIT-IDENTITY">INBOX-COMMIT-IDENTITY</a></p></div>
+  <p>这也是为什么 Web projection 不需要自己维护一套命令队列：它读取 Agent 当前列表，再把正在发布的 splice 应用一次，就得到权威 post-state。</p>
+</section>
+
+<section>
+  <h2>4. Claim 有严格优先级：全部 next-step，然后至多一个 next-turn</h2>
+  <pre><code>每个提议 Step 的 claim(target)
+  1. 删除并取得全部 next-step（按 FIFO）
+  2. 若 target = next-turn，再删除 next-turn 头部一条
+  3. 按上述顺序逐条发 claimed(message, turn)
+
+Turn 第一个 Step：target = next-turn
+同 Turn 后续 Step：target = next-step</code></pre>
+  <div class="claim fact"><div class="claim-label">优先级不是抢占</div><p>构造器只回放 <code>seedLength</code> 之后的 Inbox splice；claim 总是把当前所有 next-step 组成一个 batch，并只附带一条普通队列消息。它不会中断已经发出的模型请求，只能在下一个 pre-step 边界生效。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent/src/inbox.ts#L24-L78" title="Seed 后回放与 claim 顺序: Inbox 只回放 seedLength 后的 splice；claim 先取全部 next-step，再按目标取一条 next-turn。" aria-label="证据 INBOX-CLAIM-REPLAY">INBOX-CLAIM-REPLAY</a></p></div>
+  <p>这给出一个常被忽略的组合：Turn 的第一个请求可以同时包含早已停放的注入上下文、steering，以及该 Turn 自己的普通 prompt；顺序固定为 next-step 批次在前、next-turn 头部在后。</p>
+</section>
+
+<section>
+  <h2>5. Follow-up 保证普通输入的 FIFO Turn 映射，但 status 不会逐 Turn 闪烁</h2>
+  <p><code>followup(message)</code> 等价于 <code>send(message, next-turn, true)</code>。空闲时 wake 会同步把 phase 预留为 running，再异步启动 driver；运行中只需排队，因为活着的 driver 在当前 Turn 关闭后会检查 <code>hasPending</code>，换新 AbortController 并继续下一 Turn。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/agent.ts#L113-L132" title="Follow-up、steer 与 inject 映射: 统一 send 先插入再可选 wake；followup、steer、inject 分别映射为 next-turn+wake、next-step+wake、next-step+quiet。" aria-label="证据 INBOX-SEND-MAP">INBOX-SEND-MAP</a></p>
+  <div class="claim fact"><div class="claim-label">经性质测试验证</div><p>同步 burst、逐条等待以及两者混合三种调度都验证：失败自由路径中 N 条 follow-up 产生严格递增的 N 个 Turn，每个 Turn 恰好一条普通消息且不重排；整个 burst 的状态轨迹仍只有 <code>running → idle</code>。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/tests/properties.spec.ts#L107-L190" title="Follow-up FIFO Turn 性质测试: 同步 burst、逐条发送和混合 settle 都验证每条普通消息独占递增 Turn，顺序不变。" aria-label="证据 INBOX-FIFO-PROPERTY">INBOX-FIFO-PROPERTY</a></p></div>
+  <aside class="caveat"><strong>边界：</strong>这是 loop 的成功路径映射，不是每条消息的独立 Promise。pre-step reject、取消或错误可以在某个 Turn 后停止整个 drain，并把相邻未 claim 工作留在 Inbox。</aside>
+</section>
+
+<section>
+  <h2>6. Steer 是“最近 Step + wake”，不是对正在飞行请求的流内追加</h2>
+  <p><code>steer(message)</code> 写入 <code>next-step</code> 并请求 wake。若 Agent 正在正常运行，<code>wakeDriver()</code> 不另开 driver：当前 driver 应在下一 Step 边界 claim 它。若 Agent 空闲，steer 自己打开一个 Turn；因此底层 API 并不要求 <code>running</code>，空闲 steer 最终仍会成为该新 Turn 的第一个输入，只是 replay 分类保留为 steering。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/agent.ts#L113-L220" title="输入重分类、driver wake 与 latch: send 在 abort 后把 waking input 改投 next-turn；idle wake 预留 driver，活动中只在 maintenance/abort 情况 latch，并在退出时 replay。" aria-label="证据 INBOX-DRIVER-WAKE">INBOX-DRIVER-WAKE</a></p>
+  <div class="claim assessment"><div class="claim-label">语义强度</div><p>这里的 steering 是 boundary steering，而不是 provider 正在生成 token 时修改同一 HTTP request。它能改变下一次模型调用看到的日志前缀，却不能撤回已生成的 chunk，也不会自动取消当前 tool call。</p></div>
+  <p>Web composer 只在 ordinary session 的 running 状态提供 steer 选择，减少“空闲 steer 其实新开 Turn”的意外；但 Host 的直接 <code>session.prompt(mode: steer)</code> 仍接受该底层语义。</p>
+</section>
+
+<section>
+  <h2>7. Inject 是“最近 Step但不 wake”；是否同 Turn完全由落点决定</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>注入时刻</th><th>结果</th></tr></thead>
+    <tbody>
+      <tr><td>Agent 空闲</td><td>停放在 <code>next-step</code>，直到 follow-up/steer 或其他 waking delivery</td></tr>
+      <tr><td>当前 pre-step 尚未 claim</td><td>进入本次 batch</td></tr>
+      <tr><td>pre-step 已 claim、正在 assemble/listener/model/tool</td><td>错过本次 request，进入下一 Step</td></tr>
+      <tr><td><code>agent/turn-stopping</code> listener 内</td><td>结束检查之后重读列表，因此可再开同 Turn Step</td></tr>
+      <tr><td>取消后的 driver 正在收敛</td><td>没有 wake latch；停放等待未来 wake</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Claim cutoff</div><p>测试在第一个 pre-step listener 暂停后依次调用 inject 与 steer；两者都留在 next-step，第一请求完全看不到，第二请求按插入顺序看到。若当前 batch 被 reject，后来放入的 next-step 输入保留，但也需要新的 wake 才会运行。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/tests/interception.spec.ts#L257-L363" title="Pre-step claim cutoff 与后到输入测试: pre-step 中后到的 inject/steer 错过首请求并按序进入下一 Step；blocked batch 后的输入保留。" aria-label="证据 INBOX-PRESTEP-CUTOFF-TEST">INBOX-PRESTEP-CUTOFF-TEST</a></p></div>
+</section>
+
+<section>
+  <h2>8. Pre-step 先消费、后准入：reject 不会自动把原消息退回</h2>
+  <pre><code>turn/start
+  → inbox.claim(target)                 // durable pure deletion
+  → assemble system prompt
+  → agent/pre-step waterfall
+       ├─ enter(messages) → step/start → user/message* → model
+       └─ reject          → turn/end(blocked)，无 Step
+</code></pre>
+  <div class="claim fact"><div class="claim-label">一次性 claim</div><p>loop 在 listener 之前已经从 Inbox 删除完整 batch。listener 可以保留、替换或清空 messages；reject 将 Turn 记为 blocked，原 batch 不会被标 canceled、不会形成 <code>user/message</code>、也不会回到队列。首次 enter 的空数组则产生 completed 的无 Step Turn。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/agent.ts#L245-L329" title="Turn/Step claim、准入与关闭机器: Turn 先记录 start 再 claim；reject 产生 blocked 无 Step，empty enter 产生 completed 无 Step，pending next-step 继续同 Turn，其他 pending 开新 Turn。" aria-label="证据 INBOX-TURN-MACHINE">INBOX-TURN-MACHINE</a></p></div>
+  <p>如果 assemble 或 listener 抛错，Turn 以 error 关闭；同一时刻尚未 claim 的 next-turn 与后来到达的 next-step 仍在队列，但 driver 停止。这里选择的是“input claim 是提交点”，而不是“模型调用成功才消费”。</p>
+</section>
+
+<section>
+  <h2>9. Tool continuation 与 turn-stopping 都复用 next-step，却拥有不同生产者</h2>
+  <p>模型给出 tool calls 后，结果按模型顺序写入日志；每个 finalized result 的 <code>additionalContexts</code> 随后依次 splice 到 next-step。工具未声明 <code>concludesTurn</code> 时，loop 在同一 Turn 开下一个 Step；声明 concluded 也不会越过已经存在的 next-step 输入。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/tool-calls.ts#L145-L158" title="工具结果与 additional context 的有序提交: Finalized tool result 先按模型顺序写入，随后把该结果的 additionalContexts 逐条交给 next-step acceptor。" aria-label="证据 INBOX-TOOL-CONTEXT">INBOX-TOOL-CONTEXT</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/agent.ts#L287-L399" title="工具结果后的同 Turn continuation: 工具未 concluded 时 Turn loop 继续后续 Step；已有 next-step 也阻止 concluded 立即关闭。" aria-label="证据 INBOX-TOOL-CONTINUATION">INBOX-TOOL-CONTINUATION</a></p>
+  <div class="claim fact"><div class="claim-label">最后反悔点</div><p>当模型看起来可以结束且 next-step 暂空，loop await <code>agent/turn-stopping</code>，然后再次读取 next-step。listener 中的 steer 已由回归测试证明会强制第二个 Step；若 listener 注入的 batch 被 pre-step 重写为空，则不会多做模型调用。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/tests/contract-regressions.spec.ts#L317-L340" title="Turn-stopping steering 回归测试: 模型本来会结束时，turn-stopping listener 中的 steer 强制同 Turn 第二个模型 Step。" aria-label="证据 INBOX-TURN-STOPPING-TEST">INBOX-TURN-STOPPING-TEST</a></p></div>
+  <aside class="caveat"><strong>不要混淆：</strong>工具 continuation 是当前 Agent、当前 Turn 的后续 Step；subagent continuation 是一个子 Agent 跨多个 Turn/进程驻留周期可再次接收工作。</aside>
+</section>
+
+<section>
+  <h2>10. <code>running</code> 属于 whole driver；maintenance 对外仍显示 idle</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>观察项</th><th>真实含义</th><th>不保证</th></tr></thead>
+    <tbody>
+      <tr><td><code>status: running</code></td><td>driver 已预留，可能在 pre-step、模型、工具、Turn 关闭或连续 Turn 之间</td><td>某条消息正在执行；当前 Turn 一定仍接受 steer</td></tr>
+      <tr><td><code>status: idle</code></td><td>没有 turn driver；也可能正在运行 maintenance</td><td>Inbox 为空</td></tr>
+      <tr><td><code>whenIdle()</code></td><td>等待当前活动及其在退休前替换出的活动稳定结束</td><td>某个 MessageId 的结果</td></tr>
+      <tr><td><code>runMaintenance()</code></td><td>从真正 idle 独占非 Turn 活动；waking input 被 latch</td><td>向模型暴露 maintenance 自身</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">活动所有权</div><p>公共类型明确把 running 定义为完整 drain 区间，把 maintenance 保持为外部 idle；<code>whenIdle</code> 通过比较 activity Promise 跟随替换工作，而不是绑定某次 send。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent/src/runtime-types.ts#L43-L143" title="Agent status、whenIdle、maintenance 与输入合同: running 覆盖完整 driver drain，maintenance 对外仍 idle，whenIdle 跟随替换活动，三种输入的 wake/边界语义显式定义。" aria-label="证据 INBOX-ACTIVITY-CONTRACT">INBOX-ACTIVITY-CONTRACT</a></p></div>
+</section>
+
+<section>
+  <h2>11. Cancel 要分“信号”“待处理输入”“已认领输入”三层看</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>调用</th><th>当前活动</th><th>未 claim Inbox</th><th>已 claim batch</th></tr></thead>
+    <tbody>
+      <tr><td><code>cancel(cause)</code></td><td>若非 idle，abort</td><td>先清 next-step、再清 next-turn，写 canceled splice；idle 时也会清安静停放的输入</td><td>不恢复</td></tr>
+      <tr><td><code>cancel(cause,{keepInbox:true})</code></td><td>若非 idle，abort</td><td>保留，但 pre-abort 工作不会因此自动 wake</td><td>不恢复</td></tr>
+      <tr><td>Web <code>session.cancel</code></td><td>调用上式 keepInbox</td><td>保留普通队列与 steering</td><td>不恢复</td></tr>
+      <tr><td>Subagent interrupt</td><td>调用上式 keepInbox，立即返回</td><td>保留，等待下一次 waking send</td><td>不恢复</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">实现合同</div><p>默认 cancel 无条件调用 Inbox.clear，并只在非 idle phase 上 abort；keepInbox 跳过 clear。测试证明 waking send 可能在调用 cancel 前已经被 claim，此时 keepInbox 没有东西可保留；默认 cancel 则会丢弃 mid-step queued tail 和 steering。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/agent.ts#L134-L140" title="Cancel 的 clear 与 abort 实现: 默认 cancel 清空 Inbox 并清 wake latch，keepInbox 跳过清空；只有非 idle phase 接收 abort signal。" aria-label="证据 INBOX-CANCEL-CODE">INBOX-CANCEL-CODE</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/tests/cancel.spec.ts#L75-L174" title="Claimed work、keepInbox 与 latch 测试: 测试证明已 claim 工作不恢复、pre-abort queue 会停放、post-abort waking send 会 replay，默认 cancel 清除 latch。" aria-label="证据 INBOX-CANCEL-BEHAVIOR-TEST">INBOX-CANCEL-BEHAVIOR-TEST</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/tests/cancel.spec.ts#L384-L403" title="默认取消丢弃 queued tail: 运行中默认 cancel 使 Turn aborted，并丢弃尚未运行的 queued tail。" aria-label="证据 INBOX-CANCEL-DROP-TEST">INBOX-CANCEL-DROP-TEST</a></p></div>
+</section>
+
+<section>
+  <h2>12. Abort-to-idle wake latch 修复了取消收敛窗口，但仍保留一个更窄的退休缺口</h2>
+  <pre><code>活跃 Turn 已 abort，但尚未 idle
+  ├─ 此前已排队 + keepInbox → 保留但停放（没有 latch）
+  ├─ 此后新的 waking send  → 强制 next-turn + wakeRequested=true
+  ├─ 默认 cancel            → 清 Inbox + 清 latch
+  └─ disposed               → 永不 latch
+
+旧 driver finally：idle → 若 latch 且仍有 pending → 新 driver</code></pre>
+  <div class="claim fact"><div class="claim-label">为什么要重新分类</div><p>send 在插入前读取 abort 状态；post-abort 的 steer 也会改投 next-turn，避免加入一个已经注定结束的 Turn。收敛后的 replay 保证旧 <code>turn/end</code> 先于新 <code>turn/start</code>，移除被 latch 的消息会抑制空 replay。回归测试覆盖同 tick、慢收敛、maintenance、默认 cancel 与 disposed。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/tests/cancel.spec.ts#L103-L218" title="Abort-to-idle wake latch 测试矩阵: 覆盖 pre-abort parking、post-abort replay、latch 清除/移除和慢取消收敛。" aria-label="证据 INBOX-CANCEL-LATCH-TEST">INBOX-CANCEL-LATCH-TEST</a></p></div>
+  <aside class="caveat"><strong>已知缺口：</strong>设计记录明确保留了 final <code>hasPending</code> 检查之后、driver 真正退出之前的 sub-microtask 窗口。此时 phase 仍是未 abort 的 running，新的 wake 不设 latch，却可能已经错过最后检查，于是输入停放到下一次 wake。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/.agents/notes/implemented/bug-fix/2026-08-07-cancel-convergence-wake-latch.md#L9-L29" title="取消收敛 latch 决策与剩余缺口: 记录 latch 的原因、只区分 post-abort wake 的设计，以及 final hasPending 后 sub-microtask gap 仍可能停放输入。" aria-label="证据 INBOX-WAKE-LATCH-NOTE">INBOX-WAKE-LATCH-NOTE</a></aside>
+</section>
+
+<section>
+  <h2>13. Turn 记录本身不足以回答“这份工作去了哪里”</h2>
+  <p>一个无 Step 的 Turn 可能是空 claim、listener 清空、pre-step reject、取消或错误；只看 <code>turn/end</code> 无法区分“什么都没做”和“消费了但没有进入模型”。<code>foldConsumedWork</code> 因而联合读取 step、纯删除 claim 与 canceled splice。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent/src/consumed-work.ts#L60-L107" title="Consumed work 的联合事件折叠: 单遍联合 step、claim、turn/end 与 canceled splice，区分 accounted Turn 与 dropped-unrun input。" aria-label="证据 INBOX-CONSUMED-WORK">INBOX-CONSUMED-WORK</a></p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>历史形状</th><th>归账</th></tr></thead>
+    <tbody>
+      <tr><td>进入过 Step</td><td>该 Turn 计为 consumed</td></tr>
+      <tr><td>claim 后 blocked / aborted / error</td><td>该 Turn 计为 consumed</td></tr>
+      <tr><td>claim 后 completed 且无 Step</td><td>视为 listener 清空，不把该 Turn当作完成工作</td></tr>
+      <tr><td>Inbox canceled 且无 replacement</td><td><code>droppedUnrun: true</code></td></tr>
+      <tr><td>一次 splice 用新消息替换旧消息</td><td>仍 pending，不算 dropped</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">回归覆盖</div><p>专门测试覆盖 failed claim、stopped claim、blocked claim、empty rewrite、turn 外 claim、unrun drop、replacement 与后续 Turn 吸收旧 drop。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent/tests/consumed-work.spec.ts#L38-L158" title="Consumed-work 边界测试: 覆盖无工作、失败/取消/blocked claim、empty rewrite、turn 外 claim、drop、replacement 与后续吸收。" aria-label="证据 INBOX-CONSUMED-WORK-TEST">INBOX-CONSUMED-WORK-TEST</a></p></div>
+</section>
+
+<section>
+  <h2>14. “已写日志”“已发 Web 快照”“已落盘”是三个不同提交点</h2>
+  <pre><code>Host prompt accepted
+  → Inbox splice 已同步 append 到 live Session
+  → API 可返回 accepted
+  → JSONL write-behind batch（默认固定窗口）
+
+首个 pre-step checkpoint
+  → flush enqueue + turn/start + claim
+模型 adapter dispatch 前
+  → flush step/start + user/message + request prefix</code></pre>
+  <div class="claim fact"><div class="claim-label">副作用前 fail-closed</div><p>checkpoint policy 在 pre-step 与 <code>llm/stream</code> 边界 flush；后者延迟构造下游 stream，flush 失败就不调用模型。顶层 tool dispatch 也采用同样策略。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-checkpoint-policy/src/index.ts#L20-L82" title="模型与工具副作用前的语义 checkpoint: pre-step 与 llm/stream 边界 flush Session；flush 失败时不 dispatch 模型或顶层工具副作用。" aria-label="证据 INBOX-CHECKPOINT-POLICY">INBOX-CHECKPOINT-POLICY</a></p></div>
+  <div class="claim fact"><div class="claim-label">硬崩溃实验</div><p>E2E 子进程在模型 dispatch 时被硬杀，恢复日志仍包含 insertion、turn/start、claim、step、user message 与 request prefix，并合成 interrupted closers；本次交付也重新运行该文件的 2 个用例并全部通过。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-checkpoint-policy/tests/crash-recovery.e2e.ts#L82-L110" title="模型 dispatch 硬崩溃恢复测试: 硬杀子进程后，恢复日志保留完整请求前缀并补 interrupted closing；工具 intent 缺结果时补 unknown outcome。" aria-label="证据 INBOX-CRASH-RECOVERY">INBOX-CRASH-RECOVERY</a></p></div>
+  <p>JSONL backend 把 live events 固定窗口合批，flush/teardown 会立即 drain；每批 append 与 fsync，失败回滚到原字节长度。由此可知 prompt 的同步 <code>accepted</code> 是 Session-level admission，不是独立的 fsync receipt；如果产品需要“回复前必须断电安全”，还需要显式等待 checkpoint。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-persistence-jsonl/README.md#L40-L52" title="JSONL fsync、write-behind 与 flush: 首批与后续 batch 都 fsync，失败回滚；live event 用固定窗口合批，flush 与 teardown 会 drain。" aria-label="证据 INBOX-JSONL-DURABILITY">INBOX-JSONL-DURABILITY</a></p>
+</section>
+
+<section>
+  <h2>15. Resume 会重建 pending，但不会仅因重建而自动开跑；fork seed 也不会复制祖先待办</h2>
+  <p>恢复路径先从 persistence prepare Session，再走与新建相同的 prepare/setup/publish；新的 <code>ReactLoopAgent</code> 构造器从日志恢复最后 Turn 编号和 Inbox。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/index.ts#L647-L709" title="持久化 Agent resume 路径: resume 从 persistence prepare 后进入共享 setupAndPublish，并以 resume source 发布新的 Agent handle。" aria-label="证据 INBOX-AGENT-RESUME">INBOX-AGENT-RESUME</a></p>
+  <div class="claim fact"><div class="claim-label">Seed ownership boundary</div><p>Inbox 只回放 <code>session.events.slice(seedLength)</code>。fork seed 中来自父 Session 的历史 splice 是孩子的上下文历史，不会重新变成孩子的 pending 工作；孩子自己在 seed 之后接受但未 claim 的消息则会恢复。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent/src/inbox.ts#L24-L39" title="Inbox 的 seed ownership boundary: 构造时明确跳过 seedLength 之前的事件，只把 Session 自己的 suffix splice 重建为 pending。" aria-label="证据 INBOX-SEED-BOUNDARY">INBOX-SEED-BOUNDARY</a></p></div>
+  <p>构造与 publish 本身不调用 wake。普通 Host 冷恢复通常紧接着处理一条 waking prompt；continuable child 冷恢复也紧接着调用 followup，所以旧 pending 会按两队列 claim 规则与新 wake 一起继续。单独恢复一个 Agent 并不承诺自动消费停放输入。</p>
+</section>
+
+<section>
+  <h2>16. Ordinary Host API 返回 admission，不返回 Turn 或回复</h2>
+  <p><code>session.prompt</code> 接受 <code>mode: queue | steer</code>，处理时区、附件耐久化和 message source 后，分别调用 <code>agent.followup</code> 或 <code>agent.steer</code>；同步入队成功即返回 <code>{accepted:true}</code>。它没有等待 pre-step、模型结果或 idle。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/src/api-proxy.ts#L2461-L2517" title="Ordinary prompt admission 与模式路由: Host 创建带来源的 message，queue 调 followup、steer 调 steer，并在同步 enqueue 成功后返回 accepted。" aria-label="证据 INBOX-HOST-PROMPT">INBOX-HOST-PROMPT</a></p>
+  <div class="claim fact"><div class="claim-label">Wire contract</div><p>公开 contract 将 queue/steer 直接映射到两种 Agent 操作；<code>updateQueue</code> 支持 edit/remove/steer，而 <code>session.cancel</code> 明确保留 pending work。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/src/api/sessions.ts#L315-L371" title="Session prompt、queue mutation 与 cancel wire contract: Contract 定义 queue/steer prompt、edit/remove/steer mutation，并声明 ordinary cancel 保留 pending work。" aria-label="证据 INBOX-HOST-CONTRACT">INBOX-HOST-CONTRACT</a></p></div>
+  <p>Host 会为 cold ordinary session 先解析/恢复 Agent；但直接 <code>mode: steer</code> 不额外检查 running，因此它仍服从底层的“空闲时由 steer 打开一个 Turn”。这与 UI 的保守 submission policy 是不同层的约束。</p>
+</section>
+
+<section>
+  <h2>17. Queue edit/remove/strict-steer 以 MessageId 定址；claim 赢掉竞态</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>动作</th><th>允许条件</th><th>实现</th></tr></thead>
+    <tbody>
+      <tr><td>Edit</td><td>仍 pending；仅 text blocks</td><td>深冻结 replacement，保留同一 MessageId</td></tr>
+      <tr><td>Remove</td><td>仍 pending</td><td>canceled splice 删除</td></tr>
+      <tr><td>Strict steer</td><td>项目仍在 next-turn 且 Agent 当前 running</td><td>先 remove，再用同一消息调用 steer</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">权威检查发生在突变时</div><p>Host 在两个列表中重新定位消息；若 loop 已先 claim，操作返回 <code>queue-item-not-found</code>。strict steer 的 running 检查比自由 <code>mode: steer</code> 更严格，但它不是绑定某个 Turn 的 capability token，仍受最终退休窄窗口约束。Subagent-owned Session 禁止这些 ordinary queue 操作。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/src/api-proxy.ts#L2568-L2633" title="MessageId queue mutation 与 strict steer: Host 重新定位 pending item，限制 text edit，strict steer 只接受 running next-turn item，并以同一消息 remove 后 steer；cancel 使用 keepInbox。" aria-label="证据 INBOX-HOST-QUEUE-MUTATION">INBOX-HOST-QUEUE-MUTATION</a></p></div>
+</section>
+
+<section>
+  <h2>18. Web 使用完整快照做 live mirror，再用 durable splice 恢复历史身份</h2>
+  <pre><code>Session splice（observer 看到 pre-state）
+  → Host 对当前列表应用本次 splice
+  → session/queue { complete items[] }
+       next-turn              → queued
+       next-step + user       → steering
+       next-step + non-user   → context
+</code></pre>
+  <div class="claim fact"><div class="claim-label">Post-state projection</div><p>Host 显式投影两个列表，并用 source.kind 将 next-step 分成 steering/context；事件 observer 把当前发出的 splice 应用到 pre-state，避免等待 live Inbox mutation。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/src/api-proxy.ts#L1326-L1355" title="两个 Inbox 列表的权威 Web projection: Host 投影 next-turn 与 next-step，用 user source 区分 steering/context，并在同步 observer 中应用当前 splice 得 post-state。" aria-label="证据 INBOX-HOST-PROJECTION">INBOX-HOST-PROJECTION</a></p></div>
+  <div class="claim fact"><div class="claim-label">重连基线</div><p>mux 先发 <code>session/subscribed</code>，仅在有 pending 时再发 queue baseline。客户端在 subscribed 上清空旧 generation，所以“没有后续 queue frame”正确表示空队列，不会把断线前的项目留成幽灵。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/src/api-proxy.ts#L3430-L3455" title="Mux reconnect queue baseline: 重连先为 Session 建立 subscription，再仅为仍有 pending 的 Agent 发送完整 queue baseline。" aria-label="证据 INBOX-RECONNECT-HOST">INBOX-RECONNECT-HOST</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/runtime/src/client/sessions/session.ts#L412-L485" title="Client generation queue reset: 客户端在 session/subscribed 上清旧 queue mirror，再接受同 stream 后续 snapshot，正确处理 Host 省略空 baseline。" aria-label="证据 INBOX-RECONNECT-CLIENT">INBOX-RECONNECT-CLIENT</a></p></div>
+  <p>Queue mirror 以完整 snapshot last-wins；pending steering 一旦出现相同 MessageId 的 durable <code>user/message</code> 就从瞬态镜像退休。历史 replay 则读取 next-step splice 的非 canceled removal，再检查 user source，把同一个 <code>user/message</code> 重建为 steering。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/runtime/src/client/sessions/queue-mirror.ts#L23-L73" title="Queue snapshot mirror 与 durable handoff: 客户端以完整 snapshot 替换 queue，并在同 MessageId 的 user/message 到达时退休一个 pending steering row。" aria-label="证据 INBOX-CLIENT-MIRROR">INBOX-CLIENT-MIRROR</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/runtime/src/client/sessions/steering-history.ts#L20-L63" title="Durable steering 历史分类: Replay 通过 next-step 的非 canceled removal 记录 claimed identity，再仅把 user-source user/message 分类为 steering。" aria-label="证据 INBOX-HISTORY-CLASSIFICATION">INBOX-HISTORY-CLASSIFICATION</a></p>
+</section>
+
+<section>
+  <h2>19. UI 把 queued 与 steering 放在两个位置，并把“快捷发送”定义成策略而非真相</h2>
+  <p>QueueDock 只显示 <code>placement=queued</code>，提供编辑、删除和逐条 steer；steer 按钮只在 running 时启用。pending steering 则以用户气泡样式显示在 conversation tail，等 durable message 进入历史后完成 handoff。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/ui-conversation/src/client/queue/QueueDock.tsx#L27-L205" title="QueueDock 过滤与逐项操作: Dock 只显示 queued placement，并在 ordinary session 提供 text edit、remove 和仅 running 可用的 steer。" aria-label="证据 INBOX-QUEUE-DOCK">INBOX-QUEUE-DOCK</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/ui-conversation/src/client/chat/ChatView.tsx#L400-L406" title="Conversation tail 的 pending steering: ChatView 在 running indicator 之后把全部 pending steering 渲染为独立 bubble。" aria-label="证据 INBOX-PENDING-STEERING-UI">INBOX-PENDING-STEERING-UI</a></p>
+  <div class="claim fact"><div class="claim-label">Enter policy</div><p>非 running 或不支持 steering 的 transport 一律 queue；busy ordinary session 依据保存的 Queue/Steer 偏好选择，Cmd/Ctrl+Enter 取相反模式。空 draft 的加速 Enter 可把全部 queued rows 逐条 strict-steer；held Enter 被抑制，避免连续发送。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/ui-conversation/src/client/input/submission-policy.ts#L17-L57" title="Busy Enter 的 queue/steer 决策: 非 running 或无 steering transport 强制 queue；busy 状态按偏好选择，accelerated gesture 取相反值，并明确 direct steer 为 best effort。" aria-label="证据 INBOX-SUBMISSION-POLICY">INBOX-SUBMISSION-POLICY</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/ui-conversation/src/client/skeleton/InputBar.tsx#L313-L339" title="Enter 去重与 whole-queue steer gesture: 重复 Enter 被抑制；空 draft 的 accelerated Enter 可把 still-pending queue 逐项 steer，否则按 policy 提交。" aria-label="证据 INBOX-INPUT-GESTURES">INBOX-INPUT-GESTURES</a></p></div>
+  <aside class="caveat"><strong>产品措辞：</strong>普通 composer 的 direct steer 是 best-effort next boundary；QueueDock 的逐项 promotion 额外验证“仍 queued + 当前 running”。两者最终都落到同一个 Agent steer，不应在 UI 文案中暗示能够修改已经发出的模型请求。</aside>
+</section>
+
+<section>
+  <h2>20. Continuable child 的 Activation 是 residency epoch，不是一次请求或一个结果</h2>
+  <p><code>startContinuable</code> 建立 durable child；后续 <code>followup</code> 隐藏 resident 与 cold-resume 差异，并把每条输入交给孩子自己的唯一 Inbox。成功边界是孩子接受 message id，不等待 Turn 开始，也不返回孩子回复。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/index.ts#L203-L275" title="Continuable child 的 start/followup/interrupt/report seam: Start 以 initial Inbox acceptance 为边界；later followup 是下一 FIFO Turn；interrupt 保留 pending；report 由 exact child 发给 direct parent。" aria-label="证据 INBOX-CONTINUATION-SEAM">INBOX-CONTINUATION-SEAM</a></p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Activation state</th><th>推导条件</th></tr></thead>
+    <tbody>
+      <tr><td>running</td><td>Child Agent running，或 manager 已登记 waking message 但同步 send 尚未完成</td></tr>
+      <tr><td>waiting</td><td>Child Agent quiescent，但仍拥有尚未释放的后代 Activation</td></tr>
+      <tr><td>settled</td><td>Agent quiescent且没有 owned children；可以 dispose handle</td></tr>
+    </tbody>
+  </table></div>
+  <p>一个 Activation 可以执行许多 FIFO Turn，也会因后代仍运行而在自身 idle 后继续驻留；manager 只拥有 residency/ownership，Turn 顺序仍完全由 Agent loop 与 Inbox 所有。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/continuation.ts#L1-L19" title="Activation 是 residency epoch: Activation 明确不是 request/result/cancel/task，可执行多个 FIFO Turn；manager 管 residency，Agent Inbox 管唯一 Turn queue。" aria-label="证据 INBOX-ACTIVATION-MODEL">INBOX-ACTIVATION-MODEL</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/continuation.ts#L151-L159" title="Activation running/waiting/settled 推导: 状态从 Agent 活动和 owned-child set 推导，不引入第二个独立执行状态机。" aria-label="证据 INBOX-ACTIVATION-STATE">INBOX-ACTIVATION-STATE</a></p>
+</section>
+
+<section>
+  <h2>21. 父→子 delivery 永远是 follow-up；锁把 delivery 与 disposal 线性化</h2>
+  <p>对 resident child，manager 在 child-id 锁内提交消息；若 disposal 已开始，就等待旧 Activation 释放后 cold-resume。对 absent child，它检查持久化 Session、先按 durable parent lineage 授权、只折叠 seed 之后的 continuable descriptor，再重建 Activation。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/continuation.ts#L459-L505" title="Resident、disposal race 与 cold-resume delivery: 每 child 锁串行化 followup；resident 直接 submit，absent cold-resume，已开始 disposal 的 delivery 等释放后重试。" aria-label="证据 INBOX-CONTINUATION-DELIVERY">INBOX-CONTINUATION-DELIVERY</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/continuation.ts#L876-L932" title="Continuable child 冷恢复与 lineage 授权: 冷恢复 inspect persistence，先验证 durable direct parent，再仅折叠 seed suffix descriptor，materialize 后 submit。" aria-label="证据 INBOX-COLD-RESUME">INBOX-COLD-RESUME</a></p>
+  <div class="claim fact"><div class="claim-label">Acceptance fence</div><p>最终 admission 是无 await 的同步段：检查 caller signal、manager drain、Activation disposal 和 direct-parent authority；先把 MessageId 放进 <code>accepted</code> set，再调用 child <code>Agent.followup</code>，成功后标记 announced。每条父→子消息因此只进入 <code>next-turn</code>，不会 steer 孩子当前 Turn。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/continuation.ts#L1125-L1204" title="Child follow-up 的同步 admission fence: 在 no-await 段检查 signal/drain/disposal/lineage，先登记 accepted ID，再同步调用 child Agent.followup 并标 announced。" aria-label="证据 INBOX-CONTINUATION-ADMISSION">INBOX-CONTINUATION-ADMISSION</a></p></div>
+  <div class="claim fact"><div class="claim-label">Interrupt 不等于结束</div><p>interrupt 只在 live Activation 上授权并调用 <code>cancel(...,{keepInbox:true})</code>，立即返回；pending 与后代保留，claimed work 不恢复，absent target 是 accepted no-op。下一条 waking follow-up 才重新启动停放队列。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/continuation.ts#L507-L568" title="Continuable child interrupt 语义: Interrupt 授权 live target 后调用 cancel keepInbox 并立即返回；claimed 不恢复，pending/descendants 保留，absent 为 no-op。" aria-label="证据 INBOX-CHILD-INTERRUPT">INBOX-CHILD-INTERRUPT</a></p></div>
+</section>
+
+<section>
+  <h2>22. 子→父有两种独立消息：主动 report 与自动 settlement account</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>消息</th><th>来源</th><th>父调度</th><th>是否结束 child</th></tr></thead>
+    <tbody>
+      <tr><td>Explicit report</td><td><code>subagent-report</code> relay</td><td><code>wakeup → followup</code>；<code>quiet → inject</code></td><td>否</td></tr>
+      <tr><td>Settlement notice</td><td><code>subagent-settled</code> notice</td><td>parent closing → inject；idle → followup；busy → steer</td><td>是 manager 对已结束 residency 的说明，不是 child 自述</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">主动报告</div><p>只有 exact resident child Agent 可以 report，收件人从 durable direct parent 推导而不能由 caller 任意指定；wakeup 与 quiet 是父调度策略，报告本身不改变孩子 Turn 或 Activation。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/continuation.ts#L583-L693" title="Exact-child report 与父调度: 只有 exact resident child 可报告；direct parent 从 lineage 解析；wakeup 用 followup，quiet 用 inject，报告不结束 child。" aria-label="证据 INBOX-CHILD-REPORT">INBOX-CHILD-REPORT</a></p></div>
+  <div class="claim fact"><div class="claim-label">结算通知</div><p>manager 在 child handle 已释放、但父 ownership 尚未释放时投递 settlement，避免父 watcher 先把自己销毁。busy 父使用 steer，使同时完成的多个孩子在同一 next-step batch 合并；通知失败只记录并丢弃，最终 flush 也是 best-effort。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/continuation.ts#L1363-L1465" title="Settlement notice 的时序与路由: 通知在释放父 ownership 前投递；closing parent inject、idle followup、busy steer；失败丢弃且最终 flush best effort。" aria-label="证据 INBOX-SETTLEMENT-NOTICE">INBOX-SETTLEMENT-NOTICE</a></p></div>
+</section>
+
+<section>
+  <h2>23. Child 的 Web 与模型控制面有意比 ordinary Session 更窄</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>表面</th><th>Follow-up</th><th>Steer</th><th>Stop</th></tr></thead>
+    <tbody>
+      <tr><td>Web continuable child</td><td>要求 live direct parent；只接 text；返回 MessageId</td><td>无，客户端忽略 mode 并走 subagent.prompt</td><td>可在 parent offline 时按 durable address interrupt</td></tr>
+      <tr><td>Web one-shot child</td><td>只读</td><td>无</td><td>无</td></tr>
+      <tr><td>模型 <code>send_message</code></td><td>exact live direct parent 发给 child 的下一 FIFO Turn</td><td>无</td><td><code>interrupt_agent</code> 可由 live ancestor 中断 descendant</td></tr>
+    </tbody>
+  </table></div>
+  <p>Wire contract 明确把 prompt receipt 定义为 Inbox MessageId，把 interrupt receipt 定义为信号被接受而非目标 quiescent；Host 的 child prompt 要求 live parent，interrupt 则刻意不查询 parent、catalog 或 persistence。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/src/api/subagents.ts#L38-L119" title="Subagent prompt 与 interrupt receipt contract: Prompt receipt 是 accepted MessageId，后续执行独立；interrupt receipt 只确认 cancel signal，保留 pending，absent/idle 也 accepted。" aria-label="证据 INBOX-SUBAGENT-WIRE">INBOX-SUBAGENT-WIRE</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/src/api-proxy.ts#L2737-L2799" title="Subagent Host prompt 与 offline-parent interrupt: Child prompt 要求 live parent 并调用 continuation followup；interrupt 不查 parent/catalog/persistence，而由 live Activation 授权 durable address。" aria-label="证据 INBOX-SUBAGENT-HOST">INBOX-SUBAGENT-HOST</a></p>
+  <p>客户端把 one-shot 设为只读；continuable child 即使 running 也保留 Send 并单列 Stop，使新消息排为后续 Turn。parent offline 时输入禁用但仍允许停止 live child；模型工具同样说明 <code>send_message</code> 不返回回复、不能 redirect 当前工作。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/runtime/src/client/sessions/session.ts#L184-L329" title="Client ordinary/child prompt 与 cancel 路由: Ordinary session 透传 queue/steer；one-shot child 只读；continuable child text-only 且忽略 mode；cancel 分派到 session.cancel 或 subagent.interrupt。" aria-label="证据 INBOX-CHILD-CLIENT">INBOX-CHILD-CLIENT</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/ui-conversation/src/client/skeleton/InputBar.tsx#L541-L555" title="Running child 的独立 Send 与 Stop: Ordinary running session 的主按钮变 Stop；continuable child 保留 Send 为主按钮并单独提供 Stop，因此可继续排后续消息。" aria-label="证据 INBOX-CHILD-COMPOSER">INBOX-CHILD-COMPOSER</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/ui-subagent/src/client/index.ts#L43-L52" title="Parent offline 时的 child composer: One-shot child 永远只读；parent offline 的 continuable child 在 running 时保留默认 composer 以暴露 Stop，停止后切换只读。" aria-label="证据 INBOX-CHILD-OFFLINE-UI">INBOX-CHILD-OFFLINE-UI</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/tool-subagent-control/src/index.ts#L25-L119" title="send_message 与 interrupt_agent 模型合同: send_message 用 exact caller 走 child followup，明确不能 redirect 当前 Turn且不返回 child reply；interrupt 只请求取消并保留 queue。" aria-label="证据 INBOX-CONTROL-TOOLS">INBOX-CONTROL-TOOLS</a></p>
+</section>
+
+<section>
+  <h2>24. 固定基线存在两处可复现的文档漂移</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>相邻文档/注释</th><th>写了什么</th><th>当前生产代码</th></tr></thead>
+    <tbody>
+      <tr><td><code>api/events.ts</code></td><td>pending message 到 claim 才 durable；pending work 没有 durable Session event</td><td><code>agent/inbox/spliced</code> 在 live mutation 前写入，插入事件携带完整消息</td></tr>
+      <tr><td>ApiProxy README</td><td>pending next-step steering 不进入 Web projection</td><td><code>queueItems()</code> 投影两个列表；user-origin next-step 明确标 steering，ChatView 显示 pending bubble</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">不是解释差异</div><p>Wire 注释与当前 durable event schema/Inbox 实现直接矛盾；README 与当前 Host projection/UI 直接矛盾。这些判断来自同一固定 commit 的源码对照，不是对运行时的猜测。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/src/api/events.ts#L36-L84" title="Queue wire 注释的 durability 漂移: 同一文件把完整 pending message 放入 queue frame，却声称它到 claim 才 durable且没有 durable Session event，与 Inbox splice 实现冲突。" aria-label="证据 INBOX-WIRE-DOC-DRIFT">INBOX-WIRE-DOC-DRIFT</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/README.md#L41" title="ApiProxy README 的 next-step projection 漂移: README 声称 next-step steering 不进入 Web projection，而当前 queueItems 与 ChatView 明确投影并呈现它。" aria-label="证据 INBOX-README-DRIFT">INBOX-README-DRIFT</a></p></div>
+  <aside class="caveat"><strong>更准确的说法：</strong>pending queue 的 Web snapshot 是瞬态控制面；支撑它的 Inbox splice 却是 Session event。Session event 已逻辑提交也不等于 JSONL 已完成 fsync。</aside>
+</section>
+
+<section>
+  <h2>25. 保证矩阵与设计评价</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>命题</th><th>保证</th><th>不保证</th></tr></thead>
+    <tbody>
+      <tr><td>普通 follow-up</td><td>单一 Inbox 中 FIFO；成功 drain 时每条一个 Turn</td><td>每条独立结果 Promise；遇到 reject/error 后自动继续</td></tr>
+      <tr><td>Steer</td><td>最近尚未越过的 Step boundary；空闲时可 wake</td><td>修改飞行中的 request；绝对无退休竞态</td></tr>
+      <tr><td>Inject</td><td>下一次 claim 时作为 model-facing context</td><td>自己 wake；一定属于当前 Turn</td></tr>
+      <tr><td>Cancel keepInbox</td><td>保留尚未 claim 的输入</td><td>恢复已 claim 工作；自动 wake pre-abort 队列</td></tr>
+      <tr><td>Prompt acceptance</td><td>同步 Inbox/Session admission 与 MessageId（child）</td><td>模型已调用、回复已产生、物理 fsync 已完成</td></tr>
+      <tr><td>Continuable child</td><td>跨 residency cold resume；父→子永远下一 FIFO Turn</td><td>send_message 同步返回 child result；current-turn steer</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">最终评价</div><p>最强的设计点是没有为 UI、插件与 subagent 各造一套待办队列：两列表、一个 splice 词汇、稳定身份和同一 claim 算法贯穿内核、恢复和产品面。最昂贵的复杂度则集中在“接受不等于执行”的边界：pre-step 先 claim、cancel 不回滚、driver status 跨 Turn、Web snapshot 与物理持久化又各有自己的提交点。系统已经用 consumed-work fold、checkpoint 和 wake latch补齐大部分可观测性，但公开文档仍需纠正，若要更强的 no-stranding 或 crash-safe acknowledgement，还需新的显式协议而不是更乐观的文案。</p></div>
+  <div class="claim fact"><div class="claim-label">验证状态</div><p>本章除逐分支追踪固定 commit 的生产源码、wire contract、README 和测试外，还实际运行了 13 个 Agent/Inbox/Host/client/subagent 定向 Vitest 文件（379 tests passed），并单独以 E2E 配置运行 hard-crash checkpoint 文件（2 tests passed）：合计 14 files、381 tests 全部通过。</p></div>
+</section>
+<section class="learning-notes" aria-labelledby="learning-notes-title"><h2 id="learning-notes-title">我的学习体会</h2>
     <p class="privacy">内容仅自动保存到当前浏览器，不上传、不进入仓库。你可以导出 Markdown 自行归档。</p><textarea data-learning-notes aria-label="我的学习体会" placeholder="记录你的理解、疑问、反例和可迁移原则……"></textarea>
     <div class="note-footer"><span data-note-saved>本地草稿</span><button type="button" data-note-export>导出 Markdown</button>
     <button type="button" class="danger" data-note-clear>清空</button><span data-note-count>0 字符</span></div></section><nav class="pagination" aria-label="章节翻页"><a href="../pages/workflow-ralph.html"><small>← 上一章 · 25</small><strong>Workflow 与 Ralph</strong></a><a class="next" href="../pages/failure-recovery.html"><small>下一章 · 27 →</small><strong>重试、错误、取消与恢复</strong></a></nav></article>

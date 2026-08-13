@@ -1,0 +1,243 @@
+<section>
+  <h2>Conclusion: Four Extension Surfaces, Four Different Contracts</h2>
+  <div class="thesis"><p>DeepSeek Harness does not flatten every external capability into one generic plugin API. Web keeps stable product-owned tool names over replaceable providers; LSP keeps one closed operation vocabulary over extension-routed language servers; MCP imports provider-owned names and schemas dynamically; Skills publish a compact routing catalog and reveal trusted instruction bodies only on demand. The common philosophy is not “everything is a tool,” but “put a stable, typed seam at the narrowest layer that can own the semantics.”</p></div>
+  <p>This separation is unusually useful for analysis because each surface answers a different question: who owns the public name, who selects the provider, how much data enters every model request, and where untrusted or privileged content crosses into execution. Treating the four as equivalent would hide their most important safety and cache properties.</p>
+</section>
+
+<section>
+  <h2>1. Capability Topology: Stability Moves to a Different Layer in Each Surface</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Surface</th><th>Stable model-facing unit</th><th>Replaceable/dynamic unit</th><th>Selection point</th><th>Default exposure</th></tr></thead>
+    <tbody>
+      <tr><td>Web</td><td><code>web_search</code> / <code>web_fetch</code></td><td>Search and fetch providers</td><td>Execution-time configured ID or exactly one usable provider</td><td>Search only</td></tr>
+      <tr><td>LSP</td><td>One <code>lsp</code> tool with four operations</td><td>Extension-to-language-server routes</td><td>Final file extension</td><td>Optional examples, not the shipped base</td></tr>
+      <tr><td>MCP</td><td><code>mcp__server__raw</code> per discovered tool</td><td>The entire remote tool generation</td><td>Server discovery and re-sync</td><td>Default-off examples</td></tr>
+      <tr><td>Skill</td><td>One <code>skill</code> loader plus a summary catalog</td><td>Winning provider candidate and loaded body</td><td>Scope layer, then rank within the layer</td><td>Shipped in coding presets</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">Design reading</div><p>The architecture spends stability where it buys the most. Web and LSP can define a portable product vocabulary, so their schemas stay fixed. MCP exists precisely to accept an external server's vocabulary, so it stabilizes identity and generation swaps instead. Skills stabilize discovery metadata while postponing the expensive and authoritative body.</p></div>
+</section>
+
+<section>
+  <h2>2. Web: Provider Choice Is Deterministic and Re-evaluated at Every Call</h2>
+  <pre><code>web_search(query)
+  → ctx.web.search(request)
+      ├─ configured id exists + available → use it
+      ├─ configured id missing/unavailable → typed failure
+      ├─ no configured id + one usable    → auto-select
+      ├─ no configured id + many usable   → ambiguous failure
+      └─ no usable provider               → unavailable failure
+  → cap sources to maxResults</code></pre>
+  <div class="claim fact"><div class="claim-label">No registration-order lottery</div><p>Search and fetch have separate registries, duplicate IDs fail, and provider availability is checked at execution time. Environment overrides feed the same two configuration fields rather than forming a hidden priority chain. If more than one unconfigured provider is usable, execution fails and asks for an explicit choice. <evidence id="CAP-WEB-SELECTION"></evidence></p></div>
+  <p>The result vocabulary is intentionally small: search returns optional answer text plus citeable sources; fetch returns final URL, status, a closed HTML/text body union, and truncation. A non-2xx response is resource state rather than a transport exception. <evidence id="CAP-WEB-TYPES"></evidence></p>
+</section>
+
+<section>
+  <h2>3. Stable Tool Visibility Is Decoupled from Provider Health</h2>
+  <p><code>dsh-tool-web</code> owns schemas, prompt guidance, result caps, and presentation. Its <code>search</code>/<code>fetch</code> booleans decide whether the tools register; concrete providers do not. Consequently, an enabled tool remains in the model catalog even if its configured provider is temporarily absent or unusable, and fails with structured metadata only when called. <evidence id="CAP-WEB-TOOL"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Tradeoff</div><p>This protects tool-schema and KV-prefix stability across credential outages and provider HMR. It also means “the model can see this tool” is not a readiness signal. Operations need a separate provider-health view; otherwise the first user-visible probe is a failed tool call.</p></div>
+</section>
+
+<section>
+  <h2>4. Shipped Web Is Search-Only Because Fetch Has an Explicit SSRF Hole</h2>
+  <div class="claim fact"><div class="claim-label">Actual base composition</div><p>The base composition mounts <code>ctx.web</code>, pins search to <code>deepseek-official</code>, mounts the DeepSeek provider, exposes <code>web_search</code> with a 60-second tool budget, and sets <code>fetch:false</code>. It mounts no fetch provider. The configuration comment names the reason: the local fetcher defers SSRF/private-network protection while the model chooses the target. <evidence id="CAP-WEB-SHIPPED"></evidence></p></div>
+  <p>The optional HTTP fetcher still enforces useful transport hygiene: HTTP(S) only, no embedded credentials, bounded URL size, same-origin redirects, supported text content types, declared charset decoding, one timeout, byte and character caps, and no browser cookies or ambient credentials. It explicitly warns that private-network blocking is absent. <evidence id="CAP-WEB-FETCH-POLICY"></evidence><evidence id="CAP-WEB-FETCH-TRANSPORT"></evidence><evidence id="CAP-WEB-FETCH-CAPS"></evidence></p>
+  <aside class="caveat"><strong>Security boundary:</strong> same-origin redirects prevent an initial target from silently forwarding a request elsewhere; they do not make the initial host safe. Deployment reachability remains the missing policy.</aside>
+</section>
+
+<section>
+  <h2>5. DeepSeek Search Is an Auxiliary Model Call, Not Reuse of the Main LLM Adapter</h2>
+  <pre><code>web_search query
+  → resolve one settings + credential snapshot
+  → append secret-free web/deepseek-search-llm-request
+  → POST Anthropic-compatible /messages
+       model: deepseek-v4-flash
+       tool: web_search_20250305
+  → require web_search_tool_result blocks
+  → join cited_text by URL, deduplicate, normalize</code></pre>
+  <div class="claim fact"><div class="claim-label">Private wire, public seam</div><p>The provider uses its own native <code>fetch</code> client and Anthropic-compatible request, not <code>ctx.llm</code>. It snapshots endpoint, key source, model, token cap, and search-use cap once per operation; records the exact secret-free auxiliary request before dispatch; rejects redirects; and sends both supported API-key header shapes. <evidence id="CAP-WEB-DEEPSEEK-WIRE"></evidence><evidence id="CAP-WEB-DEEPSEEK-REQUEST"></evidence><evidence id="CAP-WEB-DEEPSEEK-SETTINGS"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">No prose fallback</div><p>A response without native search-result blocks is an error. Result items are deduplicated by URL, while snippets come from separate citation text blocks. Final <code>maxResults</code> truncation remains owned by the Web seam, not this adapter. <evidence id="CAP-WEB-DEEPSEEK-MAP"></evidence></p></div>
+  <div class="claim assessment"><div class="claim-label">Cost consequence</div><p>One visible <code>web_search</code> is an additional metered model request with its own failure and latency path. It is observable in the initiating Session, but it is not routed through the main adapter's retry, model selection, or streaming implementation.</p></div>
+</section>
+
+<section>
+  <h2>6. LSP Deliberately Refuses to Become Generic JSON-RPC</h2>
+  <p>The LSP service exports exactly <code>goToDefinition</code>, <code>findReferences</code>, <code>goToImplementation</code>, and <code>hover</code>. A provider atomically reserves one ID and an exclusive set of normalized file extensions. The registry validates the whole mapping before mutation; conflicts publish nothing, and disposal releases every route together. Query selection uses the file's final lowercase extension—<code>foo.d.ts</code> routes as <code>.ts</code>—and exposes no raw JSON-RPC escape hatch. <evidence id="CAP-LSP-REGISTRY"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Why the closed set matters</div><p>The seam can normalize positions, results, caps, errors, cancellation, and read-only retry because it understands every operation. Arbitrary JSON-RPC would maximize protocol coverage but move compatibility and safety back into prompts and provider-specific behavior.</p></div>
+</section>
+
+<section>
+  <h2>7. The <code>lsp</code> Tool Is a Precision Aid, Not a General Code Browser</h2>
+  <div class="claim fact"><div class="claim-label">Model contract</div><p>One read-only tool accepts a closed operation enum, file path, and one-based UTF-16 line/character. It requires the calling Session's workspace with no fallback, converts into the normalized seam, caps location count and rendered characters, and carries a 60-second timeout. Its prompt explicitly recommends ordinary search/read first and LSP only when textual navigation is ambiguous or a change needs precise symbol relationships. <evidence id="CAP-LSP-TOOL"></evidence></p></div>
+  <p>This is an important restraint: LSP does not replace source reads. It answers semantic navigation questions over the current file text, then returns bounded locations or hover content that the model can verify by reading.</p>
+</section>
+
+<section>
+  <h2>8. The Stdio LSP Backend Shares the Filesystem and Process Execution World</h2>
+  <pre><code>query(file, workspace)
+  → ctx.fs canonicalizes workspace and proves containment
+  → ctx.fs streams one complete byte-bounded source
+  → per-canonical-workspace queue
+      → lazy one-server process via ctx.subprocess
+      → didOpen → query → didClose
+      → on transport failure: replace once and replay read-only query</code></pre>
+  <div class="claim fact"><div class="claim-label">Transactional activation</div><p>The plugin validates every server config and resolves every executable before registering any provider. Registry conflicts roll back earlier registrations. Processes start lazily on the first matching query, routes are removed before teardown, and sibling process disposals settle before errors propagate. <evidence id="CAP-LSP-STDIO-LOAD"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">Workspace serialization</div><p>Each canonical workspace owns one pooled server and one queue spanning source read, document open, query, and close. Source bytes come through <code>ctx.fs</code>; servers launch through <code>ctx.subprocess</code>. A transport failure may replace the selected process and retry once because the operation set is read-only. <evidence id="CAP-LSP-STDIO-POOL"></evidence><evidence id="CAP-LSP-HOST-FS"></evidence></p></div>
+</section>
+
+<section>
+  <h2>9. LSP Is Implemented and Demonstrated as an Optional Capability</h2>
+  <p>The repository demonstrates LSP in an optional Headless/E2B composition, where the operator supplies a concrete server command and extension map. The example pins <code>typescript-language-server</code> and exposes the tool only beside the service and stdio provider. <evidence id="CAP-LSP-OPTIONAL"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Deployment consequence</div><p>Package existence is not product availability. A useful UI or capability inventory must distinguish “code exists,” “provider is configured,” “tool is visible to this Agent,” and “the provider is currently ready.”</p></div>
+</section>
+
+<section>
+  <h2>10. MCP Imports a Server-Owned Tool Generation into the Native Registry</h2>
+  <p>One MCP client instance owns one stdio or Streamable HTTP server. A stable local <code>serverName</code> reserves a namespace, and each discovered raw name becomes <code>mcp__&lt;serverName&gt;__&lt;rawName&gt;</code>. Invalid characters or overlength names receive a deterministic identity-derived hash suffix, so reconnection order never renames a tool and normalization collisions become extremely unlikely. <evidence id="CAP-MCP-CONFIG"></evidence><evidence id="CAP-MCP-NAMING"></evidence></p>
+  <div class="claim fact"><div class="claim-label">Startup semantics</div><p>Activation waits for the first connection and complete tool discovery. <code>failOnStartupError:true</code> rejects and rolls back the plugin; otherwise activation may complete with no tools while the supervisor retries. Duplicate live server namespaces fail before the connection begins. <evidence id="CAP-MCP-STARTUP"></evidence></p></div>
+</section>
+
+<section>
+  <h2>11. Tool Re-sync Is Transactional in Fetch, but a Registration Conflict Drops the Old Generation</h2>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>Fetch all pages</h3><p>Build the entire next definition map without touching the registry.</p></div>
+    <div><span>2</span><h3>Preserve on fetch failure</h3><p>A network, schema, or duplicate-list failure leaves the previous generation live.</p></div>
+    <div><span>3</span><h3>Swap</h3><p>Dispose the previous generation, then register every next definition.</p></div>
+    <div><span>4</span><h3>Fail closed on collision</h3><p>If a foreign tool squats on the namespace, roll back the partial new generation to zero.</p></div>
+  </div>
+  <div class="claim fact"><div class="claim-label">Precise atomicity boundary</div><p>The fetch phase is last-known-good, while the registration phase is all-new-or-none—not rollback-to-old. Every initial, notification, and reconnect sync is serialized across client generations so swaps cannot interleave. <evidence id="CAP-MCP-SYNC"></evidence><evidence id="CAP-MCP-RECONNECT"></evidence></p></div>
+  <aside class="caveat"><strong>Operational implication:</strong> “re-sync failed” has two observably different outcomes. Discovery failure keeps old tools; registry collision removes this server's tools.</aside>
+</section>
+
+<section>
+  <h2>12. MCP Recovery Retains the Last Good Catalog Until the Attempt Budget Is Exhausted</h2>
+  <p>A transport close starts bounded exponential backoff. During the outage the last good registrations remain visible, but calls fail against the unavailable generation. A sufficiently stable connection resets the outage budget; a crash loop eventually unregisters every tool and stops until reload/restart. A generation that cannot prove closure within the bounded barrier stops reconnection rather than overlapping two stdio server processes. Disposal cancels timers, closes the current client, drains the connection attempt and sync chain, then unregisters the final generation. <evidence id="CAP-MCP-RECONNECT"></evidence><evidence id="CAP-MCP-GENERATION"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Same visibility/readiness split</div><p>Like Web, an MCP schema can remain visible while execution is temporarily impossible. Unlike Web's stable schemas, MCP recovery may replace the entire model-facing catalog when the server changes its tool list.</p></div>
+</section>
+
+<section>
+  <h2>13. Canonical MCP Results Are Rich; Native Model History Is Deliberately Lossy</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Data</th><th>Execution-local canonical value</th><th>Native model rendering</th></tr></thead>
+    <tbody>
+      <tr><td>Text blocks</td><td>Full JSON blocks</td><td>Text joined with newlines</td></tr>
+      <tr><td>Image/audio/resource</td><td>Full JSON blocks</td><td>Short “content discarded” placeholders</td></tr>
+      <tr><td><code>structuredContent</code></td><td>Preserved; advertised supported schema enforced</td><td>Not separately rendered into rich content</td></tr>
+      <tr><td><code>isError:true</code></td><td>Converted to a thrown execution failure</td><td>ToolRuntime's normalized error result</td></tr>
+      <tr><td>Task-required tool</td><td>Rejected</td><td>Unsupported execution error</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Trust-boundary normalization</div><p>The bridge validates network values defensively, preserves complete JSON for programmatic/Code Mode callers, and falls back to unconstrained JSON when an advertised output schema uses unsupported vocabulary. Native context intentionally discards non-text payloads. <evidence id="CAP-MCP-RESULT"></evidence></p></div>
+</section>
+
+<section>
+  <h2>14. MCP Stdio Does Not Share the Harness Subprocess/Sandbox Spawn Path</h2>
+  <p>The stdio transport reuses the subprocess package's environment-scrubbing definition, then merges explicit config environment. But the MCP SDK owns the actual child spawn; it does not call <code>ctx.subprocess</code>. Therefore it does not automatically inherit the configured execution world, sandbox runner, remote process provider, process-tree contract, or output collector used by Shell and LSP. Streamable HTTP similarly delegates transport to the SDK and accepts configured headers. <evidence id="CAP-MCP-TRANSPORT"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Security finding</div><p>This is the most important cross-surface inconsistency in the chapter. LSP deliberately co-locates file reads and server processes behind shared seams; MCP stdio only shares credential-name scrubbing. A deployment that assumes “all child processes are sandboxed” is wrong unless it independently confines the Host or MCP command.</p></div>
+</section>
+
+<section>
+  <h2>15. MCP Is Broadly Interoperable but Narrower Than the Protocol</h2>
+  <p>The bridge consumes Tools only; MCP Resources, Prompts, and server instructions have no consumer. Connection/discovery timeout is inherited from the SDK rather than exposed as plugin configuration. Streamable HTTP request failures do not necessarily trigger the stdio-style supervisor path. Native non-text projection is lossy, task-required execution is unsupported, and unsupported output-schema vocabulary loses validation. <evidence id="CAP-MCP-LIMITS"></evidence></p>
+  <p>No MCP server ships in the default composition. The repository's memory integrations are explicitly default-off reference overlays; the operator installs and configures the third-party server and owns its storage, identity, model, embedding, and licensing behavior. <evidence id="CAP-MCP-DEFAULT-OFF"></evidence></p>
+</section>
+
+<section>
+  <h2>16. Skills Are a Two-Stage Prompt Capability: Route Cheaply, Load Authority Deliberately</h2>
+  <pre><code>provider list() → SkillCandidate summaries
+  → layered merge and cache
+  → durable &lt;available_skills&gt; names + descriptions
+  → model calls skill(name) OR user explicitly invokes /name
+  → provider get(winning candidate)
+  → canonical &lt;skill_content&gt; body + resource base</code></pre>
+  <p>A summary separates routing data from the full definition and carries two independent permissions: <code>modelInvocable</code> and <code>userInvocable</code>. Resource bases may be directories, URLs, or opaque provider instructions. Full bodies are asynchronous provider loads, not stored in every catalog entry. <evidence id="CAP-SKILL-TYPES"></evidence></p>
+  <div class="claim fact"><div class="claim-label">Trusted body contract</div><p>The wrapper escapes framing metadata but embeds the instruction body verbatim because Skills are defined as trusted local content. The resource hint tells the model to load referenced assets only when needed. <evidence id="CAP-SKILL-RENDER"></evidence></p></div>
+</section>
+
+<section>
+  <h2>17. Scope Beats Rank; Rank Only Breaks Ties Inside One Layer</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Filesystem source</th><th>Rank</th><th>Meaning within one layer</th></tr></thead>
+    <tbody>
+      <tr><td>Project <code>.dsh/skills</code></td><td>100</td><td>Highest local priority</td></tr>
+      <tr><td>Project <code>.agents/skills</code></td><td>200</td><td>Below project-native skills</td></tr>
+      <tr><td>Runtime registration</td><td>250</td><td>Between project and custom/user roots</td></tr>
+      <tr><td>Custom roots</td><td>300</td><td>Operator-supplied roots</td></tr>
+      <tr><td>User <code>.dsh/skills</code></td><td>400</td><td>User-native fallback</td></tr>
+      <tr><td>User <code>.agents/skills</code></td><td>500</td><td>Shared-agent fallback</td></tr>
+      <tr><td>Bundled</td><td>600</td><td>Lowest filesystem priority</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Layer merge</div><p>The registry merges global, ancestor, then exact-Agent layers; a nearer layer replaces a same-name entry outright. Only candidates inside one layer are sorted by rank and registration order. Complete observations are cached by cwd, scope chain, and revision; incomplete discovery is never cached, and one revision race receives a bounded retry. <evidence id="CAP-SKILL-LAYERS"></evidence><evidence id="CAP-SKILL-COLLECT"></evidence></p></div>
+  <aside class="caveat"><strong>Common misread:</strong> rank 100 does not beat rank 600 from a nearer scoped layer. Scope shadowing happens after each layer has chosen its own winner.</aside>
+</section>
+
+<section>
+  <h2>18. The Filesystem Provider Uses the Execution-World FS for Reads, but Host Watchers for Change Detection</h2>
+  <p>Workspace-sensitive discovery builds project, custom, user, and bundled roots with the ranks above. When <code>ctx.fs</code> exists, ordinary roots are listed and read through it; a trusted bundled host root may use Node filesystem access directly. Model-facing write/edit observations synchronously invalidate matching roots. Host-local watchers are bounded by a maximum retained project count and coalesce invalidations. <evidence id="CAP-SKILL-FS-ROOTS"></evidence><evidence id="CAP-SKILL-FS-TRUST"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Split-world consequence</div><p>Discovery content can follow a remote/sandbox filesystem while watcher mechanics remain Host-local. The provider explicitly represents watcher failure as an incomplete observation, allowing the model catalog to retain its last good version and retry later instead of publishing a transient empty list.</p></div>
+</section>
+
+<section>
+  <h2>19. Model Invocation and User Invocation Take Different, Revalidated Paths</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Path</th><th>Discovery gate</th><th>Load gate</th><th>Durable/model-visible result</th></tr></thead>
+    <tbody>
+      <tr><td>Model calls <code>skill(name)</code></td><td>Summary must still exist and be model-invocable</td><td>Loaded definition is rechecked</td><td>Ordinary tool call/result containing the body</td></tr>
+      <tr><td>User message invokes <code>/name</code></td><td>Only direct <code>source.kind=user</code> text is scanned</td><td>Loaded definition must be user-invocable</td><td>Instructions-form user context appended last</td></tr>
+      <tr><td>Unknown/user-disabled gesture</td><td>No recognized authority</td><td>No injection</td><td>Remains ordinary prose</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">No stale-catalog trust</div><p>The model tool lists, then loads, and checks <code>modelInvocable</code> at both boundaries. The explicit-user path loads directly and checks <code>userInvocable</code>, making it the only route to a model-disabled/user-enabled Skill. The same canonical renderer is used on both paths. <evidence id="CAP-SKILL-TOOL-LOAD"></evidence><evidence id="CAP-SKILL-USER-INVOKE"></evidence></p></div>
+</section>
+
+<section>
+  <h2>20. The Skill Catalog Is Durable Replacement State, Not a Rebuilt System-Prompt Blob</h2>
+  <p>At every eligible pre-step, the plugin publishes only sorted model-invocable names and bounded descriptions—and only when its exact <code>skill</code> registration is visible. The durable source stores those entries directly. A digest change appends a complete replacement catalog; an empty replacement explicitly retires older names; incomplete discovery publishes nothing; compaction hiding the visible catalog causes a later complete observation to re-establish it. <evidence id="CAP-SKILL-CATALOG"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Cache-aware disclosure</div><p>Adding a Skill does not inject every body into every request. Catalog changes are append-only suffix facts, while a body appears only in the chosen tool result or explicit invocation. The price is historical duplication: whole-list replacements cost tokens, body-only edits do not change the summary digest, and an older loaded body remains a historical Session fact.</p></div>
+  <p>The base owns the layered Skill registry, while coding presets mount filesystem discovery and the loader into their Agent scope. This allows global repository contributions and preset-local shadowing to coexist. <evidence id="CAP-SKILL-BASE"></evidence><evidence id="CAP-SKILL-SHIPPED"></evidence></p>
+</section>
+
+<section>
+  <h2>21. Trust Matrix: “External” Does Not Mean the Same Thing Across These Surfaces</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Boundary</th><th>Data authority</th><th>Execution authority</th><th>Primary hazard</th></tr></thead>
+    <tbody>
+      <tr><td>Web search result</td><td>Remote, untrusted content</td><td>No local process by itself</td><td>Prompt injection and citation quality</td></tr>
+      <tr><td>Web fetch URL</td><td>Model-chosen remote target</td><td>Host network reachability</td><td>SSRF/private-network access</td></tr>
+      <tr><td>LSP server</td><td>Local source plus server response</td><td>Process in shared execution world</td><td>Operator-chosen executable and workspace content</td></tr>
+      <tr><td>MCP server</td><td>Remote schemas and result blocks</td><td>External actions or an SDK-spawned child</td><td>Dynamic capability, auth, and spawn confinement</td></tr>
+      <tr><td>Skill body</td><td>Trusted instructions by design</td><td>Indirect authority over later tool choices</td><td>Writable skill roots become prompt-authority roots</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">Security synthesis</div><p>The strongest reusable lesson is to name prompt authority explicitly. Escaping XML-like framing cannot make a Skill body untrusted because following the body is its purpose. Conversely, a Web page must never acquire that authority merely because it arrived through a first-party search tool. Path policy, provider authentication, and prompt provenance solve different problems.</p></div>
+</section>
+
+<section>
+  <h2>22. Focused Codex Comparison: Similar Progressive Disclosure, Broader Documented MCP Policy</h2>
+  <p>This comparison uses only OpenAI's public <a href="https://learn.chatgpt.com/docs/web-search.md">Web search</a>, <a href="https://learn.chatgpt.com/docs/extend/mcp.md">Model Context Protocol</a>, and <a href="https://learn.chatgpt.com/docs/customization/overview.md">Customization</a> documentation, retrieved on 2026-08-13. DeepSeek Harness is analyzed at pinned source; Codex is described only at the public-documentation level. No claim is made about private services or undocumented implementation.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Dimension</th><th>DeepSeek Harness pinned source</th><th>Codex public documentation</th></tr></thead>
+    <tbody>
+      <tr><td>Web</td><td>Provider registry; shipped DeepSeek auxiliary search; fetch disabled for missing SSRF defense</td><td>First-party search; cached by default locally, live/disabled modes; results explicitly treated as untrusted input</td></tr>
+      <tr><td>MCP transports</td><td>Stdio and Streamable HTTP; Tools only</td><td>Stdio and Streamable HTTP; documented server instructions and richer auth</td></tr>
+      <tr><td>MCP controls</td><td>Per-server startup strictness, call timeout, reconnect; no tool allow/deny or per-tool approval in this bridge</td><td>Documented startup/tool timeouts, required server, tool allow/deny, server/per-tool approval modes, OAuth and bearer options</td></tr>
+      <tr><td>Skills</td><td>Summary catalog, on-demand body, separate model/user invocation, durable replacement facts</td><td>Metadata first, <code>SKILL.md</code> on selection, references/scripts as needed; implicit or explicit <code>$</code> invocation</td></tr>
+      <tr><td>LSP</td><td>Closed four-operation seam with optional stdio backend</td><td>The retrieved official manual documents no standalone LSP tool surface; no parity claim is made</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">What each makes especially legible</div><p>DeepSeek Harness's source makes provider selection, catalog durability, result projection, and process seams exceptionally auditable. Codex's public MCP surface documents a more complete operator policy plane—authentication, filtering, required startup, server guidance, and per-tool approval. Both publicly describe progressive Skill disclosure; the DeepSeek source additionally exposes exactly how replacement catalogs become Session facts.</p></div>
+  <aside class="caveat"><strong>Evidence asymmetry:</strong> absence from the retrieved Codex manual proves only that this public manual did not document a standalone LSP surface. It does not prove that no internal, experimental, plugin-provided, or future capability exists.</aside>
+</section>
+
+<section>
+  <h2>23. Transferable Design Rules</h2>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>Stabilize the narrowest honest vocabulary</h3><p>Use fixed tools for product semantics; import dynamic schemas only where interoperability requires it.</p></div>
+    <div><span>2</span><h3>Separate visibility from readiness</h3><p>Stable catalogs help caching, but provider health must be observable independently.</p></div>
+    <div><span>3</span><h3>Make generation swaps explicit</h3><p>Define separately what happens on discovery failure, registration conflict, transport loss, and exhausted recovery.</p></div>
+    <div><span>4</span><h3>Treat instruction stores as authority stores</h3><p>A writable Skill root is not merely documentation storage; it can steer subsequent privileged calls.</p></div>
+  </div>
+  <div class="claim assessment"><div class="claim-label">Final assessment</div><p>The chapter's deepest pattern is progressive capability disclosure with typed ownership. Web hides provider diversity behind stable product semantics; LSP narrows a huge protocol into four reliable questions; MCP accepts dynamism but wraps it in deterministic identity and lifecycle generations; Skills keep routing cheap and instruction authority explicit. The remaining debt appears exactly where a surface crosses a seam it does not own: fetch without network policy, MCP spawn outside the subprocess world, and trusted Skill bodies rooted in mutable files.</p></div>
+  <div class="claim fact"><div class="claim-label">Verification scope</div><p>All DeepSeek claims above are tied to the pinned baseline's production source, shipped configuration, examples, and package documentation. This delivery also ran 16 focused Vitest files across Web, LSP, MCP, and Skills under an isolated temporary root: all 454 tests passed. The Codex comparison is separately bounded to the three linked official pages and their retrieval date. Runtime validation does not turn an optional composition into a shipped default, and passing package tests does not prove real-network safety or third-party server correctness.</p></div>
+</section>

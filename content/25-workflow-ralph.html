@@ -1,0 +1,211 @@
+<section>
+  <h2>结论：Workflow 是前台编排 VM；Ralph 是建立在它之上的固定策略</h2>
+  <div class="thesis"><p>DeepSeek Harness 把编排分成三层：<code>ctx.workflowEngine</code> 定义由持有者负责的 run 合同；worker-thread engine 执行一段模型编写的 JavaScript，并把 <code>agent()</code> 桥接到 subagent seam；面向模型的 consumer 决定模型能够控制哪些脚本和策略。通用 <code>workflow</code> 工具暴露脚本，而 <code>ralph</code> 不暴露——它提供一段构建时固定的循环，只接受目标和受限轮数。</p></div>
+  <p>这让 Workflow 足够强，但不伪装成持久化基础设施。它是一个具有明确并发、取消、JSON 和生命周期边界的前台扇出/聚合机制，而不是 scheduler、可恢复 job 系统、安全 sandbox 或独立 verifier。</p>
+</section>
+
+<section>
+  <h2>1. 三层架构把策略留在 engine 之外</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>层</th><th>负责</th><th>不负责</th></tr></thead>
+    <tbody>
+      <tr><td>Workflow seam</td><td>启动请求、live run、结果词汇、生命周期事件、fatal error 分类</td><td>JavaScript 实现、面向模型的 schema、持久化策略</td></tr>
+      <tr><td>Worker-thread provider</td><td>VM hooks、worker/host 协议、child admission、上限、取消、清理</td><td>模型何时应该使用编排，或由哪个 consumer 暴露</td></tr>
+      <tr><td>Tool consumer</td><td>可见 schema、prompt 指引、结果投影、可选 Session 记录</td><td><code>ctx.workflowEngine</code> 后面的执行机制</td></tr>
+    </tbody>
+  </table></div>
+  <p>请求携带纯 JavaScript body、JSON metadata/args、可选 provider 与 child ceiling，以及一个必需的 live parent Agent。返回的 run 暴露已验证 metadata、永不 reject 的结果 Promise、取消与幂等 dispose。<evidence id="WORKFLOW-SEAM"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">设计解读</div><p>专门策略可以复用同一 engine，而无需给 Agent loop 再加分支。Ralph 正好证明了这一点：它组合已有 workflow/subagent 服务，而不是在核心 runtime 中创造“Ralph 模式”。</p></div>
+</section>
+
+<section>
+  <h2>2. Live run 是由持有者负责的资源，不是 fire-and-forget Promise</h2>
+  <pre><code>start(request)
+  → 发布前验证
+  → 返回 WorkflowRun
+       result: Promise&lt;WorkflowResult&gt;  // 永不 reject
+       cancel(reason?)
+       dispose()                        // 幂等、有界清理</code></pre>
+  <p>这个 seam 明确了所有权。拿到 run 的 caller 必须 dispose；取消与处置有界；listener failure 被隔离；<code>workflow/end</code> 在结果 settle 时恰好触发一次。普通失败通过 <code>completed</code>、<code>cancelled</code> 或 <code>error</code> 数据表达，而不是让公开 result Promise reject。<evidence id="WORKFLOW-LIFECYCLE"></evidence></p>
+  <p>这避免了一个含混状态：Promise reject 究竟表示“脚本失败”，还是“runtime 丢失了所有权”？它也迫使每个 consumer 正视清理，而不是把 child 当作脱离管理的工作。</p>
+</section>
+
+<section>
+  <h2>3. 发布前做请求验证；发布后用结果表达运行失败</h2>
+  <p>Worker provider 会验证并归一化 metadata，用 worker 将要编译的同一个 async wrapper 做 parse check，解析 child provider，并在生成 ID 或发出 <code>workflow/start</code> 之前约束 per-run child override。未知 metadata 字段与畸形 phase 会一次性报告；旧式 <code>export const meta</code> header 会收到有针对性的 parse error。<evidence id="WORKFLOW-START-VALIDATION"></evidence><evidence id="WORKFLOW-META"></evidence></p>
+  <div class="claim fact"><div class="claim-label">提交点</div><p><code>start()</code> 返回之前，无效请求不存在已发布 run；返回以后，script error、worker death、cancellation 与 boundary failure 都通过 run result settle。这与仓库其他位置的事务形状一致：候选对象在变得可观察之前就被拒绝。</p></div>
+</section>
+
+<section>
+  <h2>4. 每个 run 一个全新 Worker Thread：提供 containment，不提供安全边界</h2>
+  <p>每次运行都会获得新的 Node worker。其 ambient environment 被清空，loader flag 被移除，初始化数据通过 structured clone 跨界。模型编写的代码随后在 worker 内的 <code>vm.Context</code> 中执行。这可防止同步脚本阻塞 host event loop，也给 host 一个可以强制终止的线程。<evidence id="WORKFLOW-WORKER-SPAWN"></evidence></p>
+  <aside class="caveat"><strong>明确的非保证：</strong>源码称该 VM “escapable”，并明确说明它不是安全边界。materialization 过程中 getter 和 proxy 可能执行。系统信任模型编写的编排 body，worker thread 用于 containment 与 termination，而不是隔离敌意代码。<evidence id="WORKFLOW-REALM-TRUST"></evidence></aside>
+</section>
+
+<section>
+  <h2>5. 脚本世界被刻意压得很小</h2>
+  <pre><code>globals = {
+  agent(prompt, options?),
+  parallel(thunks),
+  pipeline(items, ...stages),
+  phase(title),
+  log(message),
+  args
+}</code></pre>
+  <p>其中没有 filesystem、network、timer、Cordis context、Node API 或直接 Session handle。初始同步片段受 <code>syncTimeoutMs</code> 限制；第一次 await 之后，协作式 hook check 与 host 的 cancellation grace 共同提供停止机制。一旦 cancellation 或 disposal 开始，若脚本永久停在不再触及 hook 的 Promise 上，host 会在 grace 之后终止它；若没有这种触发，本 engine 并未定义通用 wall-clock deadline。<evidence id="WORKFLOW-VM-GLOBALS"></evidence><evidence id="WORKFLOW-CANCEL-BOUNDARY"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">边界含义</div><p>脚本负责协调 capability，但本身并不拥有这些能力。真实工作属于 child Agent，它会进入自己正常的 tool、permission 与 execution world。</p></div>
+</section>
+
+<section>
+  <h2>6. <code>agent()</code> 是通往既有 Subagent seam 的 RPC bridge</h2>
+  <p>每次调用验证非空 prompt 与一个封闭 option set：<code>label</code>、<code>phase</code>、<code>schema</code>、<code>provider</code>、<code>model</code>。明确 deferred 的 <code>effort</code>、<code>isolation</code>、<code>agentType</code> 会直接失败。Host 随后通过配置好的 subagent provider 启动 child，并传入 workflow 的 live parent、run 级共享取消信号、可选 output schema，以及可选 provider/model override。<evidence id="WORKFLOW-AGENT-OPTIONS"></evidence><evidence id="WORKFLOW-CHILD-BRIDGE"></evidence></p>
+  <p>没有 schema 时，<code>agent()</code> 只拼接最终 text block；有受支持的 object-rooted schema 时，它返回 structured value。一个 clean child 若缺少承诺的 structured output 会变成 <code>null</code>，每个 child handle 都在 <code>finally</code> 中 dispose。<evidence id="WORKFLOW-AGENT-RESULT"></evidence></p>
+</section>
+
+<section>
+  <h2>7. 存在两个相互独立的规模 backstop</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>上限</th><th>默认值</th><th>控制对象</th><th>检查时点</th></tr></thead>
+    <tbody>
+      <tr><td><code>maxConcurrentAgents</code></td><td><code>min(16, max(1, cores - 2))</code></td><td>同时活跃的 <code>agent()</code> 调用</td><td>FIFO slot acquisition</td></tr>
+      <tr><td><code>maxTotalAgents</code></td><td>1000</td><td>单个 run 生命周期内接受的调用</td><td>等待 slot 之前</td></tr>
+      <tr><td><code>maxItemsPerCall</code></td><td>4096</td><td>一次 <code>parallel()</code> 或 <code>pipeline()</code> 的 item 数</td><td>combinator 入口</td></tr>
+    </tbody>
+  </table></div>
+  <p>Total counter 包括正在排队等待 concurrency slot 的调用，因此堵住了 runaway loop 把无界任务塞在小 pool 后面的常见漏洞。Slot waiter 是 FIFO，取消时会 reject。Consumer 可以降低单次 run 的 total cap，但不能超过 engine ceiling。<evidence id="WORKFLOW-CAPS"></evidence><evidence id="WORKFLOW-SLOTS"></evidence></p>
+</section>
+
+<section>
+  <h2>8. <code>parallel()</code> 是 barrier；<code>pipeline()</code> 是逐 item 流动</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Combinator</th><th>执行形状</th><th>普通 throw</th><th>Fatal workflow error</th></tr></thead>
+    <tbody>
+      <tr><td><code>parallel([f, g])</code></td><td>调用所有 thunk 并等待 <code>Promise.all</code></td><td>该位置变成 <code>null</code></td><td>整个脚本失败</td></tr>
+      <tr><td><code>pipeline(items, s1, s2)</code></td><td>每个 item 独立执行 <code>s1 → s2</code>；stage 之间没有全局 barrier</td><td>该 item 变成 <code>null</code>，跳过剩余 stage</td><td>整个脚本失败</td></tr>
+    </tbody>
+  </table></div>
+  <p>两者都经由 <code>Promise.all</code> 返回，所以保留输入位置。Pipeline 因此并不表示“所有 item 完成 stage 1 后再开始 stage 2”；快 item 可以进入下一 stage，而慢 sibling 仍停在上一 stage。<evidence id="WORKFLOW-COMBINATORS"></evidence></p>
+</section>
+
+<section>
+  <h2>9. Error taxonomy 将工作失败与合同失败分开</h2>
+  <p>普通 child stop reason 会变成 <code>null</code>，让脚本能够筛选或聚合部分工作；combinator 内普通用户脚本 throw 也只会把该 item 置 null。但是参数错误、不支持的 option/schema、cap violation、provider start failure、child-result transport rejection、不可序列化输出与 cancellation 都是 typed fatal <code>WorkflowError</code>，不能溶解成 null。<evidence id="WORKFLOW-ERROR-TAXONOMY"></evidence><evidence id="WORKFLOW-FATALITY"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">为何重要</div><p>“一个 reviewer 没有发现结果”与“编排合同已经坏了”不能长得一样。Fatality check 是 host realm 的 <code>instanceof</code>，模型脚本无法伪造一个 plain object 冒充可忽略或 fatal 的 engine error。</p></div>
+</section>
+
+<section>
+  <h2>10. 每个跨 realm 结果都必须是无损 JSON</h2>
+  <p>Materializer 接受有限数值、boolean、string、null、dense array 与 plain object；拒绝 bigint、function、symbol、嵌套 <code>undefined</code>、非有限数、cycle、sparse array、exotic prototype、symbol key 与 array extra property。它用 <code>defineProperty</code> 复制 <code>__proto__</code>，因此数据 key 不会改变 host copy 的 prototype。<evidence id="WORKFLOW-JSON-BOUNDARY"></evidence></p>
+  <p>Child result 从 host 进入 worker 之前还会单独 snapshot。无法完成这一跨越的 child value 会成为 infrastructure failure，而不是被静默损失。<evidence id="WORKFLOW-CHILD-SNAPSHOT"></evidence></p>
+</section>
+
+<section>
+  <h2>11. Cancellation 是只有一个赢家的竞态，随后进入有界 quiescence</h2>
+  <pre><code>cancel(reason)
+  → 关闭新工作 admission
+  → 通知 worker
+  → abort pending/published child 共享的唯一 signal
+  → reject queued slot 与未来 hook call
+  → grace timer
+      └─ 若仍未 settle：补齐缺失 agent-end，settle cancelled，
+         terminate worker</code></pre>
+  <p>首个 worker result、worker death 或 cancellation grace expiry 拥有 terminal settlement。已经获胜的 result 不会被 cleanup callback 改写；竞争中的非 cancel result 若晚于已接受的 cancellation，就会报告 cancelled。Host 会抑制迟到的 phase/log narration，但为每个已发布 child start 保留或合成恰好一个 end event。<evidence id="WORKFLOW-CANCEL-RACE"></evidence><evidence id="WORKFLOW-EVENT-PAIRING"></evidence></p>
+</section>
+
+<section>
+  <h2>12. <code>dispose()</code> 立即开始 child cleanup，并与 worker 共享同一个 grace</h2>
+  <p>Disposal 被 memoize。它移除 input signal、按需取消、立刻开始 dispose 所有已登记 child，等待“result + child quiescence”或 grace 两者中先到者，然后无条件 terminate worker。Per-child disposal 同样 memoize，因此 worker RPC、host disposal 与 death cleanup 会汇合到一个操作。超过 grace 的慢清理会被刻意停止等待，而不是让 run 永远存活；若它之后 reject，则会被记录并隔离。<evidence id="WORKFLOW-DISPOSE"></evidence><evidence id="WORKFLOW-CHILD-QUIESCENCE"></evidence></p>
+  <div class="claim fact"><div class="claim-label">HMR 生命周期</div><p>Engine 在返回 run 之前捕获一个 holder-bound subagent service。卸载 engine 会移除启动新 workflow 的能力，但不会让已接受 run 失去启动和清理 child 的能力。<evidence id="WORKFLOW-HMR-HOLDER"></evidence></p></div>
+</section>
+
+<section>
+  <h2>13. Workflow event 只供观察，并刻意省略返回值</h2>
+  <p>Seam 发出 start、phase、log、agent-start、agent-end 和 end。Phase 只是进度标签，不会调度工作。Listener 收到借用的 identity/outcome snapshot，而非 control handle；listener failure 会被捕获并记录。最终 event 不含 script value：只有 run holder 可以 await 并消费它。<evidence id="WORKFLOW-EVENTS"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">保留所有权</div><p>Observer 可以构建进度 UI 或 metrics，但不能取消 run、修改结果，也不会意外持有 live child-control capability。</p></div>
+</section>
+
+<section>
+  <h2>14. 通用工具增加模型合同和一份窄耐久投影</h2>
+  <p><code>workflow</code> 工具暴露 <code>script</code>、<code>meta</code> 与可选 object-shaped <code>args</code>。Description 就是 authoring specification；独立 system-prompt section 则要求只有在人类明确要求 workflow 或大规模多 Agent 编排时才使用。工具等待前台结果，把非 completed outcome 映射为错误，只限制渲染后的 JSON，并始终 dispose run。<evidence id="WORKFLOW-TOOL-CONTRACT"></evidence><evidence id="WORKFLOW-TOOL-EXECUTE"></evidence></p>
+  <p>仅对 root transport call，它会把 run start/end 与配对 member start/end 投影进 parent Session。Nested dispatch 正常执行，但不写这些记录。Append 失败会禁用该 run 后续 recording，却不影响执行，因此只会留下“无记录”或一个合法连续前缀。<evidence id="WORKFLOW-DURABLE-RECORD"></evidence></p>
+</section>
+
+<section>
+  <h2>15. 耐久记录是 audit trail，不是 workflow recovery</h2>
+  <p>四种 Session event 记录 run name、member sequence/label/phase/child ID、member outcome 与 terminal reason。Package invariant 会拒绝重复 start、未配对 end、有开放 member 的 terminal event 和 terminal 之后的更新，同时允许 crash 后缺少 terminal suffix。<evidence id="WORKFLOW-RECORD-TYPES"></evidence><evidence id="WORKFLOW-RECORD-INVARIANT"></evidence></p>
+  <aside class="caveat"><strong>缺少什么：</strong>模型编写的 script、局部变量、queue state、部分 aggregate 与 VM continuation 都没有被 journal 成可恢复程序。重放 Session 可以重建观察记录，却无法让 worker 从中断的 await 继续。</aside>
+</section>
+
+<section>
+  <h2>16. Ralph 把 script、provider 与 report schema 收回部署控制</h2>
+  <p>面向模型的 Ralph schema 只有必填 <code>objective</code> 和可选 <code>maxRounds</code>。Plugin 拥有固定 JavaScript body、固定 metadata、structured round schema、provider route、handoff limit 与 terminal validation。配置的 provider 必须存在、支持 structured output，并声明自己不继承 parent context。<evidence id="RALPH-CONTRACT"></evidence><evidence id="RALPH-FRESH-PROVIDER"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">安全与产品差异</div><p>通用 Workflow 让 parent model 编写 control flow；Ralph 只让模型提供数据，并运行部署方审核过的 control flow。两者都使用同一个 escapable VM，但 Ralph 暴露给 calling model 的攻击面与可靠性表面小得多。</p></div>
+</section>
+
+<section>
+  <h2>17. Ralph 状态机很小，也很明确</h2>
+  <pre><code>previous = none
+for round in 1..maxRounds:
+  report = await fresh agent(objective, round, previous, workspace rules)
+  null      → round-failed
+  complete  → complete
+  blocked   → blocked
+  continue  → previous = report
+loop exhausted → budget-limited(previous)</code></pre>
+  <p>Report 包含 status、summary、evidence、next steps 与 blocker text。Continue 要求有 next steps 且无 blocker；complete 要求有 evidence、无 next steps、无 blocker；blocked 要求具体 blocker。所有字符串必须 normalized，每个 serialized handoff 必须落在 <code>maxHandoffChars</code> 内。<evidence id="RALPH-SCRIPT"></evidence></p>
+</section>
+
+<section>
+  <h2>18. Fresh-context 路由由 provider 声明门控；连续性保存在 workspace</h2>
+  <p>每一轮 prompt 都说明它既不接收 parent conversation，也不接收之前的 child Session。它只携带 immutable objective、当前 round/cap、上一个 bounded report，以及“把 shared workspace 当长期事实源、先检查再验证”的指令。Live parent 仍向 subagent seam 提供 cwd 与 lineage，但所选 provider 必须承诺 <code>inheritsParentContext:false</code>。<evidence id="RALPH-ROUND-PROMPT"></evidence></p>
+  <p>这形成一套刻意的 memory hierarchy：文件与 working tree 是耐久事实；一份小 report 是协调状态；未提交的对话推理随每轮消失。它可以减少长对话带来的锚定，也使 filesystem hygiene 与诚实 handoff 成为关键条件。</p>
+</section>
+
+<section>
+  <h2>19. Ralph 在 trust boundary 两侧验证同一份 claim</h2>
+  <p>固定脚本在携带 child report 进入下一轮之前先验证一次。Workflow 返回后，TypeScript 再验证 exact terminal object、允许的 key、round count、各 status report 语义与 size。模型选择的 round cap 必须是正 safe integer，且不超过 deployment ceiling；同一数值也成为 engine total-child ceiling。<evidence id="RALPH-DOUBLE-VALIDATION"></evidence><evidence id="RALPH-EXECUTE"></evidence></p>
+  <div class="claim fact"><div class="claim-label">两个不同的输出上限</div><p><code>maxHandoffChars</code> 保护每个跨轮 report 与 canonical terminal report；<code>maxResultChars</code> 只截断 parent-facing rendered text，不会改写 canonical value。<evidence id="RALPH-RENDER"></evidence></p></div>
+</section>
+
+<section>
+  <h2>20. Completion 与 blockage 是 worker report，不是独立判断</h2>
+  <p>Renderer 明确写的是“worker reported completion”或“worker reported a blocker”。Child failure 会立刻结束 run，返回 failed round 与最后一次成功 handoff；它不会重试。Cancellation 与 workflow infrastructure failure 都是错误，绝不是部分成功。只有在最后一个有效 report 仍然表示 continue 时，达到 round cap 才会得到 <code>budget-limited</code>。<evidence id="RALPH-OUTCOMES"></evidence></p>
+  <aside class="caveat"><strong>缺少 evaluator：</strong>没有独立 Agent 判断 evidence 是否真的满足 objective。Ralph 提供全新尝试与有界状态传递，不提供正确性证明。</aside>
+</section>
+
+<section>
+  <h2>21. 默认发行组合真实挂载两种工具，但仍要求显式使用</h2>
+  <p>Base composition 以 <code>spawn</code> provider 挂载 worker engine、通用 workflow tool，以及 deployment ceiling 为 64 轮的 Ralph。Standard CLI preset 在 delegation group 内隔离 workflow service，并挂载同样三件套。Host-plane web bundle 会禁用这些 base row，让选定的 per-session preset 拥有它们。<evidence id="WORKFLOW-SHIPPED-BASE"></evidence><evidence id="WORKFLOW-SHIPPED-PRESET"></evidence><evidence id="WORKFLOW-WEB-ISOLATION"></evidence></p>
+  <p>所以 availability 取决于所选 Agent preset，而 usage policy 仍然保守：普通一两个 child 的 delegation 应使用 subagent tool；Ralph 要求人类直接提出；通用 Workflow 用于明确的大型编排。</p>
+</section>
+
+<section>
+  <h2>22. 聚焦 Codex 对比：相似的 delegation 目标，不同的编排产品</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>问题</th><th>DeepSeek Workflow / Ralph</th><th>Codex 公开合同</th></tr></thead>
+    <tbody>
+      <tr><td>谁编写编排？</td><td>通用 Workflow：parent model 编写 JavaScript；Ralph：部署方发布固定 JavaScript</td><td>Codex 通过文档化的 subagent workflow 与 role config 做委派；其公开指南没有描述面向模型的 JavaScript workflow VM</td></tr>
+      <tr><td>主要 fan-out 单位</td><td>一个前台 run 内的 <code>agent()</code> 调用</td><td>专门 subagent thread，通常用于可并行、可分离工作</td></tr>
+      <tr><td>周期/后台工作</td><td>本子系统不提供</td><td>Scheduled tasks 是另一个文档化产品面</td></tr>
+      <tr><td>Worker 间连续性</td><td>Ralph 使用显式 JSON handoff 与 shared workspace</td><td>公开 multi-agent workflow 下的 parent/subagent summary 与 thread management</td></tr>
+    </tbody>
+  </table></div>
+  <p>Codex 公开指南建议把 subagent 用于独立且以读取为主的探索、测试或 triage，并提醒重叠的 write-heavy 工作会冲突。DeepSeek 的通用 Workflow 增加可编程 <code>parallel</code>/<code>pipeline</code> 聚合，Ralph 则要求 provider 声明每轮使用 fresh context。反过来，Codex 把 <a href="https://learn.chatgpt.com/docs/automations" rel="noreferrer">scheduled tasks</a> 文档化为独立的周期任务产品面；DeepSeek Workflow 明确只在前台运行。参见官方 <a href="https://learn.chatgpt.com/docs/agent-configuration/subagents" rel="noreferrer">Codex subagents 指南</a>。检索于 2026-08-13。</p>
+  <aside class="caveat"><strong>证据不对称：</strong>DeepSeek 一侧是固定 commit 的源码级检查；Codex 一侧仅使用公开产品文档，因此不能据此推断其私有服务实现。</aside>
+</section>
+
+<section>
+  <h2>23. 哪些值得复用，哪些不能泛化</h2>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>复用 seam</h3><p>让 live-run ownership、never-reject result、有界 dispose 和 observe-only event 独立于某一种 engine。</p></div>
+    <div><span>2</span><h3>分离 policy</h3><p>只在必要处暴露自由 control flow；可重复的运维策略应发布固定 workflow。</p></div>
+    <div><span>3</span><h3>给 failure class 命名</h3><p>部分工作失败可以是数据；合同与基础设施失败必须保持 fatal。</p></div>
+    <div><span>4</span><h3>不要过度声称</h3><p>Worker thread 不是 sandbox，event trace 不是 checkpoint，worker completion report 也不是 verification。</p></div>
+  </div>
+  <p>这个子系统最强的想法并不是 JavaScript 本身，而是把编排放进受所有权约束的生命周期，然后让不同 consumer 选择暴露多少控制权。</p>
+</section>
+
+<section>
+  <h2>验证说明</h2>
+  <p>本章在固定源码基线上追踪了 workflow seam、worker-thread host/runtime/realm、通用 workflow consumer、耐久 event invariant、Ralph consumer 与发行组合。定向 Vitest 覆盖 12 个文件，隔离临时根目录下 190 项测试全部通过。Claim 明确区分源码事实与设计评价；Codex 对比仅使用官方公开文档。</p>
+</section>

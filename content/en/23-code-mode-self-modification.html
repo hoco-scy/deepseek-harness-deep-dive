@@ -1,0 +1,230 @@
+<section>
+  <h2>Conclusion: Code Mode is governed tool orchestration; dynamic Cordis is temporary runtime self-modification</h2>
+  <div class="thesis"><p>DeepSeek Harness does not treat “write some code” as a shortcut to broader authority. Code Mode changes only how the model sees and invokes tools: the model submits one <code>run_code</code>, while every <code>tools.*</code> call inside the program returns to the original ToolRuntime and remains subject to the same agent visibility, approval, guards, tool sandbox, and result normalization. Dynamic Cordis is a separate, explicitly opt-in control plane: the model can inspect, define immutable Packages, request activation, and let a temporary Plugin register tools, services, events, or browser UI in the current process. The former is orchestration within one call; the latter is a process-local extension across turns. They are not the same kind of “self-modification.”<evidence id="CODEMODE-MODES"></evidence><evidence id="CODEMODE-POLICY"></evidence><evidence id="CODEMODE-CORDIS-PROMPT"></evidence></p></div>
+  <div class="claim assessment"><div class="claim-label">Most important security conclusion</div><p>Both paths explicitly refuse to present their execution substrate as a security boundary. The worker-thread runtime assigns model code bash-equivalent trust; the dynamic Host VM admits that host-realm helpers are an escape route. These restrictions provide lifecycle convergence, API discipline, and accidental-misuse reduction—not safe execution of hostile code.<evidence id="CODEMODE-WORKER-TRUST"></evidence><evidence id="CODEMODE-HOST-SANDBOX"></evidence></p></div>
+</section>
+
+<section>
+  <h2>1. Start with the shipped composition: CodeRuntime is mounted, but Code Mode and self-modification are still explicit choices</h2>
+  <p>The headless bundle mounts the worker-thread CodeRuntime by default and maps <code>tools.mode</code> to <code>DSH_TOOLS_MODE</code>; the Web bundle uses the same temporary process-wide switch. When the environment variable is unset, the ToolRuntime schema still defaults to <code>native</code>. “A runtime exists” therefore does not mean “the model is using Code Mode.”<evidence id="CODEMODE-HEADLESS-COMPOSITION"></evidence><evidence id="CODEMODE-WEB-COMPOSITION"></evidence></p>
+  <p>The model-facing self-modification surface is narrower still: the advanced headless overlay explicitly adds CodeRuntime, the Cordis Host runner, and <code>tool-cordis</code> together. Self-modification is not an automatic companion to Code Mode; the deployment must deliberately place that toolset in the composition.<evidence id="CODEMODE-SELF-MOD-OPTIN"></evidence></p>
+</section>
+
+<section>
+  <h2>2. Three presentation modes and two enforcement points</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>mode</th><th>Tool schemas sent to the model</th><th>Execution boundary</th></tr></thead>
+    <tbody>
+      <tr><td><code>native</code></td><td>Native tools visible in the current scope</td><td>Native tools are directly callable; no CodeRuntime required</td></tr>
+      <tr><td><code>code</code></td><td>Only <code>run_code</code>, plus a generated SDK</td><td>A model-direct call to any other name gets UNKNOWN_TOOL; nested calls can reach visible tools</td></tr>
+      <tr><td><code>both</code></td><td>Native tools + <code>run_code</code> + SDK</td><td>Both call forms are legal</td></tr>
+    </tbody>
+  </table></div>
+  <p>The deployment default, a preset, or an agent scope can choose presentation; the nearest scope wins, and fiber disposal removes the declaration. <code>run_code</code> is also reserved transport outside the registration layers: restrictions cannot remove it and a scoped registration cannot shadow it.<evidence id="CODEMODE-SCOPE"></evidence><evidence id="CODEMODE-TRANSPORT"></evidence></p>
+  <p>The security-critical property is not prompt prose but the same collapse at both wire and execution boundaries. <code>code</code> sends only the <code>run_code</code> schema; at execution, only a nested dispatch carrying the opaque <code>parent</code> token may cross the collapse. The generated SDK also excludes <code>run_code</code>, so a program cannot recursively create another transport layer.<evidence id="CODEMODE-WIRE"></evidence><evidence id="CODEMODE-EXECUTION"></evidence></p>
+</section>
+
+<section>
+  <h2>3. run_code is language-aware transport, not a promise of a general code interpreter</h2>
+  <p><code>run_code</code> takes two required strings: <code>code</code>, the body of an async function, and a non-empty <code>description</code> used as the UI title. It returns only ordered <code>logs</code> and an optional JSON <code>result</code>; an empty result receives a fixed placeholder.<evidence id="CODEMODE-RUN-SCHEMA"></evidence></p>
+  <p>The tool layer has TypeScript and Python schema/SDK renderers, but the CodeRuntime seam explicitly states that only TypeScript has a published backend today. <code>language</code> and <code>isolation</code> are presentation/diagnostic descriptors, not compatibility or security proofs. A missing runtime or unknown language fails loudly during prompt assembly.<evidence id="CODEMODE-RUNTIME-DESCRIPTORS"></evidence><evidence id="CODEMODE-WIRE"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Static boundary: the language is not bound to one request</div><p>Assembly and execution read live <code>ctx.codeRuntime</code> independently. This makes no observable difference while only one published backend exists. If future HMR swaps to a different language between those reads, however, the model could write against the old SDK and execute on the new runtime. The source records this window explicitly and defers the fix until a second backend exists.<evidence id="CODEMODE-RUNTIME-READS"></evidence></p></div>
+</section>
+
+<section>
+  <h2>4. Worker runtime: a fresh worker per run, four budgets, and one terminal outcome</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Limit</th><th>Default</th><th>What it actually constrains</th></tr></thead>
+    <tbody>
+      <tr><td><code>computeMs</code></td><td>60,000 ms</td><td>The worker's own event-loop busy time; waiting on a slow tool is not charged</td></tr>
+      <tr><td><code>maxWallMs</code></td><td>600,000 ms</td><td>A wall-clock ceiling that never pauses</td></tr>
+      <tr><td><code>maxOutputBytes</code></td><td>67,108,864 bytes</td><td>Combined JSON size of logs plus the final value or failure diagnostic</td></tr>
+      <tr><td><code>maxOldGenerationSizeMb</code></td><td>512 MiB</td><td>The worker's old-generation heap</td></tr>
+    </tbody>
+  </table></div>
+  <p>TypeScript first undergoes erasable type stripping on the Host. Syntax failure or non-erasable syntax such as <code>enum</code> starts no worker. The normal path creates a fresh worker with <code>env:{}</code>, <code>execArgv:[]</code>, a heap resource limit, and captured stdout/stderr.<evidence id="CODEMODE-WORKER-LIMITS"></evidence><evidence id="CODEMODE-WORKER-LIFECYCLE"></evidence></p>
+  <p>The program runs as a strict <code>AsyncFunction</code> body whose explicit parameters are binding namespaces, their typed error classes, and console. Whether completion, timeout, abort, output overflow, worker error, or exit occurs, the Host permits only one terminal outcome and terminates the worker plus drains output pipes before resolving. Runtime disposal likewise aborts and awaits every live worker.<evidence id="CODEMODE-WORKER-BOOT"></evidence><evidence id="CODEMODE-WORKER-LIFECYCLE"></evidence><evidence id="CODEMODE-WORKER-LIMITS"></evidence></p>
+</section>
+
+<section>
+  <h2>5. The data boundary is lossless JSON; the outer output cap does not cover intermediate tool results</h2>
+  <p>The CodeRuntime seam requires binding arguments, binding resolutions, and program completion to be lossless JSON. The worker wire encodes values as a flat token stream and decodes them iteratively, so deep structures do not turn the JavaScript call stack into an implicit limit. Malformed, sparse, cyclic, exotic, non-finite, or incomplete values fail closed.<evidence id="CODEMODE-SEAM"></evidence><evidence id="CODEMODE-FLAT-JSON"></evidence></p>
+  <p>The worker is treated as a hostile peer. The Host revalidates message shape, performs own-property binding lookup, ignores duplicate IDs and junk messages, and snapshots binding resolutions again. The worker likewise snapshots arguments before posting a call. Neither side falls back to lossy “best-effort stringify.”<evidence id="CODEMODE-WORKER-BRIDGE"></evidence><evidence id="CODEMODE-WORKER-BOOT"></evidence></p>
+  <aside class="caveat"><strong>Capacity boundary:</strong> <code>maxOutputBytes</code> covers only outer logs/final value/failure message. The seam explicitly imposes no byte cap on one intermediate binding resolution. A huge tool result can therefore consume serialization, message-port, and worker-heap capacity until the program reduces it or a resource limit terminates the run.<evidence id="CODEMODE-SEAM"></evidence></aside>
+</section>
+
+<section>
+  <h2>6. Nested tools inherit the same runtime governance, not the worker's authority</h2>
+  <pre><code>model → run_code (outer ToolExecution)
+  → worker program calls tools.read(...)
+  → parent token + same agent + same run signal
+  → ToolRuntime.prepare
+      → pre-execute → approval → monotonic guards
+  → ToolRuntime.dispatch
+      → around wrapper → real tool body → its own sandbox/provider
+  → ordered post/finalize → JSON value back to program</code></pre>
+  <p>At program start, the bridge builds the <code>tools</code> namespace from the calling agent's currently visible schemas and excludes <code>run_code</code>. Each call then returns to staged ToolRuntime with the same agent, outer rootCallId, opaque parent token, and run-scoped signal.<evidence id="CODEMODE-BINDINGS"></evidence><evidence id="CODEMODE-NESTED-DISPATCH"></evidence></p>
+  <p><code>parent</code> means only “this call came from inside the transport,” allowing it past the <code>code</code> model-direct collapse. It does not bypass restrictions, approval, guards, around wrappers, a tool's filesystem/shell sandbox, or post-policy. Nor does the worker itself “inherit a filesystem sandbox”: it can request only bindings, and real side effects occur in each tool's provider world.<evidence id="CODEMODE-EXECUTION"></evidence><evidence id="CODEMODE-POLICY"></evidence></p>
+</section>
+
+<section>
+  <h2>7. Every run_code owns a bounded scheduler</h2>
+  <p>The default <code>maxParallelSubCalls=10</code> applies to one program, not as a process-wide semaphore. The driver maintains a pending queue, in-flight set, commit queue, and exclusive flag. Concurrency-safe calls submitted by one program may overlap; an exclusive tool must wait for the pool to drain, run alone, and retain its barrier through post/commit.<evidence id="CODEMODE-MODES"></evidence><evidence id="CODEMODE-SCHEDULER"></evidence></p>
+  <p>Only around-dispatch/body work overlaps. Start events, pre-execute/approval, post/finalization, context deferral, and binding settlement all occupy one ordered lane, while the commit cursor advances in submission order. A tool replaced while queued is reclassified before starting. If it is unloaded after binding enumeration but before invocation, real dispatch resolves the live registry and returns an unknown-tool failure.<evidence id="CODEMODE-SCHEDULER"></evidence><evidence id="CODEMODE-NESTED-DISPATCH"></evidence></p>
+</section>
+
+<section>
+  <h2>8. Two history layers: the model sees the curated outer result; the Session retains the nested trajectory</h2>
+  <p>Program <code>console</code> output and the top-level <code>return</code> form the outer <code>run_code</code> result, and only that result enters later model history. Every internal call separately writes <code>tool/code-dispatch-start</code> and <code>tool/code-dispatch</code>, correlated by exact <code>rootCallId</code>, <code>parentCallId</code>, and <code>subCallId</code>, with an argument snapshot detached from the actual dispatch value.<evidence id="CODEMODE-HISTORY"></evidence><evidence id="CODEMODE-NESTED-DISPATCH"></evidence></p>
+  <p>A nested result's <code>additionalContexts</code> are deferred onto the outer execution during ordered commit. They can therefore survive even if the program later fails. A successful nested result's <code>concludesTurn</code> also propagates outward.<evidence id="CODEMODE-NESTED-DISPATCH"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Static observability boundary</div><p>During ordered commit, the binding resolves to the program before asynchronous <code>shapeDispatchLog → session.append</code> work runs; all log work is guaranteed only to drain before the outer run closes. If an earlier listener is slower than a later one, settle-event append order can differ from binding submission order. Reconstruction should pair by <code>subCallId</code>, not treat nested event sequence as canonical body-completion order.<evidence id="CODEMODE-NESTED-DISPATCH"></evidence><evidence id="CODEMODE-SCHEDULER"></evidence></p></div>
+</section>
+
+<section>
+  <h2>9. Failure and recovery: programs can catch tool errors; runtime failures close the outer call</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Failure layer</th><th>What the program/model sees</th><th>Convergence action</th></tr></thead>
+    <tbody>
+      <tr><td>Nested tool rejection, policy denial, unknown tool</td><td>A <code>ToolCallError</code> rejection in the program; it may catch and continue</td><td>The sub-call still completes post/log/context processing</td></tr>
+      <tr><td>Program exception / invalid output</td><td>Outer <code>CODE_RUN_FAILED</code> with kind, message, and captured logs</td><td>Abort the run-scoped signal; drain started calls and log work</td></tr>
+      <tr><td>Busy/wall timeout, outer abort, OOM/worker exit, output limit</td><td>A distinct failure kind rather than a generic exception</td><td>Terminate the worker; discard late binding resolution</td></tr>
+      <tr><td>Runtime contract misuse</td><td>A <code>run()</code> rejection</td><td>Outer ToolRuntime still materializes a structured tool error</td></tr>
+    </tbody>
+  </table></div>
+  <p>The outer signal triggers the run-scoped abort. Once the program settles for any reason, the bridge rejects queued-unstarted calls, lets started bodies reach quiescence, and awaits durable nested-log work. The outer turn therefore does not leave background sub-calls that can continue producing side effects.<evidence id="CODEMODE-SEAM"></evidence><evidence id="CODEMODE-BINDINGS"></evidence><evidence id="CODEMODE-WORKER-BRIDGE"></evidence></p>
+</section>
+
+<section>
+  <h2>10. Code Mode test invariants</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Pinned invariant</th><th>How the fixture proves it</th></tr></thead>
+    <tbody>
+      <tr><td>native/code/both schemas, SDK, and code-only instruction agree</td><td>Assemble every mode and check prompt-section order</td></tr>
+      <tr><td>Safe calls overlap, exclusive calls form full barriers, and the cap holds</td><td>Gated tools expose live/pending counts before release</td></tr>
+      <tr><td>Pre/post, contexts, and settlement follow submission order; run close drains</td><td>Artificially delay policy, post, and runtime settlement</td></tr>
+      <tr><td>Policy denial, lossy JSON, tool errors, and outer abort fail closed</td><td>Assert program rejection, Session events, and final result</td></tr>
+      <tr><td>The worker survives forged port traffic, timeout, OOM, and late replies</td><td>Inject hostile messages and resource failures directly</td></tr>
+    </tbody>
+  </table></div>
+  <p><evidence id="CODEMODE-TEST-PRESENTATION"></evidence><evidence id="CODEMODE-TEST-SCHEDULER"></evidence><evidence id="CODEMODE-TEST-POLICY-FAILURE"></evidence><evidence id="CODEMODE-TEST-WORKER"></evidence><evidence id="CODEMODE-TEST-WORKER-HOSTILE"></evidence></p>
+</section>
+
+<section>
+  <h2>11. The actual dynamic Cordis model surface has seven tools</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Stage</th><th>Tool</th><th>Effect</th></tr></thead>
+    <tbody>
+      <tr><td>Discover</td><td><code>cordis_inspect_list</code></td><td>List Host/Client Inspect Providers, methods, and schemas</td></tr>
+      <tr><td>Query</td><td><code>cordis_inspect_query</code></td><td>Run a provider-declared read-only query</td></tr>
+      <tr><td>Self-inspect</td><td><code>cordis_inspect_self</code></td><td>Progressively read this Session's Plugins, Packages, source, and diagnostics</td></tr>
+      <tr><td>Define</td><td><code>cordis_define</code></td><td>Append an immutable Package; do not run it</td></tr>
+      <tr><td>Activate</td><td><code>cordis_run</code></td><td>Start run/update for one exact Package</td></tr>
+      <tr><td>Stop</td><td><code>cordis_stop</code></td><td>Retract live effects while retaining definitions, grants, and version pointers</td></tr>
+      <tr><td>Delete</td><td><code>cordis_undefine</code></td><td>Permanently remove the Plugin and all Packages</td></tr>
+    </tbody>
+  </table></div>
+  <p>The surface deliberately separates inspect, define, and execute. <code>cordis_define</code> only validates parameters, ownership, and syntax, then stores source; it does not itself modify the repository, configuration, or disk, and it triggers no Plugin effects. Actual capability exists only after <code>cordis_run</code> and is determined by the live services the Package obtains.<evidence id="CODEMODE-CORDIS-INSPECT"></evidence><evidence id="CODEMODE-CORDIS-DEFINE"></evidence><evidence id="CODEMODE-CORDIS-LIFECYCLE-TOOLS"></evidence></p>
+</section>
+
+<section>
+  <h2>12. Inspect is runtime schema discovery, not a business-API proxy</h2>
+  <p><code>inspect_list</code> returns the provider/method/schema directory; <code>inspect_query</code> calls only read-only methods declared there. A Host query validates input, executes locally, and validates output again. A Client query publishes an agent-identified request and waits for the first valid same-Session page response or cancellation. An invalid page response cannot claim the query.<evidence id="CODEMODE-CORDIS-INSPECT"></evidence><evidence id="CODEMODE-INSPECT-REGISTRY"></evidence></p>
+  <p><code>inspect_self</code> uses progressive disclosure: no IDs returns only Plugin summaries; pluginId returns Packages, version pointers, and the latest run; only pluginId plus packageId returns exact immutable source and Host/Client diagnostics. The tool shape enforces “read current facts before repair” instead of leaving that discipline to prompt hope.<evidence id="CODEMODE-CORDIS-INSPECT"></evidence></p>
+</section>
+
+<section>
+  <h2>13. Three identities and two version pointers</h2>
+  <pre><code>Plugin (pluginId, session owner)
+  ├─ Package A (packageId, immutable host/client source)
+  ├─ Package B (packageId, immutable host/client source)
+  ├─ currentPackageId → last fully successful Package
+  ├─ nextPackageId    → in-progress or most recently failed target
+  └─ active/latest Run (pluginRunId, mode, Host/Client diagnostics)</code></pre>
+  <p><code>pluginId</code> names the logical object that can evolve; <code>packageId</code> names an immutable source version; <code>pluginRunId</code> names one activation attempt and ties together approval, Host/Client loading, private handlers, and errors. The registry separately stores per-Package and future-version grants.<evidence id="CODEMODE-REGISTRY"></evidence><evidence id="CODEMODE-CORDIS-PROMPT"></evidence></p>
+  <p>Define-new mints an ID from a semantic prefix. Define-existing must find the same Session owner, then always mints a new packageId and appends it. Old source is never overwritten in place, and there is no hidden path that edits a running function body.<evidence id="CODEMODE-DEFINE-RUNNER"></evidence></p>
+</section>
+
+<section>
+  <h2>14. Host-only and Client-bearing Packages have different activation contracts</h2>
+  <p>A Host-only Package starts within the same call and returns running on success. A Package with a Client half and no grant creates an approval request and immediately returns <code>awaiting-approval</code>; an authorized version returns <code>starting</code> without pretending browser activation has succeeded.<evidence id="CODEMODE-RUN-APPROVAL"></evidence><evidence id="CODEMODE-CORDIS-LIFECYCLE-TOOLS"></evidence></p>
+  <p>The page strictly performs Host half → Client source for the exact active run → browser load → settlement. Request, Package, and Run identities must all match. The first valid response claims the pending request, while unknown, duplicate, or stale responses return <code>accepted:false</code>.<evidence id="CODEMODE-CLIENT-ORCHESTRATION"></evidence><evidence id="CODEMODE-APPROVAL-SETTLE"></evidence></p>
+  <p>Final success, user rejection, or technical failure occurs after the original tool call and returns to the owning Agent through steering context. Failure carries current/next pointers and directs repair on the same Plugin; rejection explicitly forbids automatically asking for the same approval again.<evidence id="CODEMODE-OUTCOME-STEERING"></evidence></p>
+</section>
+
+<section>
+  <h2>15. “Preserve current after failure” is not automatic runtime rollback</h2>
+  <p>An update first <code>await retract(old run)</code>, then starts the target Package. Host-only success can commit immediately. A Client-bearing version remains <code>client-pending</code> until successful page settlement, and only <code>commitActivation</code> then points <code>currentPackageId</code> to the new version and deletes <code>nextPackageId</code>.<evidence id="CODEMODE-ACTIVATION"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">The most easily misread recovery semantic</div><p>When the target fails, the old <code>currentPackageId</code> is indeed preserved for explicit rollback, but the old run was already stopped at update start and is not restarted automatically. Pointer rollback and live-effect rollback are different operations. Recovery must explicitly <code>run</code> current again or repair next and retry <code>update</code>.<evidence id="CODEMODE-CORDIS-PROMPT"></evidence><evidence id="CODEMODE-TEST-VERSIONING"></evidence></p></div>
+</section>
+
+<section>
+  <h2>16. How a dynamic tool enters Code Mode: the next assembly and the next run snapshot</h2>
+  <p>A Host Package cannot hand an arbitrary object to the registry. It must pass through <code>harness.defineTool</code>, which validates parameter schema, output renderer, and execute, then JSON-normalizes cross-realm schema/result/presentation data. <code>registerTool</code> accepts only definitions carrying the internal marker. Guarded <code>ctx.tools.get</code> returns only a schema view, never live <code>execute</code> that could bypass the policy pipeline.<evidence id="CODEMODE-DYNAMIC-TOOL-GUARD"></evidence></p>
+  <p>After registration, the next prompt assembly rebuilds the SDK from the agent's live visible set; the next <code>run_code</code> builds a fixed <code>tools</code> namespace from the schemas visible at that moment. An already-running program does not gain a new property. Conversely, if a tool is stopped/unregistered after namespace enumeration but before invocation, the binding name remains, yet dispatch re-resolves the live registry and fails as unknown tool.<evidence id="CODEMODE-SDK-LIVE"></evidence><evidence id="CODEMODE-BINDINGS"></evidence><evidence id="CODEMODE-TEST-SCHEDULER"></evidence></p>
+  <aside class="caveat"><strong>Definition-binding window:</strong> schema/name is snapshotted at run start, while the concrete ToolDefinition resolves by name at body dispatch. That yields desirable fail-closed behavior after unload, but it also means schema and a later replacement body are not atomically bound. Extension authors should not change arguments or concurrency semantics during same-name hot replacement and expect an in-flight program to remain coherent.</aside>
+</section>
+
+<section>
+  <h2>17. A dynamic Package “sandbox” is a capability facade, not hostile-code isolation</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Face</th><th>Accidental-misuse controls</th><th>What it cannot promise</th></tr></thead>
+    <tbody>
+      <tr><td>Host</td><td>Fresh <code>node:vm</code> realm; process/Buffer absent; require/fetch/timer traps; declared-service ctx facade</td><td>Host-realm helpers permit escape; async bodies escape <code>vmTimeoutMs</code></td></tr>
+      <tr><td>Client</td><td><code>new Function</code> closure parameters shadow ambient globals; React/styles/host.call are explicit; declared-service facade</td><td>Not a browser security realm; code is as trusted as the Host that accepted it</td></tr>
+      <tr><td>Services</td><td>Undeclared properties, framework internals, and Context-valued returns are denied; tools expose controlled register/schema only</td><td>Allowed services connect to the real runtime; authority depends on composition</td></tr>
+    </tbody>
+  </table></div>
+  <p>Host source receives compile-only prechecks at define time and executes as an async body at run time; <code>vmTimeoutMs</code> surrounds only synchronous evaluation. The Host facade preserves reversible lifecycle verbs and declared services while withholding framework internals such as <code>root</code>, <code>fiber</code>, and raw registries.<evidence id="CODEMODE-HOST-SANDBOX"></evidence><evidence id="CODEMODE-HOST-CODE"></evidence><evidence id="CODEMODE-CONTEXT-GUARD"></evidence></p>
+  <p>The Client half is not a module bundle either. It is a plain-JavaScript async body explicitly receiving React, console, styles, <code>host.call</code>, and trap functions. Its ctx twin also gates services through inject and adds ownership guards for slots/theme.<evidence id="CODEMODE-CLIENT-EVAL"></evidence><evidence id="CODEMODE-CLIENT-GUARD"></evidence></p>
+</section>
+
+<section>
+  <h2>18. The lifecycle invariant is not merely “can load,” but “reaches quiescence after stop”</h2>
+  <p>Host retraction first removes the active run from the registry, unregisters package-private handlers, then <code>await fiber.dispose()</code>, and finally broadcasts a retract event carrying exact Plugin/Package/Run identity. Listeners, tools, services, timers, and other effects registered through fiber-aware APIs therefore unwind with their owner.<evidence id="CODEMODE-RETRACT"></evidence></p>
+  <p>The browser runner serializes load/unload per pluginId. A new revision tears down the old entry first; exact-run retraction cannot delete a newer activation; one failure is contained in the queue tail so a later repair can continue; runner disposal unloads every page Package.<evidence id="CODEMODE-CLIENT-LIFECYCLE"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Control-plane isolation is not effect isolation</div><p>Session ownership protects Plugin define/run/stop/inspect actions, but a Host Package hangs under a process-local root group and can use real services granted by the composition. Ownership prevents another Session from manipulating the record; it does not by itself prove every registration or service side effect is confined to the owning Session. Concrete scope still belongs to the capability being used.<evidence id="CODEMODE-REGISTRY"></evidence><evidence id="CODEMODE-RETRACT"></evidence><evidence id="CODEMODE-CONTEXT-GUARD"></evidence></p></div>
+</section>
+
+<section>
+  <h2>19. Self-modification lives only in process memory; @pluginId is not source persistence</h2>
+  <p>The registry, ID counters, Package source, grants, current/next pointers, and active run all live in process memory. Definitions disappear on process restart. <code>cordis_define</code> writes no repository/configuration/disk state and performs no automatic promotion. A durable implementation still requires normal code and configuration changes.<evidence id="CODEMODE-CORDIS-PROMPT"></evidence><evidence id="CODEMODE-REGISTRY"></evidence></p>
+  <p>An exact <code>@pluginId</code> in a user message injects source-free identity/version context at pre-step and explicitly requires <code>cordis_inspect_self</code> with pluginId+packageId before appending a new Package. Non-user-source messages do not trigger it. A removed, cross-Session, or restart-lost ID becomes unavailable rather than silently creating a replacement Plugin.<evidence id="CODEMODE-REFERENCE"></evidence></p>
+  <p><code>cordis_stop</code> is reversible deactivation: it cancels pending approval and retracts the live run while retaining definitions, grants, and version pointers. <code>cordis_undefine</code> permanently removes the record. Neither operation creates anything recoverable at the next process start.<evidence id="CODEMODE-CORDIS-LIFECYCLE-TOOLS"></evidence><evidence id="CODEMODE-RETRACT"></evidence></p>
+</section>
+
+<section>
+  <h2>20. Dynamic self-modification test invariants</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Proven</th><th>Key assertion</th></tr></thead>
+    <tbody>
+      <tr><td>Define-only behavior, syntax precheck, Session ownership</td><td>Bad source never enters the registry; another Session sees absence</td></tr>
+      <tr><td>Host-only path, approval, rejection, asynchronous Client failure</td><td>State and identity stay exact; failure retracts only the run it started</td></tr>
+      <tr><td>Context/tool escape closure</td><td><code>ctx.root</code>, Context returns, undeclared services, and raw execute are denied</td></tr>
+      <tr><td>Version failure semantics</td><td>Current is preserved, next/attempt remain diagnosable, and an attaching-page failure does not stop an existing Host run</td></tr>
+      <tr><td>Client replace/serialize/recover/dispose</td><td>Per-Plugin ordering, exact retract, and failed loads do not wedge the queue</td></tr>
+    </tbody>
+  </table></div>
+  <p><evidence id="CODEMODE-TEST-DYNAMIC-RUNNER"></evidence><evidence id="CODEMODE-TEST-DYNAMIC-GUARD"></evidence><evidence id="CODEMODE-TEST-VERSIONING"></evidence><evidence id="CODEMODE-TEST-CLIENT-LIFECYCLE"></evidence></p>
+</section>
+
+<section>
+  <h2>21. Static findings and documentation drift</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Finding</th><th>Class</th><th>Impact / recommendation</th></tr></thead>
+    <tbody>
+      <tr><td>Prompt assembly and execution do not bind one runtime language</td><td>Future multi-backend hot-swap window</td><td>Bind runtime/generation to the request before a second backend ships</td></tr>
+      <tr><td>Binding resolutions are outside the outer output byte cap</td><td>Memory and transport capacity boundary</td><td>Tools should paginate/reduce; consider a per-binding cap if needed</td></tr>
+      <tr><td>Asynchronous listeners can reorder nested settle-log appends</td><td>Observability boundary</td><td>Pair by subCallId; do not infer completion order from event sequence</td></tr>
+      <tr><td>Host <code>vmTimeoutMs</code> covers synchronous work only</td><td>Trust boundary</td><td>Run trusted code only; do not treat the VM as a hostile sandbox</td></tr>
+      <tr><td>Update failure preserves the old current pointer, but the old run is stopped</td><td>Recovery-semantic trap</td><td>UI/Agent should state that an explicit rollback run is required</td></tr>
+      <tr><td>tool-cordis README still describes five old tools, old <code>cordis_inspect</code>, and <code>ackTimeoutMs</code></td><td>Confirmed documentation drift</td><td>Treat the seven-tool production source as authoritative and update README/generated links</td></tr>
+    </tbody>
+  </table></div>
+  <p><evidence id="CODEMODE-RUNTIME-READS"></evidence><evidence id="CODEMODE-SEAM"></evidence><evidence id="CODEMODE-NESTED-DISPATCH"></evidence><evidence id="CODEMODE-HOST-CODE"></evidence><evidence id="CODEMODE-ACTIVATION"></evidence><evidence id="CODEMODE-README-DRIFT"></evidence></p>
+</section>
+
+<section>
+  <h2>22. Final assessment</h2>
+  <div class="claim assessment"><div class="claim-label">Architecture judgment</div><p>Code Mode's strongest design choice is reducing “the model writes a program” to a presentation and composition technique. The capability set, approvals, and tool sandboxes are neither copied into the worker nor bypassed; nested dispatch reuses the single ToolRuntime. Dynamic Cordis's strongest choice is decomposing self-modification into inspect → immutable define → identified activation → reversible stop, with browser approval and asynchronous failure represented as explicit state. Their shared weakness is naming that invites overestimating isolation: worker, node:vm, and browser closure all provide trusted-code containment/API discipline.</p></div>
+  <div class="claim fact"><div class="claim-label">Validation status</div><p>This chapter traces ToolRuntime, the run_code bridge, CodeRuntime seam, worker bootstrap/transport, Cordis inspect/registry/Host/Client runners, guards, composition, and tests line by line at the pinned upstream commit. Targeted Vitest covered 14 files, and all 376 tests passed. The run confirms the current presentation, scheduling, failure, approval, versioning, guard, and teardown invariants; the language-binding, nested-log ordering, binding-capacity, and asynchronous-VM boundaries above remain static source findings rather than claimed regression proofs.</p></div>
+</section>

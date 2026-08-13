@@ -1,0 +1,230 @@
+<section>
+  <h2>结论：Code Mode 是“受治理的工具编排”，动态 Cordis 才是“临时运行时自修改”</h2>
+  <div class="thesis"><p>DeepSeek Harness 没有把“写一段代码”当作扩大权限的捷径。Code Mode 只改变模型看见和调用工具的方式：模型提交一个 <code>run_code</code>，程序里的每个 <code>tools.*</code> 调用仍回到原来的 ToolRuntime，继续接受同一 agent 的可见性、审批、guard、工具沙箱和结果规范化。动态 Cordis 则是另一套显式 opt-in 的控制面：模型可以 inspect、定义不可变 Package、请求激活，并让临时 Plugin 在当前进程中注册工具、服务、事件或浏览器 UI。前者是一次调用内的 orchestration，后者是跨 turn 的 process-local extension；二者不能混称为同一种“自修改”。<evidence id="CODEMODE-MODES"></evidence><evidence id="CODEMODE-POLICY"></evidence><evidence id="CODEMODE-CORDIS-PROMPT"></evidence></p></div>
+  <div class="claim assessment"><div class="claim-label">最重要的安全结论</div><p>两条路径都明确拒绝把运行载体包装成安全边界：worker-thread runtime 把模型代码视为 bash-equivalent trust；动态 Host VM 也承认 host-realm helper 可逃逸。这里的限制用于生命周期收敛、API discipline 与降低误用，不用于运行敌对代码。<evidence id="CODEMODE-WORKER-TRUST"></evidence><evidence id="CODEMODE-HOST-SANDBOX"></evidence></p></div>
+</section>
+
+<section>
+  <h2>1. 先看 shipped composition：CodeRuntime 已挂载，Code Mode 与自修改仍需显式选择</h2>
+  <p>Headless bundle 默认挂载 worker-thread CodeRuntime，并把 <code>tools.mode</code> 接到 <code>DSH_TOOLS_MODE</code>；Web bundle 使用同一临时进程级开关。环境变量未设置时，ToolRuntime schema 的默认仍是 <code>native</code>。因此“runtime 存在”不等于“模型正使用 Code Mode”。<evidence id="CODEMODE-HEADLESS-COMPOSITION"></evidence><evidence id="CODEMODE-WEB-COMPOSITION"></evidence></p>
+  <p>模型可见的自修改工具更窄：高级 headless overlay 才同时加入 CodeRuntime、Cordis Host runner 与 <code>tool-cordis</code>。也就是说，自修改不是 Code Mode 自动附带的能力；部署者必须显式把该工具集放进 composition。<evidence id="CODEMODE-SELF-MOD-OPTIN"></evidence></p>
+</section>
+
+<section>
+  <h2>2. 三种展示模式，两个同时生效的收缩点</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>mode</th><th>模型收到的 tool schema</th><th>执行边界</th></tr></thead>
+    <tbody>
+      <tr><td><code>native</code></td><td>当前作用域的可见原生工具</td><td>原生工具可直接调用；无需 CodeRuntime</td></tr>
+      <tr><td><code>code</code></td><td>仅 <code>run_code</code>，另加生成 SDK</td><td>模型直调其他名字会得到 UNKNOWN_TOOL；嵌套调用可进入可见工具</td></tr>
+      <tr><td><code>both</code></td><td>原生工具 + <code>run_code</code> + SDK</td><td>两种调用形态都合法</td></tr>
+    </tbody>
+  </table></div>
+  <p>展示模式可由部署默认、preset 或 agent scope 选择，最近作用域胜出并随 fiber dispose 撤销。<code>run_code</code> 又是注册层之外的保留 transport：restriction 不能删它，scoped registration 不能 shadow 它。<evidence id="CODEMODE-SCOPE"></evidence><evidence id="CODEMODE-TRANSPORT"></evidence></p>
+  <p>安全关键不在 prompt 文字，而在 wire 与 execution 两端使用相同 collapse：<code>code</code> 只发送 <code>run_code</code> schema；真正执行时，只有带 opaque <code>parent</code> token 的嵌套 dispatch 才能越过 collapse。生成 SDK 同时排除 <code>run_code</code>，所以程序不能递归创建第二层 transport。<evidence id="CODEMODE-WIRE"></evidence><evidence id="CODEMODE-EXECUTION"></evidence></p>
+</section>
+
+<section>
+  <h2>3. run_code 是语言感知 transport，不是通用代码解释器承诺</h2>
+  <p><code>run_code</code> 有两个必填字符串：作为 async function body 的 <code>code</code>，以及用于 UI 标题的非空 <code>description</code>。它只返回有序 <code>logs</code> 与可选 JSON <code>result</code>；没有输出时给出固定占位文本。<evidence id="CODEMODE-RUN-SCHEMA"></evidence></p>
+  <p>Tool 层准备了 TypeScript 与 Python 的 schema/SDK renderer，但 CodeRuntime seam 明确说当前只有 TypeScript 有已发布后端；<code>language</code> 和 <code>isolation</code> 只是 presentation/diagnostic descriptor，不是兼容性或安全证明。缺 runtime 或未知语言会在 prompt assembly 时 fail loud。<evidence id="CODEMODE-RUNTIME-DESCRIPTORS"></evidence><evidence id="CODEMODE-WIRE"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">静态边界：语言没有绑定到一次请求</div><p>assembly 与执行分别读取 live <code>ctx.codeRuntime</code>。当前只有一个 published backend 时没有可见差异；若未来 HMR 在两次读取之间切换到另一语言，模型可能按旧 SDK 写程序、却交给新 runtime。源码已明确记录该窗口并延期到第二后端出现时修复。<evidence id="CODEMODE-RUNTIME-READS"></evidence></p></div>
+</section>
+
+<section>
+  <h2>4. Worker runtime：每次 fresh worker，四种预算，一个统一终局</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>限制</th><th>默认</th><th>真正约束的对象</th></tr></thead>
+    <tbody>
+      <tr><td><code>computeMs</code></td><td>60,000 ms</td><td>worker 自身 event-loop busy time；等待慢工具不计入</td></tr>
+      <tr><td><code>maxWallMs</code></td><td>600,000 ms</td><td>绝不暂停的 wall-clock ceiling</td></tr>
+      <tr><td><code>maxOutputBytes</code></td><td>67,108,864 bytes</td><td>logs + 最终 value 或 failure diagnostic 的合并 JSON 大小</td></tr>
+      <tr><td><code>maxOldGenerationSizeMb</code></td><td>512 MiB</td><td>worker old-generation heap</td></tr>
+    </tbody>
+  </table></div>
+  <p>TypeScript 先在 Host 侧做 erasable type stripping；语法或 <code>enum</code> 一类 non-erasable syntax 失败时不会启动 worker。正常路径创建 <code>env:{}</code>、<code>execArgv:[]</code>、带 heap resource limit 的 fresh worker，并捕获 stdout/stderr。<evidence id="CODEMODE-WORKER-LIMITS"></evidence><evidence id="CODEMODE-WORKER-LIFECYCLE"></evidence></p>
+  <p>程序以 strict <code>AsyncFunction</code> body 运行，显式形参只有 binding namespaces、它们的 typed error classes 与 console。无论正常完成、timeout、abort、output overflow、worker error 或 exit，Host 都只让一个终局获胜，并在 resolve 前 terminate worker、等待输出 pipe drain；runtime dispose 也会 abort 并 await 所有 live workers。<evidence id="CODEMODE-WORKER-BOOT"></evidence><evidence id="CODEMODE-WORKER-LIFECYCLE"></evidence><evidence id="CODEMODE-WORKER-LIMITS"></evidence></p>
+</section>
+
+<section>
+  <h2>5. 数据边界只有 lossless JSON；外层输出 cap 不覆盖中间工具结果</h2>
+  <p>CodeRuntime seam 要求 binding arguments、binding resolutions 与程序 completion 都是 lossless JSON。Worker wire 把值编码成扁平 token stream，并用迭代算法解码，因此深层结构不会把 JS 调用栈当作隐含限制；畸形、稀疏、循环、exotic、非有限数字或不完整值会 fail closed。<evidence id="CODEMODE-SEAM"></evidence><evidence id="CODEMODE-FLAT-JSON"></evidence></p>
+  <p>Worker 被当作 hostile peer：Host 重验消息形状，只做 own-property binding lookup，忽略重复 ID 与垃圾消息，并再次 snapshot binding resolution。相反，worker 也会在发出调用前 snapshot 参数。两端都拒绝“尽量 stringify”的有损降级。<evidence id="CODEMODE-WORKER-BRIDGE"></evidence><evidence id="CODEMODE-WORKER-BOOT"></evidence></p>
+  <aside class="caveat"><strong>容量边界：</strong><code>maxOutputBytes</code> 只约束外层 logs/final value/failure message。Seam 明确不对一次中间 binding resolution 施加字节上限；超大工具结果仍会占用序列化、message port 与 worker heap，直到程序把它裁剪或资源上限终止运行。<evidence id="CODEMODE-SEAM"></evidence></aside>
+</section>
+
+<section>
+  <h2>6. 嵌套工具继承的是“同一运行时治理”，不是 worker 的权限</h2>
+  <pre><code>model → run_code (outer ToolExecution)
+  → worker program calls tools.read(...)
+  → parent token + same agent + same run signal
+  → ToolRuntime.prepare
+      → pre-execute → approval → monotonic guards
+  → ToolRuntime.dispatch
+      → around wrapper → real tool body → its own sandbox/provider
+  → ordered post/finalize → JSON value back to program</code></pre>
+  <p>每次程序启动时，bridge 从调用 agent 的当前可见 schema 构造 <code>tools</code> namespace，并排除 <code>run_code</code>。每个调用再携带相同 agent、outer rootCallId、opaque parent token 与 run-scoped signal 回到 staged ToolRuntime。<evidence id="CODEMODE-BINDINGS"></evidence><evidence id="CODEMODE-NESTED-DISPATCH"></evidence></p>
+  <p><code>parent</code> 只表示“这是 transport 内部调用”，用于绕过 <code>code</code> 的模型直调收缩；它不会跳过 restriction、approval、guard、around wrapper、工具自身的 filesystem/shell sandbox 或 post-policy。Worker 本身也没有“继承一个文件系统沙箱”；它只能请求 bindings，真正副作用发生在各工具自己的 provider 世界。<evidence id="CODEMODE-EXECUTION"></evidence><evidence id="CODEMODE-POLICY"></evidence></p>
+</section>
+
+<section>
+  <h2>7. 每次 run_code 都有自己的 bounded scheduler</h2>
+  <p>默认 <code>maxParallelSubCalls=10</code>，只对这一段程序有效，不是进程级 semaphore。Driver 维护 pending queue、in-flight set、commit queue 与 exclusive flag：同一段程序提交的 concurrency-safe 调用可重叠；exclusive 工具必须等待池排空、独占执行，并一直占住 barrier 到 post/commit 完成。<evidence id="CODEMODE-MODES"></evidence><evidence id="CODEMODE-SCHEDULER"></evidence></p>
+  <p>并发只发生在 around-dispatch/body。start event、pre-execute/approval、post/finalization、context deferral 和 binding settle 都位于单一有序 lane；commit cursor 以程序提交顺序推进。工具在排队期间被替换时，classifier 会在启动前重读；工具在 binding 枚举后被卸载时，真正 dispatch 会按 live registry 解析并返回 unknown-tool failure。<evidence id="CODEMODE-SCHEDULER"></evidence><evidence id="CODEMODE-NESTED-DISPATCH"></evidence></p>
+</section>
+
+<section>
+  <h2>8. 两层历史：模型只看 curated outer result，Session 保留 nested trajectory</h2>
+  <p>程序的 <code>console</code> 输出与顶层 <code>return</code> 组成 outer <code>run_code</code> result，只有这一份进入后续模型历史。每个内部调用另写 <code>tool/code-dispatch-start</code> 和 <code>tool/code-dispatch</code>，以 <code>rootCallId</code>、<code>parentCallId</code>、<code>subCallId</code> 精确关联，并保存与实际 dispatch 分离的参数快照。<evidence id="CODEMODE-HISTORY"></evidence><evidence id="CODEMODE-NESTED-DISPATCH"></evidence></p>
+  <p>Nested result 的 <code>additionalContexts</code> 会在有序 commit 时 defer 到 outer execution；即使程序随后失败，这些上下文仍可随 outer error result 保留。成功 nested result 的 <code>concludesTurn</code> 也会向外传播。<evidence id="CODEMODE-NESTED-DISPATCH"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">静态可观测性边界</div><p>Binding 在 ordered commit 中先 resolve 给程序，再异步执行 <code>shapeDispatchLog → session.append</code>；所有 log work 只保证在 outer run 关闭前排空。若前一个 listener 比后一个慢，settle event 的 append 顺序可能不同于 binding 提交顺序。重建应按 <code>subCallId</code> 配对，不能把 nested event seq 当作 canonical body-completion order。<evidence id="CODEMODE-NESTED-DISPATCH"></evidence><evidence id="CODEMODE-SCHEDULER"></evidence></p></div>
+</section>
+
+<section>
+  <h2>9. 故障与恢复：工具错误可由程序捕获，runtime 故障关闭整个 outer call</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>失败层</th><th>程序/模型看到什么</th><th>收敛动作</th></tr></thead>
+    <tbody>
+      <tr><td>Nested tool 拒绝、policy deny、unknown tool</td><td>程序中的 <code>ToolCallError</code> rejection；可 catch 后继续</td><td>该 sub-call 仍完成 post/log/context pipeline</td></tr>
+      <tr><td>Program exception / invalid output</td><td>outer <code>CODE_RUN_FAILED</code>，带 kind、message 与已捕获 logs</td><td>abort run-scoped signal，排空已启动与日志工作</td></tr>
+      <tr><td>busy/wall timeout、outer abort、OOM/worker exit、output limit</td><td>对应独立 failure kind，不伪装成普通 exception</td><td>terminate worker；晚到 binding resolution 被丢弃</td></tr>
+      <tr><td>Runtime contract misuse</td><td><code>run()</code> rejection</td><td>outer ToolRuntime 仍将其物化为结构化工具错误</td></tr>
+    </tbody>
+  </table></div>
+  <p>Outer signal 会触发 run-scoped abort；程序一旦结束，不论成功还是失败，bridge 都立即拒绝 queued-unstarted 调用、让 started body 达到 quiescence，并等待 durable nested log work。这样 outer turn 不会在后台遗留仍可产生副作用的子调用。<evidence id="CODEMODE-SEAM"></evidence><evidence id="CODEMODE-BINDINGS"></evidence><evidence id="CODEMODE-WORKER-BRIDGE"></evidence></p>
+</section>
+
+<section>
+  <h2>10. Code Mode 的测试不变量</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>已固定的不变量</th><th>fixture 证明方式</th></tr></thead>
+    <tbody>
+      <tr><td>native/code/both 的 schema、SDK 与 code-only 指令一致</td><td>分别 assemble 三种 mode，并检查 prompt section 顺序</td></tr>
+      <tr><td>安全调用可重叠，exclusive 形成完整 barrier，cap 生效</td><td>gated tools 在释放前检查 live/pending 数量</td></tr>
+      <tr><td>pre/post、context 与 settle 按提交顺序；run 结束会 drain</td><td>人工延迟 policy、post 与 runtime settlement</td></tr>
+      <tr><td>policy deny、lossy JSON、tool error、outer abort 均 fail closed</td><td>从程序 rejection、Session events 与最终结果三面断言</td></tr>
+      <tr><td>worker 能承受伪造 port traffic、timeout、OOM、late reply</td><td>直接注入 hostile messages 与资源失败</td></tr>
+    </tbody>
+  </table></div>
+  <p><evidence id="CODEMODE-TEST-PRESENTATION"></evidence><evidence id="CODEMODE-TEST-SCHEDULER"></evidence><evidence id="CODEMODE-TEST-POLICY-FAILURE"></evidence><evidence id="CODEMODE-TEST-WORKER"></evidence><evidence id="CODEMODE-TEST-WORKER-HOSTILE"></evidence></p>
+</section>
+
+<section>
+  <h2>11. 动态 Cordis 的真实模型面是七个工具</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>阶段</th><th>工具</th><th>效果</th></tr></thead>
+    <tbody>
+      <tr><td>发现</td><td><code>cordis_inspect_list</code></td><td>列出 Host/Client Inspect Providers、方法与 schema</td></tr>
+      <tr><td>查询</td><td><code>cordis_inspect_query</code></td><td>运行 provider 声明的只读查询</td></tr>
+      <tr><td>自省</td><td><code>cordis_inspect_self</code></td><td>分层读取当前 Session 的 Plugin、Package、source 与诊断</td></tr>
+      <tr><td>定义</td><td><code>cordis_define</code></td><td>追加不可变 Package；不运行</td></tr>
+      <tr><td>激活</td><td><code>cordis_run</code></td><td>按 exact Package 发起 run/update</td></tr>
+      <tr><td>停用</td><td><code>cordis_stop</code></td><td>撤销 live effects，保留定义、grant 与版本指针</td></tr>
+      <tr><td>删除</td><td><code>cordis_undefine</code></td><td>永久删除 Plugin 及全部 Package</td></tr>
+    </tbody>
+  </table></div>
+  <p>这组接口刻意把 inspect、define 与 execute 分开。<code>cordis_define</code> 只做参数、ownership 与语法校验并保存 source；它本身不修改仓库、配置或磁盘，也不触发 Plugin effects。真正能力只在 <code>cordis_run</code> 后由 Package 获取的 live services 决定。<evidence id="CODEMODE-CORDIS-INSPECT"></evidence><evidence id="CODEMODE-CORDIS-DEFINE"></evidence><evidence id="CODEMODE-CORDIS-LIFECYCLE-TOOLS"></evidence></p>
+</section>
+
+<section>
+  <h2>12. Inspect 是运行时 schema discovery，不是业务 API 代理</h2>
+  <p><code>inspect_list</code> 给出 provider/method/schema 目录；<code>inspect_query</code> 只调用该目录中声明的只读方法。Host query 在本地验证输入、执行、再次验证输出；Client query 发布带 agent identity 的请求，等待第一个同 Session 的有效页面响应或调用取消。错误页面响应不会抢走 query。<evidence id="CODEMODE-CORDIS-INSPECT"></evidence><evidence id="CODEMODE-INSPECT-REGISTRY"></evidence></p>
+  <p><code>inspect_self</code> 采用渐进披露：无 ID 只列 Plugin summaries，只有 pluginId 时返回 packages/version pointers/latest run，同时给出 pluginId 与 packageId 才返回 exact immutable source 与 Host/Client diagnostics。它把“先看当前事实再修复”做成工具形状，而不是靠 prompt 希望模型自觉。<evidence id="CODEMODE-CORDIS-INSPECT"></evidence></p>
+</section>
+
+<section>
+  <h2>13. 三种 identity 与两个 version pointer</h2>
+  <pre><code>Plugin (pluginId, session owner)
+  ├─ Package A (packageId, immutable host/client source)
+  ├─ Package B (packageId, immutable host/client source)
+  ├─ currentPackageId → last fully successful Package
+  ├─ nextPackageId    → in-progress or most recently failed target
+  └─ active/latest Run (pluginRunId, mode, Host/Client diagnostics)</code></pre>
+  <p><code>pluginId</code> 是可持续修改的逻辑对象；<code>packageId</code> 是不可覆盖的 source version；<code>pluginRunId</code> 是一次 activation attempt，并串联 approval、Host/Client load、private handler 与错误。Registry 另存 per-Package grant 与 future-version grant。<evidence id="CODEMODE-REGISTRY"></evidence><evidence id="CODEMODE-CORDIS-PROMPT"></evidence></p>
+  <p>Define new 会 mint semantic-prefix ID；define existing 必须找到同 Session owner，随后总是 mint 新 packageId 并 append。旧 source 不会被原地改写，也没有“编辑正在运行函数体”的隐藏路径。<evidence id="CODEMODE-DEFINE-RUNNER"></evidence></p>
+</section>
+
+<section>
+  <h2>14. Host-only 与 Client-bearing Package 走不同 activation contract</h2>
+  <p>Host-only Package 在同一调用中直接启动，并在成功后返回 running。带 Client half 的 Package 若没有 grant，会创建 approval request 并立即返回 <code>awaiting-approval</code>；已授权版本返回 <code>starting</code>，也不假装浏览器已经成功。<evidence id="CODEMODE-RUN-APPROVAL"></evidence><evidence id="CODEMODE-CORDIS-LIFECYCLE-TOOLS"></evidence></p>
+  <p>页面侧严格按 Host half → exact active run 的 Client source → browser load → settlement 运行。Request、Package 与 Run identity 必须全部匹配；第一个有效 response claim pending request，未知、重复或陈旧 response 返回 <code>accepted:false</code>。<evidence id="CODEMODE-CLIENT-ORCHESTRATION"></evidence><evidence id="CODEMODE-APPROVAL-SETTLE"></evidence></p>
+  <p>最终成功、用户拒绝或技术失败发生在原工具调用之后，通过 steering context 回到 owning Agent。失败消息带 current/next pointers，并要求在同一 Plugin 上 inspect、append corrected Package、再重试；用户拒绝则明确禁止自动重复索要同一批准。<evidence id="CODEMODE-OUTCOME-STEERING"></evidence></p>
+</section>
+
+<section>
+  <h2>15. “失败后保留 current”不等于自动运行时回滚</h2>
+  <p>Update 会先 <code>await retract(old run)</code>，再启动目标 Package。Host-only 成功可立即 commit；Client-bearing 版本先停在 <code>client-pending</code>，只有页面成功 settlement 后 <code>commitActivation</code> 才把 <code>currentPackageId</code> 指向新版本并删除 <code>nextPackageId</code>。<evidence id="CODEMODE-ACTIVATION"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">最容易误读的恢复语义</div><p>目标失败时，旧 <code>currentPackageId</code> 确实保留，便于显式 rollback；但旧 run 已在更新开始时停止，不会自动重启。因此指针回滚与 live-effect 回滚是两件事。正确恢复是用 <code>run</code> 显式重新激活 current，或修复 next 后再 <code>update</code>。<evidence id="CODEMODE-CORDIS-PROMPT"></evidence><evidence id="CODEMODE-TEST-VERSIONING"></evidence></p></div>
+</section>
+
+<section>
+  <h2>16. 动态工具如何进入 Code Mode：下一次 assembly 与下一次 run 的快照</h2>
+  <p>Host Package 不能交一份任意对象给 registry。它必须先经 <code>harness.defineTool</code> 校验参数 schema、output renderer、execute，并把跨 realm 的 schema/result/presentation data JSON-normalize；<code>registerTool</code> 只接受带内部 marker 的 definition。Guarded <code>ctx.tools.get</code> 也只返回 schema view，不泄漏 live <code>execute</code> 供 Package 绕过 policy pipeline。<evidence id="CODEMODE-DYNAMIC-TOOL-GUARD"></evidence></p>
+  <p>工具注册后，下一次 prompt assembly 会从该 agent 的 live visible set 重建 SDK；下一次 <code>run_code</code> 又从当时 schemas 构造固定的 <code>tools</code> namespace。已经运行中的程序不会自动增加新 property；反过来，若某工具在 namespace 枚举后、真正调用前被 stop/unregister，binding 名仍存在，但 dispatch 会按 live registry 重新解析并 fail unknown-tool。<evidence id="CODEMODE-SDK-LIVE"></evidence><evidence id="CODEMODE-BINDINGS"></evidence><evidence id="CODEMODE-TEST-SCHEDULER"></evidence></p>
+  <aside class="caveat"><strong>Definition binding 窗口：</strong>schema/name 在 run 开始时 snapshot，具体 ToolDefinition 在每次 body dispatch 时按名称解析。这带来良性的“卸载后 fail closed”，也意味着 schema 与 later replacement body 之间不是原子绑定；扩展作者不应在同名热替换中改变参数或并发语义而期待 in-flight program 自动一致。</aside>
+</section>
+
+<section>
+  <h2>17. 动态 Package 的“沙箱”是 capability façade，不是敌对代码隔离</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>面</th><th>降低误用的机制</th><th>不能承诺的事</th></tr></thead>
+    <tbody>
+      <tr><td>Host</td><td>fresh <code>node:vm</code> realm；process/Buffer 缺席；require/fetch/timer traps；declared-service ctx façade</td><td>host-realm helpers 可逃逸；async body 不受 <code>vmTimeoutMs</code> 限制</td></tr>
+      <tr><td>Client</td><td><code>new Function</code> closure 参数遮蔽 ambient globals；React/styles/host.call 显式注入；declared-service façade</td><td>不是 browser security realm；代码与接受它的 Host 同等受信任</td></tr>
+      <tr><td>Services</td><td>未声明 property、framework internals、Context-valued return 被拒绝；tools 只暴露受控 register/schema</td><td>允许的 service 连接真实 runtime，能力大小取决于 composition</td></tr>
+    </tbody>
+  </table></div>
+  <p>Host source 在 define 时 compile-only 预检，run 时以 async body 执行；<code>vmTimeoutMs</code> 只包围同步求值。Host façade 保留可逆 lifecycle verbs 与声明的 services，拒绝 <code>root</code>、<code>fiber</code>、raw registry 等 framework internals。<evidence id="CODEMODE-HOST-SANDBOX"></evidence><evidence id="CODEMODE-HOST-CODE"></evidence><evidence id="CODEMODE-CONTEXT-GUARD"></evidence></p>
+  <p>Client half 也不是模块 bundle：它是 plain JavaScript async body，显式收到 React、console、styles、<code>host.call</code> 与 trap functions。其 ctx twin 同样按 inject whitelist services，并给 slots/theme 额外 ownership guard。<evidence id="CODEMODE-CLIENT-EVAL"></evidence><evidence id="CODEMODE-CLIENT-GUARD"></evidence></p>
+</section>
+
+<section>
+  <h2>18. Lifecycle 的核心不是“能加载”，而是 stop 后达到 quiescence</h2>
+  <p>Host retract 先从 registry 移除 active run，注销 package-private handlers，随后 <code>await fiber.dispose()</code>，最后广播 exact Plugin/Package/Run 的 retract event。所有通过 fiber-aware API 注册的 listener、tool、service、timer 等 effects 因此随 owner 反向撤销。<evidence id="CODEMODE-RETRACT"></evidence></p>
+  <p>浏览器 runner 对同一 pluginId 的 load/unload 建立串行 queue：新 revision 会先 teardown 旧 entry；exact-run retract 不会误删更新后的 activation；单次失败被 queue tail 吸收，后续修复仍能继续；runner dispose 会卸载全部页面 package。<evidence id="CODEMODE-CLIENT-LIFECYCLE"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">控制面隔离不等于 effect 隔离</div><p>Plugin 的 define/run/stop/inspect action 由 session ownership 保护，但 Host package 挂在 process-local root group 下，并可使用 composition 授予的真实 services。Ownership 防止别的 Session 操纵记录，不自动证明所有注册或 service side effects 只影响 owning Session；具体作用域仍由被调用的 capability 决定。<evidence id="CODEMODE-REGISTRY"></evidence><evidence id="CODEMODE-RETRACT"></evidence><evidence id="CODEMODE-CONTEXT-GUARD"></evidence></p></div>
+</section>
+
+<section>
+  <h2>19. 自修改只活在进程内；@pluginId 不是 source persistence</h2>
+  <p>Registry、ID counters、Package source、grants、current/next pointers 与 active run 都是 process memory。进程重启后定义消失；<code>cordis_define</code> 不写 repository/config/disk，也没有自动 promotion。要获得持久实现，仍需正常修改代码与配置。<evidence id="CODEMODE-CORDIS-PROMPT"></evidence><evidence id="CODEMODE-REGISTRY"></evidence></p>
+  <p>用户消息中的精确 <code>@pluginId</code> 会在 pre-step 注入 source-free identity/version context，并明确要求先用 pluginId+packageId 调 <code>cordis_inspect_self</code> 读取 source，再 append 新 Package。非 user-source 消息不会触发；已删除、跨 Session 或重启丢失的 ID 会返回 unavailable，而不是悄悄创建替代 Plugin。<evidence id="CODEMODE-REFERENCE"></evidence></p>
+  <p><code>cordis_stop</code> 是可逆停用：取消 pending approval、撤销 live run，但保留 definitions、grants 与 version pointers。<code>cordis_undefine</code> 才永久删除记录；两者都不会恢复到下一次进程启动。<evidence id="CODEMODE-CORDIS-LIFECYCLE-TOOLS"></evidence><evidence id="CODEMODE-RETRACT"></evidence></p>
+</section>
+
+<section>
+  <h2>20. 动态自修改的测试不变量</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>已证明</th><th>关键断言</th></tr></thead>
+    <tbody>
+      <tr><td>define-only、语法预检、Session ownership</td><td>坏 source 不入 registry；其他 Session 看起来像 absent</td></tr>
+      <tr><td>Host-only、approval、拒绝、异步 Client failure</td><td>状态与 identity 正确，失败只撤销自己启动的 run</td></tr>
+      <tr><td>Context/tool escape closure</td><td><code>ctx.root</code>、Context return、未声明 service、raw execute 都被拒绝</td></tr>
+      <tr><td>Version failure semantics</td><td>current pointer 保留、next/attempt 可诊断、attached page failure 不停既有 Host run</td></tr>
+      <tr><td>Client replace/serialize/recover/dispose</td><td>每 Plugin 有序，exact retract，新 load 失败不 wedge queue</td></tr>
+    </tbody>
+  </table></div>
+  <p><evidence id="CODEMODE-TEST-DYNAMIC-RUNNER"></evidence><evidence id="CODEMODE-TEST-DYNAMIC-GUARD"></evidence><evidence id="CODEMODE-TEST-VERSIONING"></evidence><evidence id="CODEMODE-TEST-CLIENT-LIFECYCLE"></evidence></p>
+</section>
+
+<section>
+  <h2>21. 静态 findings 与文档漂移</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Finding</th><th>分类</th><th>影响 / 建议</th></tr></thead>
+    <tbody>
+      <tr><td>Prompt assembly 与 execution 未绑定同一 runtime language</td><td>未来多后端热切换窗口</td><td>第二 backend 前把 runtime/generation 绑定到 request</td></tr>
+      <tr><td>Binding resolution 不受 outer output byte cap</td><td>内存与传输容量边界</td><td>工具自行分页/裁剪；必要时增加 per-binding cap</td></tr>
+      <tr><td>Nested settle log append 可被异步 listener 重排</td><td>可观测性边界</td><td>按 subCallId 配对，不按 event seq 推断完成顺序</td></tr>
+      <tr><td>Host <code>vmTimeoutMs</code> 只管同步部分</td><td>信任边界</td><td>只运行受信代码；不能把 VM 当 hostile sandbox</td></tr>
+      <tr><td>Update failure 保留旧 current pointer，但旧 run 已停</td><td>恢复语义陷阱</td><td>UI/Agent 明示需要显式 rollback run</td></tr>
+      <tr><td>tool-cordis README 仍写旧五工具、旧 <code>cordis_inspect</code> 与 <code>ackTimeoutMs</code></td><td>已确认文档漂移</td><td>以七工具生产源码为准并更新 README/generated links</td></tr>
+    </tbody>
+  </table></div>
+  <p><evidence id="CODEMODE-RUNTIME-READS"></evidence><evidence id="CODEMODE-SEAM"></evidence><evidence id="CODEMODE-NESTED-DISPATCH"></evidence><evidence id="CODEMODE-HOST-CODE"></evidence><evidence id="CODEMODE-ACTIVATION"></evidence><evidence id="CODEMODE-README-DRIFT"></evidence></p>
+</section>
+
+<section>
+  <h2>22. 最终评价</h2>
+  <div class="claim assessment"><div class="claim-label">架构判断</div><p>Code Mode 最成熟的地方，是把“模型写程序”降级成一种 presentation 与 composition technique：能力集合、审批和工具沙箱没有被复制到 worker，也没有被绕开，而是通过 nested dispatch 复用唯一 ToolRuntime。动态 Cordis 最成熟的地方，则是把自修改拆成 inspect → immutable define → identified activation → reversible stop，并把 browser approval 与异步失败变成显式状态。两者共同的短板不是控制流模糊，而是名称容易让人高估隔离：worker、node:vm 与 browser closure 都是受信代码的 containment/API discipline。</p></div>
+  <div class="claim fact"><div class="claim-label">验证状态</div><p>本章在固定上游 commit 上逐行追踪 ToolRuntime、run_code bridge、CodeRuntime seam、worker bootstrap/transport、Cordis inspect/registry/Host/Client runner、guard、composition 与测试。定向 Vitest 覆盖 14 个文件，376 项测试全部通过。测试证明现有 presentation、调度、失败、approval、versioning、guard 与 teardown 不变量保持绿色；上节列出的语言绑定、nested log 顺序、binding 容量与异步 VM 边界仍是源码静态发现，不冒充已有回归证明。</p></div>
+</section>

@@ -235,7 +235,11 @@ for (const lang of ["en", "zh"]) {
     if (chapter.status === "verified" && !existsSync(source)) {
       fail(`${lang}: verified chapter ${chapter.slug} has no substantive source`);
     }
-    const raw = existsSync(source) ? readFileSync(source, "utf8") : placeholder(chapter, lang);
+    // A queued source may exist while research runs in parallel. Keep it out of
+    // the public build until the manifest deliberately promotes the chapter.
+    const raw = chapter.status !== "queued" && existsSync(source)
+      ? readFileSync(source, "utf8")
+      : placeholder(chapter, lang);
     const content = replaceEvidence(replaceComponents(raw, lang), evidenceUsage, lang);
     const isEnglish = lang === "en";
     const pageOutput = renderPage({ lang, manifest, chapter, index, content,

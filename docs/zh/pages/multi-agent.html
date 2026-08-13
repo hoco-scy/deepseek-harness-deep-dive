@@ -6,7 +6,7 @@
 <body data-page="multi-agent" data-baseline="47f943859bef60e4160492346772ded9b24f765a" data-lang="zh">
   <header class="topbar"><button class="icon-button nav-toggle" type="button" data-nav-toggle aria-label="打开章节目录" aria-expanded="false">☰</button>
     <a class="brand" href="../index.html"><span class="brand-mark">DS</span><span>Harness 系统拆解</span></a>
-    <span class="topbar-meta">固定基线 47f943859b · 21 已复核 / 1 撰写中 / 36 章</span>
+    <span class="topbar-meta">固定基线 47f943859b · 26 已复核 / 1 撰写中 / 36 章</span>
     <div class="topbar-actions"><a class="language-switch" href="../../pages/multi-agent.html" lang="en" aria-label="阅读本章英文版">English</a><button class="icon-button" type="button" data-theme-toggle aria-label="切换明暗主题">◐</button></div></header>
   <div class="layout"><aside class="sidebar" data-sidebar aria-label="章节目录"><input class="filter" data-chapter-filter type="search" placeholder="筛选章节……" aria-label="筛选章节"><section class="nav-part" data-part><h2 class="part-title">导论</h2>
     <a class="chapter-link" data-chapter-item href="../pages/reading-guide.html">
@@ -38,12 +38,12 @@
     <a class="chapter-link" data-chapter-item href="../pages/sandbox-filesystem.html">
       <span class="chapter-number">20</span><span>Sandbox、Filesystem 与观察策略</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link" data-chapter-item href="../pages/shell-terminal-jobs.html">
       <span class="chapter-number">21</span><span>Shell、PTY、Terminal 与后台作业</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link" data-chapter-item href="../pages/web-lsp-mcp-skill.html">
-      <span class="chapter-number">22</span><span>Web、LSP、MCP 与 Skill</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/code-mode-self-modification.html">
-      <span class="chapter-number">23</span><span>Code Mode、自修改与动态插件</span><span class="status-dot queued" title="待研究"></span></a></section><section class="nav-part" data-part><h2 class="part-title">编排</h2>
+      <span class="chapter-number">22</span><span>Web、LSP、MCP 与 Skill</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link" data-chapter-item href="../pages/code-mode-self-modification.html">
+      <span class="chapter-number">23</span><span>Code Mode、自修改与动态插件</span><span class="status-dot verified" title="已复核"></span></a></section><section class="nav-part" data-part><h2 class="part-title">编排</h2>
     <a class="chapter-link current" data-chapter-item href="../pages/multi-agent.html">
-      <span class="chapter-number">24</span><span>多 Agent 协同</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/workflow-ralph.html">
-      <span class="chapter-number">25</span><span>Workflow 与 Ralph</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/inbox-steering-continuation.html">
-      <span class="chapter-number">26</span><span>Inbox、Steering 与 Continuation</span><span class="status-dot queued" title="待研究"></span></a></section><section class="nav-part" data-part><h2 class="part-title">可靠性与产品面</h2>
+      <span class="chapter-number">24</span><span>多 Agent 协同</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link" data-chapter-item href="../pages/workflow-ralph.html">
+      <span class="chapter-number">25</span><span>Workflow 与 Ralph</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link" data-chapter-item href="../pages/inbox-steering-continuation.html">
+      <span class="chapter-number">26</span><span>Inbox、Steering 与 Continuation</span><span class="status-dot verified" title="已复核"></span></a></section><section class="nav-part" data-part><h2 class="part-title">可靠性与产品面</h2>
     <a class="chapter-link" data-chapter-item href="../pages/failure-recovery.html">
       <span class="chapter-number">27</span><span>重试、错误、取消与恢复</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/observability.html">
       <span class="chapter-number">28</span><span>可观测、Telemetry 与轨迹</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/api-sdk-acp.html">
@@ -56,10 +56,284 @@
       <span class="chapter-number">34</span><span>缺口、限制与待验证问题</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/glossary-evidence.html">
       <span class="chapter-number">35</span><span>术语、证据目录与源码索引</span><span class="status-dot queued" title="待研究"></span></a></section></aside>
     <main class="main"><div class="page-shell"><article class="article" data-article><header><div class="page-kicker"><span>编排</span><span>·</span><span>第 24 章</span></div>
-      <h1>多 Agent 协同</h1><p class="subtitle">统一 seam 下的进程内、Fork、ACP、Codex、Claude Code 与 SDK 后端</p><div class="page-meta"><span class="status queued">待研究</span><span>上游 47f943859b</span><span>范围: 分析 provider registry、spawn/fork、上下文继承、continuation activation、控制工具、报告与作业集成。</span></div></header>
-      <section class="placeholder"><p class="eyebrow">研究队列</p><h2>本章尚未进入结论状态</h2>
-    <p><strong>当前范围:</strong> 分析 provider registry、spawn/fork、上下文继承、continuation activation、控制工具、报告与作业集成。</p><p>页面已经纳入全量研究地图，但尚未完成源码控制流复核。以下是升级为“已复核”之前必须覆盖的检查面：</p>
-    <ul class="placeholder-checks"><li>实际 bundle / profile 装配入口</li><li>公开类型、事件与配置 schema</li><li>正常控制流与状态突变时机</li><li>并发、scope、所有权与 cleanup</li><li>错误、取消、重试和降级分支</li><li>持久化、projection 与 replay 语义</li><li>生产路径测试与运行时不变量</li><li>优势、代价、限制与待验证问题</li></ul></section><section class="learning-notes" aria-labelledby="learning-notes-title"><h2 id="learning-notes-title">我的学习体会</h2>
+      <h1>多 Agent 协同</h1><p class="subtitle">统一 seam 下的进程内、Fork、ACP、Codex、Claude Code 与 SDK 后端</p><div class="page-meta"><span class="status verified">已复核</span><span>上游 47f943859b</span><span>范围: 分析 provider registry、spawn/fork、上下文继承、continuation activation、控制工具、报告与作业集成。</span></div></header>
+      <section>
+  <h2>结论：这不是“群体智能调度器”，而是一组可组合的委派生命周期</h2>
+  <div class="thesis"><p>DeepSeek Harness 的多 Agent 能力由四件事拼成：命名 <code>SubagentProvider</code> seam、一次性 <code>SubagentRun</code>、可冷恢复的 continuable child Session 及其进程内 <code>Activation</code> epoch，以及模型可见的委派/控制工具。这套 subagent subsystem 没有一个统一的 swarm、共享黑板、投票器或任务 DAG；协作来自父子 Session、inbox、持久 descriptor 和可选 provider 的组合。</p></div>
+  <p>这个结论很重要：看到 <code>subagent</code> 并不能推出子 Agent 是否继承历史、是否能继续对话、是否由 Job 管理，甚至不能推出它运行在同一进程。Provider 只承诺它明确声明的能力；不支持的 <code>outputSchema</code>、深度限制、工具过滤和 persona 会在启动前失败，而不是被静默忽略。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/types.ts#L75-L323" title="Subagent capability 与 provider seam: Provider 显式声明四项启动能力、父对话继承属性、one-shot start 与可选 prepareContinuable；不同 child 可并发且 continuable 生命周期由 manager 而非 provider 拥有。" aria-label="证据 MULTIAGENT-SEAM">MULTIAGENT-SEAM</a></p>
+  <div class="claim fact"><div class="claim-label">实际装配</div><p>Base bundle 注册 service、spawn/fork backend、控制与列表工具，并把 spawn 绑定为 continuable、fork 绑定为 one-shot；Web bundle 保留全局 registry/backend，却把模型可见工具移到每 Session preset。这里的“多 Agent”既是 runtime 能力，也是 composition 选择。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/bundle/base/cordis.patch.yml#L292-L338" title="Base bundle 的多 Agent 装配: Base 注册 subagent service、spawn/fork provider、控制/列表工具和 report setup，并将 spawn 配为 continuable、fork 配为 one-shot。" aria-label="证据 MULTIAGENT-BASE-COMPOSITION">MULTIAGENT-BASE-COMPOSITION</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/bundle/web-app/cordis.patch.yml#L367-L390" title="Web host plane 与 Agent plane 的 subagent 分界: Web 保留跨 Session 的 registry/backend 在 host plane，并禁用 base 的模型控制/委派工具以交给 Session preset。" aria-label="证据 MULTIAGENT-WEB-PLANE">MULTIAGENT-WEB-PLANE</a></p></div>
+</section>
+
+<section>
+  <h2>1. 真实拓扑：Provider 建子节点，Manager 管可继续会话</h2>
+  <pre><code>模型工具（名称可配置）
+  subagent / subagent_fork
+        │
+        ├─ foreground ─────────→ SubagentRuntime.start(provider)
+        │                            └→ provider.start() → SubagentRun
+        ├─ one-shot background → Jobs → provider.start() → SubagentRun
+        └─ continuable bg ─────→ ContinuationManager
+                                     ├→ provider.prepareContinuable()（仅 seed 数据）
+                                     ├→ Agent create / resume + inbox
+                                     └→ durable Session + Activation epoch
+
+全局控制：send_message / interrupt_agent / list_agents
+子级返回：report（仅 continuable in-process child）</code></pre>
+  <p><code>SubagentProvider.start()</code> 拥有一次性 child 的发布前创建；返回 run 后，持有者负责等待结果并 dispose。对 continuable child，provider 只贡献“是否 seed 父历史”这份 detached data；身份、组合、Agent handle、消息、冷恢复、所有权和销毁全部由 continuation manager 接管。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/types.ts#L75-L323" title="Subagent capability 与 provider seam: Provider 显式声明四项启动能力、父对话继承属性、one-shot start 与可选 prepareContinuable；不同 child 可并发且 continuable 生命周期由 manager 而非 provider 拥有。" aria-label="证据 MULTIAGENT-SEAM">MULTIAGENT-SEAM</a></p>
+  <aside class="caveat"><strong>术语边界：</strong>本仓库没有一个固定名为 <code>delegate</code> 或 <code>spawn_agent</code> 的通用 runtime 指令。委派工具名由配置决定；随附配置使用 <code>subagent</code> 与 <code>subagent_fork</code>，控制工具才是全局固定名。</aside>
+</section>
+
+<section>
+  <h2>2. 一个工具定义，实际分成三条执行路线</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>路线</th><th>触发</th><th>返回提交点</th><th>后续控制</th></tr></thead>
+    <tbody>
+      <tr><td>Foreground one-shot</td><td><code>run_in_background:false</code></td><td>child 结束且 run 已 dispose 后返回 output</td><td>没有可继续 ID</td></tr>
+      <tr><td>Background one-shot</td><td><code>backgroundMode:one-shot</code> 且显式 <code>true</code></td><td>Job 注册后返回 <code>jobId</code></td><td><code>job_output</code>/<code>job_kill</code></td></tr>
+      <tr><td>Background continuable</td><td><code>backgroundMode:continuable</code> 且省略或传 <code>true</code></td><td>初始消息被 child inbox 接受即返回 <code>subagentId</code></td><td><code>send_message</code>/<code>interrupt_agent</code></td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">路由事实</div><p><code>backgroundMode</code> 既选后台机制，也决定省略参数时的默认值；即使 provider 支持 continuation，显式前台仍走 <code>start()</code> 的 one-shot 合同。Continuable 启动返回时，模型请求甚至还不必开始，初始 prompt 也可能尚未被 claim 成 <code>user/message</code> event；acceptance 本身已记录为 Inbox splice。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/tool-subagent/src/index.ts#L246-L429" title="委派工具的三条执行路线: run_in_background 与 backgroundMode 选择 foreground one-shot、Job-backed one-shot 或 continuable background；三者返回值和提交点不同。" aria-label="证据 MULTIAGENT-TOOL-ROUTES">MULTIAGENT-TOOL-ROUTES</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/continuation.ts#L388-L457" title="Continuable child 的启动事务: Manager 预留 ID、快照 descriptor/policy、准备 seed、materialize child，并仅在初始消息被 inbox 接受后返回 childId/messageId；之前失败完全回滚。" aria-label="证据 MULTIAGENT-CONTINUABLE-START">MULTIAGENT-CONTINUABLE-START</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/tests/continuation.spec.ts#L101-L191" title="Inbox acceptance 提交点测试: 测试证明 startContinuable 返回的 messageId 就是已接受 inbox 消息；acceptance 已记录为 splice，但此时尚未 claim 成 user/message，模型请求也尚未发出。" aria-label="证据 MULTIAGENT-CONTINUATION-ACCEPTANCE-TEST">MULTIAGENT-CONTINUATION-ACCEPTANCE-TEST</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent/src/inbox.ts#L128-L192" title="Inbox splice 先于 live 更新耐久提交: Inbox splice 先 append durable agent/inbox/spliced，成功后才更新 live inbox 并发布 inserted 通知。" aria-label="证据 MULTIAGENT-INBOX-SPLICE">MULTIAGENT-INBOX-SPLICE</a></p></div>
+  <p>因此“后台 Agent”不是一种状态：one-shot 后台是普通 Job，continuable 后台是有 durable Session ID 的对话。把两者都画成 running/done 会丢掉最重要的控制差异。</p>
+</section>
+
+<section>
+  <h2>3. Provider 矩阵：同一个 seam，六种不同隔离边界</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Provider</th><th>进程/上下文</th><th>父对话</th><th>Continuable</th><th>Start capabilities</th></tr></thead>
+    <tbody>
+      <tr><td><code>spawn</code></td><td>同进程，独立 Agent/Session</td><td>无</td><td>是</td><td>schema、depth、filter、persona 全部支持</td></tr>
+      <tr><td><code>fork</code></td><td>同进程，独立 Agent/Session</td><td>已完成 Turn 前缀</td><td>实现了</td><td>四项全部支持</td></tr>
+      <tr><td><code>acp</code></td><td>外部 ACP 进程</td><td>无</td><td>否</td><td>无</td></tr>
+      <tr><td><code>codex</code></td><td>每次新 app-server 进程</td><td>无</td><td>否</td><td>无</td></tr>
+      <tr><td><code>claude-code</code></td><td>官方 SDK/CLI 子进程</td><td>无</td><td>否</td><td>无</td></tr>
+      <tr><td><code>dsh-sdk</code></td><td>完整独立 runtime 进程</td><td>无</td><td>否</td><td>无</td></tr>
+    </tbody>
+  </table></div>
+  <p>Spawn/fork 是真正进入本地父子图的 backend；外部 provider 不继承父对话，唯一可能来自父级的上下文是 workspace cwd（ACP/SDK 也可改用配置的 cwd），并通过 one-shot result seam 返回。ACP、Codex、Claude Code 与 SDK package 是可选能力，不等于默认产品面：Standard/Code preset 中 Codex 与 Claude Code 的工具行明确 <code>disabled</code>。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent-spawn-in-process/src/index.ts#L34-L64" title="In-process spawn provider: Spawn 支持全部四项能力、不会 seed 父对话，同时实现 one-shot start 与 fresh continuable preparation。" aria-label="证据 MULTIAGENT-SPAWN-PROVIDER">MULTIAGENT-SPAWN-PROVIDER</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent-fork-in-process/src/index.ts#L40-L94" title="In-process fork provider 与 continuable 注释: Fork 只复制到最后 turn/end 的平衡前缀、支持全部四项能力并实现 prepareContinuable；源码注释同时称没有 shipped continuable caller。" aria-label="证据 MULTIAGENT-FORK-PROVIDER">MULTIAGENT-FORK-PROVIDER</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent-acp/src/index.ts#L124-L170" title="ACP 外部 provider 边界: ACP child 在外部进程启动、声明零 start capability、无父对话，并使用配置的 cwd override 或父 Session cwd 运行 one-shot。" aria-label="证据 MULTIAGENT-ACP-PROVIDER">MULTIAGENT-ACP-PROVIDER</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent-dsh-sdk/src/index.ts#L1-L119" title="独立 SDK runtime provider: SDK provider 启动自带 composition/model/tools 的完整外部 runtime，声明零父级可强制能力且不继承父对话。" aria-label="证据 MULTIAGENT-SDK-PROVIDER">MULTIAGENT-SDK-PROVIDER</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent-codex/src/index.ts#L47-L100" title="固定 Codex one-shot provider: Codex provider 固定名称、零 start capability、无父对话；它要求父 Session cwd 并通过 subprocess service 启动每个 run。" aria-label="证据 MULTIAGENT-CODEX-PROVIDER">MULTIAGENT-CODEX-PROVIDER</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent-claude-code/src/index.ts#L50-L112" title="固定 Claude Code one-shot provider: Claude Code provider 声明零能力、无父对话，解析 CLI executable，并在父 workspace 中通过共享 subprocess owner 执行 one-shot run。" aria-label="证据 MULTIAGENT-CLAUDE-PROVIDER">MULTIAGENT-CLAUDE-PROVIDER</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/apps/cli/config/agent-presets/standard/agent.cordis.yml#L1-L251" title="Standard preset 的完整 delegation 配置: Standard preset 挂载控制/列表工具，把 spawn 与 fork 都配成 continuable，并将 Codex/Claude Code 工具行设为 disabled；文件中未装载对应外部 provider。" aria-label="证据 MULTIAGENT-STANDARD-PRESET">MULTIAGENT-STANDARD-PRESET</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/apps/cli/config/agent-presets/code/agent.cordis.yml#L164-L220" title="Code preset 的 continuable fork 与禁用外部工具: Code preset 把 spawn/fork 都配置为 continuable，并保留 disabled 的 Codex/Claude Code 工具行。" aria-label="证据 MULTIAGENT-CODE-PRESET">MULTIAGENT-CODE-PRESET</a></p>
+</section>
+
+<section>
+  <h2>4. Spawn 与 Fork 的差异只在会话 seed，不在 child 是否“独立”</h2>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>Spawn</h3><p>不传 seed；child 从空对话开始，委派 prompt 必须自包含。</p></div>
+    <div><span>2</span><h3>Fork</h3><p>复制父 Session 从 seq 0 到最后一个 <code>turn/end</code> 的平衡前缀。</p></div>
+    <div><span>3</span><h3>排除当前 Turn</h3><p>正在调用委派工具的 Turn 尚未闭合，不能作为合法 child seed。</p></div>
+    <div><span>4</span><h3>后续独立</h3><p>两者都拥有新的 Session ID、自己的 inbox、Turn 和输出后缀。</p></div>
+  </div>
+  <div class="claim fact"><div class="claim-label">上下文语义</div><p>Fork 的“继承上下文”仅指已完成对话历史；它不意味着共享当前 reasoning、live inbox 或同一个 Session。测试在父级第二个 Turn 悬挂时 fork，验证 child seed 只包含首个已完成 Turn。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent-spawn-in-process/src/index.ts#L34-L64" title="In-process spawn provider: Spawn 支持全部四项能力、不会 seed 父对话，同时实现 one-shot start 与 fresh continuable preparation。" aria-label="证据 MULTIAGENT-SPAWN-PROVIDER">MULTIAGENT-SPAWN-PROVIDER</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent-fork-in-process/src/index.ts#L40-L94" title="In-process fork provider 与 continuable 注释: Fork 只复制到最后 turn/end 的平衡前缀、支持全部四项能力并实现 prepareContinuable；源码注释同时称没有 shipped continuable caller。" aria-label="证据 MULTIAGENT-FORK-PROVIDER">MULTIAGENT-FORK-PROVIDER</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent-fork-in-process/tests/subagent-fork-in-process.spec.ts#L134-L158" title="Fork 排除 open Turn 的集成测试: 测试让父级第二 Turn 悬挂并在期间 fork，验证 child 只 seed 第一个完整 Turn 且自己的 Turn 正常完成。" aria-label="证据 MULTIAGENT-FORK-OPEN-TURN-TEST">MULTIAGENT-FORK-OPEN-TURN-TEST</a></p></div>
+  <p>两种 in-process child 都会加入父级正在运行的同一 preset generation——同一批 plugin instance、工具注册和 prompt section，而不是按 preset 名重新读取可能已变化的配置。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/preset/agent-presets/src/index.ts#L290-L325" title="Child 加入父级 exact preset generation: composeFrom 绑定父级已存在的 standing composition，同享相同 plugin instance、工具与 prompt section，不重新读取 preset roster。" aria-label="证据 MULTIAGENT-PRESET-INHERITANCE">MULTIAGENT-PRESET-INHERITANCE</a></p>
+</section>
+
+<section>
+  <h2>5. 继承矩阵：路线、工作区和能力是不同维度</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>项目</th><th>规则</th><th>是否耐久</th></tr></thead>
+    <tbody>
+      <tr><td>Provider / model / maxTokens</td><td>默认取父级，child request 可覆盖</td><td>provider/model 写入 continuable descriptor；maxTokens 不写</td></tr>
+      <tr><td>Workspace / lineage</td><td>继承 cwd，记录 direct parent、origin、depth，以及存在时的非零 seedLength</td><td>写入 Session header</td></tr>
+      <tr><td>Prompt / tools</td><td>加入父级 exact live preset，再叠 child persona/filter</td><td>preset ID 与 descriptor 支撑恢复</td></tr>
+      <tr><td>Conversation</td><td>只有 fork 复制 completed-turn prefix</td><td>seed 成为 child 自己的 log 前缀</td></tr>
+      <tr><td>Sandbox / approval</td><td>Sandbox policy 已组合时只复制显式 Session override；approval 已组合时钉为 <code>never</code></td><td>只有已定义的 override 才成为 delegation-source event</td></tr>
+    </tbody>
+  </table></div>
+  <p>不会继承的内容同样重要：spawn 不看父 transcript；fork 不看 open Turn；一次性授权不会下放；部署 sandbox 默认值不会被快照；child 的 persona 和工具过滤只在自身 scope 中生效，不污染父级或 sibling。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/child-agent.ts#L38-L120" title="Child options 与 durable lineage: Child 默认继承 provider/model/maxTokens；持久 header 记录 cwd、parentSession、origin、delegationDepth，存在 seed 时记录非零 seedLength，并记录父级当前 live composed preset 的 ID。" aria-label="证据 MULTIAGENT-CHILD-INHERITANCE">MULTIAGENT-CHILD-INHERITANCE</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/child-agent.ts#L130-L175" title="Child-scoped composition: 每个 in-process child 先加入父 preset，再注入固定 delegation context，并在 child scope 叠加 persona 与工具限制。" aria-label="证据 MULTIAGENT-CHILD-COMPOSITION">MULTIAGENT-CHILD-COMPOSITION</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/child-agent.ts#L177-L225" title="委派策略的捕获与持久化: 对应 service 存在时，委派捕获父 Session 显式 sandbox override，并把 approval 钉为 never；只有已定义的 override 才写入 child log。" aria-label="证据 MULTIAGENT-DELEGATED-POLICY">MULTIAGENT-DELEGATED-POLICY</a></p>
+  <div class="claim assessment"><div class="claim-label">设计判断</div><p>这里的继承不是对象浅拷贝，而是有意拆开的四条通道：Session seed、Agent options、preset scope 和 durable policy events。这比一个含糊的 <code>inheritContext=true</code> 更可审计。</p></div>
+</section>
+
+<section>
+  <h2>6. 递归预算和权限边界都沿父子 lineage 单调收紧</h2>
+  <p>Tool loader 的默认 <code>maxDepth</code> 是 3；<code>provider-managed</code> 用于无法由父 runtime 强制的外部 provider。底层 depth 读取持久 header 与 runtime option 的较大值，再加一生成 child，因此恢复后的 child 不能伪装回 depth 0。Direct apply 若省略 cap 则可无上限，这说明“默认 3”属于工具配置，不是 service 的全局定律。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/tool-subagent/src/index.ts#L28-L99" title="委派工具配置与默认深度: 工具实例配置 provider、toolName、backgroundMode、Agent options、persona/filter 与 maxDepth；loader 默认深度为 3，并允许 provider-managed。" aria-label="证据 MULTIAGENT-TOOL-CONFIG">MULTIAGENT-TOOL-CONFIG</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/depth.ts#L18-L50" title="单调 delegation depth: 有效 depth 是持久 header 与 runtime option 的较大值；cap 必须是非负安全整数，防止恢复 child 将自己降回顶层。" aria-label="证据 MULTIAGENT-DEPTH">MULTIAGENT-DEPTH</a></p>
+  <div class="claim fact"><div class="claim-label">调用权限</div><p><code>send_message</code> 只允许 exact live direct parent；<code>interrupt_agent</code> 可以由 exact live ancestor 作用于更深 descendant。身份比较的是活 Agent 对象与持久 parent lineage，不是调用者提交一个可猜的 Session 字符串。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/tool-subagent-control/src/index.ts#L25-L119" title="send_message 与 interrupt_agent: send_message 以 exact caller Agent 作为 direct-parent authority 并只返回 messageId；interrupt_agent 以 exact ancestor authority 请求取消且立即返回。" aria-label="证据 MULTIAGENT-CONTROL-TOOLS">MULTIAGENT-CONTROL-TOOLS</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/continuation.ts#L876-L932" title="Provider-independent cold resume: Cold resume inspect 持久 Session、先验证 exact direct parent、只 fold child suffix descriptor，再直接 materialize/resume；不调用原 provider。" aria-label="证据 MULTIAGENT-COLD-RESUME">MULTIAGENT-COLD-RESUME</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/continuation.ts#L507-L568" title="Current-Turn interrupt 语义: 对 live target，Interrupt 在 exact parent/ancestor 授权后执行 keepInbox cancel 并立即返回；Activation、未认领消息与 descendants 保留。Absent target 是 no-op，lookup 前只检查 ancestor caller liveness。" aria-label="证据 MULTIAGENT-INTERRUPT">MULTIAGENT-INTERRUPT</a></p></div>
+  <p>这不是 role-based team：没有 leader/member 角色表，也没有 sibling 直发通道。现有 authority 是树形且窄化的；想做 team、共享队列或任意 Agent 路由，需要新增显式协议，而不是把现有 <code>parentSession</code> 当成万能 ACL。</p>
+</section>
+
+<section>
+  <h2>7. One-shot 的核心合同：发布前 provider 所有，发布后 run holder 所有</h2>
+  <pre><code>validate provider + capabilities + schema + descriptor
+  → provider.start()
+      → unpublished setup / rollback on failure
+      → publish child or external run
+  → emit subagent/start
+  → await run.result ──────────→ emit subagent/end
+  → map stopReason / preserve partial output
+  → holder runs dispose() to quiescence</code></pre>
+  <div class="claim fact"><div class="claim-label">提交点</div><p>Provider 启动 reject 时没有 run、也没有 lifecycle edge；一旦返回，Turn/transport failure 进入 <code>result</code>。In-process driver 发布 child 后只提交一个 user prompt并等待 idle，AbortSignal 会 cancel child；<code>dispose()</code> 是幂等资源释放边界。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/index.ts#L404-L495" title="Provider dispatch 前的验证边界: Service 在 provider.start 前验证 provider 存在、能力、深度、schema 与 descriptor；startup reject 不发布 lifecycle，continuable capability 由 prepareContinuable 方法存在性决定。" aria-label="证据 MULTIAGENT-RUNTIME-DISPATCH">MULTIAGENT-RUNTIME-DISPATCH</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent-in-process-driver/src/index.ts#L78-L205" title="In-process one-shot driver: Driver 在未发布 setup 中应用 policy/composition 并安装 descriptor append hook；descriptor event 在发布后首个进入的 pre-step 追加，随后只提交一个 prompt、等待 idle，并以幂等 dispose 释放 handle。" aria-label="证据 MULTIAGENT-ONE-SHOT-DRIVER">MULTIAGENT-ONE-SHOT-DRIVER</a></p></div>
+  <p>结果从 seed/activation boundary 后的 child-owned suffix 读取。<code>completed</code>、<code>aborted</code>、<code>error</code>、<code>max-tokens</code>、<code>refusal</code> 不会被压成一个布尔值；取消或截断仍可携带 partial output。One-shot 的 <code>subagent/end</code> 跟随 result settlement，可能早于 holder 完成 dispose；continuable epoch 的 end 则等待 teardown outcome。后台 Job 只有 completed 才把 final text 当成功输出，其他 reason 映射为 killed/failed，并且总在 settle 后 dispose。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent-in-process-driver/src/index.ts#L207-L233" title="One-shot result 的 suffix 与 stop reason: 结果只读 child-owned suffix，保留最后输出并从实际 Turn end 映射 stop reason；请求 schema 但 completed 时无 capture 会改判 error。" aria-label="证据 MULTIAGENT-ONE-SHOT-RESULT">MULTIAGENT-ONE-SHOT-RESULT</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/lifecycle.ts#L76-L217" title="One-shot 与 Activation epoch lifecycle: Listener failure 被逐个隔离；one-shot run 与每个 continuable residency epoch 都生成配对 start/end，cold resume 使用新的 runId 并只统计 epoch suffix。" aria-label="证据 MULTIAGENT-LIFECYCLE">MULTIAGENT-LIFECYCLE</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/run-settlement.ts#L21-L63" title="One-shot background Job settlement: Completed 才输出 final text，aborted 映射 killed，其余 reason 映射 failed；无论结果如何都会 dispose，双重失败保留两项 detail。" aria-label="证据 MULTIAGENT-RUN-SETTLEMENT">MULTIAGENT-RUN-SETTLEMENT</a></p>
+</section>
+
+<section>
+  <h2>8. “最终答案”与“结构化结果”是两套独立提交协议</h2>
+  <p>普通输出的统一选择规则是最后一条非空 assistant message；若没有，则使用累计 text delta；都没有才为空。选择与 stop reason 独立，因此 error/max-tokens 也可能携带诊断价值很高的 partial answer。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/assistant-output.ts#L1-L74" title="Canonical child assistant output: 统一规则选择最后一条非空 assistant message，否则使用累计 text delta；选择与 stop reason 无关。" aria-label="证据 MULTIAGENT-ASSISTANT-OUTPUT">MULTIAGENT-ASSISTANT-OUTPUT</a></p>
+  <div class="claim fact"><div class="claim-label">Structured output</div><p>只有支持该 capability 的 in-process provider 才会在 child scope 安装真实 schema 的 <code>structured_output</code> 工具、专属 prompt 和单调 guard。模型调用工具只是 staged；必须等 authoritative <code>tools/result</code> 成功，Code Mode 下还要等外层调用成功，才提交 capture。Child 声称 completed 却没有有效 capture 时，run 被改判为 error。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent-in-process-driver/src/structured.ts#L49-L141" title="Child structured output 的两阶段提交: Child scope 安装 schema tool、prompt 与 guard；值先 staged，只有 authoritative tool result（以及 Code Mode 外层结果）成功后才提交。" aria-label="证据 MULTIAGENT-STRUCTURED-OUTPUT">MULTIAGENT-STRUCTURED-OUTPUT</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent-in-process-driver/src/index.ts#L207-L233" title="One-shot result 的 suffix 与 stop reason: 结果只读 child-owned suffix，保留最后输出并从实际 Turn end 映射 stop reason；请求 schema 但 completed 时无 capture 会改判 error。" aria-label="证据 MULTIAGENT-ONE-SHOT-RESULT">MULTIAGENT-ONE-SHOT-RESULT</a></p></div>
+  <p>这解释了 external provider 为什么声明零 capabilities：工作目录相同不代表父 runtime 能强制其工具 catalog、persona、递归预算或结构化提交点。</p>
+</section>
+
+<section>
+  <h2>9. Continuable 的 durable Session 与 process-local Activation 必须分开看</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>状态</th><th>依据</th><th>含义</th></tr></thead>
+    <tbody>
+      <tr><td><code>running</code></td><td>Agent 正运行，或有已接受但尚未离开 inbox 的 waking message</td><td>当前 epoch 不能 settle</td></tr>
+      <tr><td><code>waiting</code></td><td>Agent idle，但仍拥有未 dispose 的 child Activation</td><td>父级被子树所有权钉住</td></tr>
+      <tr><td><code>settled</code></td><td>Agent idle 且 owned children 为空</td><td>dispose live handle；durable Session 仍可再恢复</td></tr>
+    </tbody>
+  </table></div>
+  <p><code>Activation</code> 是一个驻留 epoch，不是 durable Task。它持有 exact handle、弱引用 ancestry、owned-child set、accepted message IDs 和一次性 disposal transaction；稳定的是 child Session ID，每次冷恢复会获得新的 lifecycle <code>runId</code>。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/continuation.ts#L151-L240" title="Continuable Activation 数据模型: Activation 状态由 Agent quiescence 与 owned children 推导；每个 epoch 持有 exact handle、ancestry、accepted IDs、所有权集合与 memoized disposal。" aria-label="证据 MULTIAGENT-ACTIVATION-MODEL">MULTIAGENT-ACTIVATION-MODEL</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/continuation.ts#L1094-L1174" title="Parent ownership 与 acceptance gap: Continuation-managed parent 在 child 运行前 acquire ownership；accepted IDs 在同步 inbox send 前登记，阻止父/child 在 admission 微任务窗口提前 settle。" aria-label="证据 MULTIAGENT-ACTIVATION-OWNERSHIP">MULTIAGENT-ACTIVATION-OWNERSHIP</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/lifecycle.ts#L76-L217" title="One-shot 与 Activation epoch lifecycle: Listener failure 被逐个隔离；one-shot run 与每个 continuable residency epoch 都生成配对 start/end，cold resume 使用新的 runId 并只统计 epoch suffix。" aria-label="证据 MULTIAGENT-LIFECYCLE">MULTIAGENT-LIFECYCLE</a></p>
+  <aside class="caveat"><strong>边界：</strong>只有 continuation-managed parent 会因 child 存活而进入 <code>waiting</code>。顶层 parent 不在这张 ownership graph 中；它是否继续工作由自己的 Turn/inbox 调度决定。</aside>
+</section>
+
+<section>
+  <h2>10. Follow-up 的权威提交点是 inbox acceptance；冷恢复不再调用 provider</h2>
+  <pre><code>send_message(childId)
+  ├─ resident + running → 排入同一 Agent inbox，等当前 Turn 结束
+  ├─ resident + waiting → 唤醒同一 Agent
+  └─ no Activation      → inspect durable Session
+                           → 校验 exact direct parent
+                           → fold own descriptor suffix
+                           → ctx.agents.resume()
+                           → 排入 inbox</code></pre>
+  <p>每个 child 的 delivery、release 和 disposal 先经过同一把 <code>ChildLock</code>；Agent inbox 是唯一 FIFO。调用方 AbortSignal 只拥有 acceptance 之前的阶段，消息被接受后不能通过这次 <code>send_message</code> 取消。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/continuation.ts#L459-L505" title="Continuable follow-up 路由: 同一 child 的消息通过锁线性化：resident 时 enqueue/wake，absent 时 cold resume；caller signal 只作用到 inbox acceptance。" aria-label="证据 MULTIAGENT-FOLLOWUP">MULTIAGENT-FOLLOWUP</a></p>
+  <div class="claim fact"><div class="claim-label">Provider 不参与恢复</div><p>Cold resume 从持久 Session header 和 child 自己 suffix 中的 descriptor 重建 provider/model、persona 与 tool filter，然后直接走 <code>agents.resume()</code>；它不 dispatch 原 provider。因此 provider 卸载会阻止新 start，却不必阻止已有 continuable child 恢复。Descriptor 不保存 <code>maxTokens</code> 或 <code>outputSchema</code>，恢复时不能假定这两个 activation-local 约束仍然存在。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/continuation.ts#L876-L932" title="Provider-independent cold resume: Cold resume inspect 持久 Session、先验证 exact direct parent、只 fold child suffix descriptor，再直接 materialize/resume；不调用原 provider。" aria-label="证据 MULTIAGENT-COLD-RESUME">MULTIAGENT-COLD-RESUME</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/descriptor.ts#L1-L88" title="Versioned durable subagent descriptor: Model-hidden v2 descriptor 区分 one-shot/continuable；continuable 保存恢复 composition，但有意省略 subagentDepth、outputSchema 与 maxTokens。" aria-label="证据 MULTIAGENT-DESCRIPTOR">MULTIAGENT-DESCRIPTOR</a></p></div>
+</section>
+
+<section>
+  <h2>11. 返回通道有四种，完成与报告绝不能混为一谈</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>通道</th><th>谁发送</th><th>会不会结束 child</th><th>Parent 得到什么</th></tr></thead>
+    <tbody>
+      <tr><td>Foreground result</td><td>run holder</td><td>是，一次性</td><td>直接 tool result</td></tr>
+      <tr><td>Background Job outcome</td><td>Job runtime</td><td>是，一次性</td><td>Job 状态/通知</td></tr>
+      <tr><td><code>report</code></td><td>Continuable child 主动选择</td><td>否</td><td>direct parent inbox 的 relay</td></tr>
+      <tr><td>Settlement notice</td><td>Continuation manager</td><td>在 teardown 后发送</td><td>stop reason + 可用 closing message</td></tr>
+    </tbody>
+  </table></div>
+  <p><code>send_message</code> 只返回被接受的 <code>messageId</code>，不是 child 的回答。Child-scoped <code>report</code> 只能发给 direct parent，可按 <code>wakeup</code> 或 <code>quiet</code> 调度，且报告不会结束 Turn/Activation。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/tool-subagent-control/src/index.ts#L25-L119" title="send_message 与 interrupt_agent: send_message 以 exact caller Agent 作为 direct-parent authority 并只返回 messageId；interrupt_agent 以 exact ancestor authority 请求取消且立即返回。" aria-label="证据 MULTIAGENT-CONTROL-TOOLS">MULTIAGENT-CONTROL-TOOLS</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/tool-subagent-report/src/index.ts#L40-L142" title="Continuable child-scoped report 工具: Report tool/prompt 只安装到 continuable in-process child scope；只发送 selected content 给 direct parent，不结束 Turn，并有事务化注册/清理。" aria-label="证据 MULTIAGENT-REPORT-TOOL">MULTIAGENT-REPORT-TOOL</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/continuation.ts#L570-L693" title="Report authority 与 parent scheduling: 只有 exact resident child 可报告；recipient 从 durable direct parent 解析，wakeup 用 followup、quiet 用 inject，报告本身不改变 Activation lifetime。" aria-label="证据 MULTIAGENT-REPORT-DELIVERY">MULTIAGENT-REPORT-DELIVERY</a></p>
+  <div class="claim fact"><div class="claim-label">兜底通知</div><p>只要 caller 曾收到 child ID，Activation settlement 就独立于 <code>report</code> 尝试投递 runtime notice；即使 max-tokens、失败、取消或 child 忘记报告，parent 仍有机会看到结果。Parent 已不 live 时通知被丢弃而不阻塞 teardown，child Session 是剩余的 durable record。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/continuation.ts#L1382-L1448" title="Continuable settlement notice: 每个已公布 ID 的 child 都尝试独立于 report 投递 stop summary 与 closing output；parent 不 live 时静默跳过，投递失败时记录并丢弃，均不阻塞 teardown。" aria-label="证据 MULTIAGENT-SETTLEMENT-NOTICE">MULTIAGENT-SETTLEMENT-NOTICE</a></p></div>
+</section>
+
+<section>
+  <h2>12. <code>list_agents</code> 是发现面，不是任务结果面</h2>
+  <p>底层 listing 从 live Session store 与可选 persistence 合并 corpus，按 durable header 的 <code>origin:subagent</code> 找 direct children/descendants，再通过 projection 分类 mode/label。冷读并发固定为 4；单个 child 损坏或暂时读不到会成为 <code>corrupt</code>/<code>unavailable</code> diagnostic，而不是让整次 listing 失败。它不读取 Activation manager 或 provider 状态。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/list-children.ts#L117-L409" title="Durable child/descendant enumeration: Listing 合并 live 与 persistence corpus，通过 projection 分类，并把单 child read/fold damage 降级成 diagnostic，而不读取 Activation/provider state。" aria-label="证据 MULTIAGENT-LIST-SERVICE">MULTIAGENT-LIST-SERVICE</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/list-children.ts#L27-L32" title="Listing 冷读并发上限: 本地持久化的 read-only cold inspection 以常量 4 限制并发。" aria-label="证据 MULTIAGENT-LIST-CONCURRENCY">MULTIAGENT-LIST-CONCURRENCY</a></p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>模型状态</th><th>真实含义</th><th>不是</th></tr></thead>
+    <tbody>
+      <tr><td><code>running</code></td><td>Live Agent 正在驱动</td><td>某个 Job 的 running</td></tr>
+      <tr><td><code>idle</code></td><td>Live Agent 在 Turn 间；可能正等 descendant</td><td>已完成、可收集结果</td></tr>
+      <tr><td><code>ready</code></td><td>只有存储记录，可被 direct parent 恢复</td><td>terminal success</td></tr>
+    </tbody>
+  </table></div>
+  <p>模型工具过滤掉 one-shot child，因为它们不能被 <code>send_message</code>；descendants 仍会穿过这些节点做稳定 pre-order 遍历。Depth 1 才能 follow-up，更深节点只可作为 ancestor interrupt 候选。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/tool-subagent-control/src/list-agents.ts#L52-L105" title="list_agents 状态与过滤: 模型状态 running/idle/ready 来自 live registry；ready 表示 storage-only resumable，one-shot 被过滤，descendant depth 限定 follow-up/interrupt 选择。" aria-label="证据 MULTIAGENT-LIST-TOOL">MULTIAGENT-LIST-TOOL</a></p>
+</section>
+
+<section>
+  <h2>13. 并发策略是“跨 child 可重叠、单 child 线性化”，不是全局调度</h2>
+  <div class="claim fact"><div class="claim-label">可并行部分</div><p>Provider contract 明确允许不同 child 的 starts 重叠；委派工具声明 concurrency-safe，并在 continuable prompt 中鼓励把独立委派放进同一 assistant message。One-shot background 还会进入 Job registry 的 owner capacity 规则。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/types.ts#L75-L323" title="Subagent capability 与 provider seam: Provider 显式声明四项启动能力、父对话继承属性、one-shot start 与可选 prepareContinuable；不同 child 可并发且 continuable 生命周期由 manager 而非 provider 拥有。" aria-label="证据 MULTIAGENT-SEAM">MULTIAGENT-SEAM</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/tool-subagent/src/index.ts#L366-L465" title="委派工具的并发安全与并行提示: 工具声明 concurrency-safe，因为 children 不改父 Session；continuable prompt 鼓励同一 assistant message 启动独立委派。" aria-label="证据 MULTIAGENT-TOOL-CONCURRENCY">MULTIAGENT-TOOL-CONCURRENCY</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/jobs/jobs-local/src/index.ts#L126-L150" title="后台 Job 的 owner capacity: Job start 按 owner 统计 active task，并在达到已配置的 per-owner 上限时拒绝新 Job。" aria-label="证据 MULTIAGENT-JOB-CAPACITY">MULTIAGENT-JOB-CAPACITY</a></p></div>
+  <div class="claim fact"><div class="claim-label">必须串行部分</div><p>同一 durable child 的 follow-up、释放和销毁由 <code>ChildLock</code> 排队；accepted-ID set 覆盖“消息已同步插入、Agent status 尚未切到 running”的微任务窗口，避免 settlement 提前赢过已经接受的工作。父级 owned-child set 又把整个 descendant 生命周期纳入 parent settle 条件。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/continuation.ts#L319-L340" title="Per-child linearization lock: ChildLock 按 durable child ID 串行 operation，并吸收一个 critical section 的 rejection，避免污染后续调用。" aria-label="证据 MULTIAGENT-CHILD-LOCK">MULTIAGENT-CHILD-LOCK</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/continuation.ts#L459-L505" title="Continuable follow-up 路由: 同一 child 的消息通过锁线性化：resident 时 enqueue/wake，absent 时 cold resume；caller signal 只作用到 inbox acceptance。" aria-label="证据 MULTIAGENT-FOLLOWUP">MULTIAGENT-FOLLOWUP</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/continuation.ts#L1094-L1174" title="Parent ownership 与 acceptance gap: Continuation-managed parent 在 child 运行前 acquire ownership；accepted IDs 在同步 inbox send 前登记，阻止父/child 在 admission 微任务窗口提前 settle。" aria-label="证据 MULTIAGENT-ACTIVATION-OWNERSHIP">MULTIAGENT-ACTIVATION-OWNERSHIP</a></p></div>
+  <p>Subagent 层没有全局 worker pool、公平队列、优先级、配额分配或结果归并器。它提供正确的并发边界；“派几个、何时派、如何合并”仍由模型 prompt、Job 层或更高阶 workflow 负责。</p>
+</section>
+
+<section>
+  <h2>14. Interrupt 只停当前 Turn；Drain 才销毁整棵 Activation 子树</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>操作</th><th>立即动作</th><th>保留内容</th><th>完成等待</th></tr></thead>
+    <tbody>
+      <tr><td>Foreground AbortSignal</td><td>cancel one-shot child/run</td><td>已产生 partial output</td><td>holder 最终 dispose</td></tr>
+      <tr><td>Job kill</td><td>abort task-owned controller</td><td>Job identity 到 settlement</td><td>Job producer settle + dispose</td></tr>
+      <tr><td><code>interrupt_agent</code></td><td><code>cancel(..., keepInbox:true)</code></td><td>Activation、未 claim 消息、descendants</td><td>不等待，fire-and-return</td></tr>
+      <tr><td>Manager/scoped drain</td><td>同步关闭 admission，自顶向下 cancel</td><td>只保留 durable Session</td><td>自底向上 release，汇总失败</td></tr>
+    </tbody>
+  </table></div>
+  <p>Interrupt 对 absent/已完成/one-shot ID 是 accepted no-op；它不是 subtree kill。外部 one-shot provider 在本地取消赢得竞态时把结果归一化为 aborted，并由幂等 handle teardown 等到子进程树退出。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/continuation.ts#L507-L568" title="Current-Turn interrupt 语义: 对 live target，Interrupt 在 exact parent/ancestor 授权后执行 keepInbox cancel 并立即返回；Activation、未认领消息与 descendants 保留。Absent target 是 no-op，lookup 前只检查 ancestor caller liveness。" aria-label="证据 MULTIAGENT-INTERRUPT">MULTIAGENT-INTERRUPT</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/out-of-process.ts#L155-L215" title="外部 run 的失败归一化与幂等 teardown: 发布后 attempt rejection 被归一化为 aborted/error result 并保留 partial output；Subprocess run handle 的 dispose memoize teardown 并等待实际退出。" aria-label="证据 MULTIAGENT-OUTPROCESS-SETTLEMENT">MULTIAGENT-OUTPROCESS-SETTLEMENT</a></p>
+  <div class="claim fact"><div class="claim-label">树级静止</div><p>Drain 先封 admission，等已接纳 materialization 发布或回滚，再对所有 root 并行；每棵树先 top-down 传播 cancel、后 child-first 释放 handle。单支失败不会跳过 sibling，最终以 aggregate error 报告。最终 Session flush 是 best effort；失败会警告“恢复可能缺失或陈旧”，但不能永久钉住 ancestor。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/continuation.ts#L695-L803" title="Manager 与 scoped forest drain: Drain 在首个 await 前封 admission，等待 materialization 边界，按 roots 销毁 forest；scoped drain 同步打开全部取消事务并在所有分支后聚合失败。" aria-label="证据 MULTIAGENT-DRAIN">MULTIAGENT-DRAIN</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/continuation.ts#L1270-L1380" title="Activation top-down cancel 与 child-first release: Disposal 先安装 admission cutoff，再同步 top-down cancel、并行 child disposal、等待 idle/flush，最后 child-first 释放 handle、通知 parent 并 release ownership。" aria-label="证据 MULTIAGENT-ACTIVATION-DISPOSAL">MULTIAGENT-ACTIVATION-DISPOSAL</a></p></div>
+</section>
+
+<section>
+  <h2>15. 耐久性来自 Session descriptor，不来自驻留 Agent 或 Task queue</h2>
+  <pre><code>Session header
+  parentSession / origin=subagent / delegationDepth / seedLength / agentPreset
+
+subagent/descriptor v2（model-hidden, log-only）
+  one-shot:    mode / provider / optional label
+  continuable: mode / provider / label / agentProvider / agentModel / persona / toolFilter
+  intentionally omitted: outputSchema / maxTokens / subagentDepth</code></pre>
+  <p>Continuable creation 把 fork prefix（若有）之后追加一个 between-turn descriptor seed，再接受初始 prompt。Descriptor 先做 lossless JSON snapshot；当前版 parser 拒绝未知字段，版本不支持则不可恢复。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/descriptor.ts#L1-L88" title="Versioned durable subagent descriptor: Model-hidden v2 descriptor 区分 one-shot/continuable；continuable 保存恢复 composition，但有意省略 subagentDepth、outputSchema 与 maxTokens。" aria-label="证据 MULTIAGENT-DESCRIPTOR">MULTIAGENT-DESCRIPTOR</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/descriptor-seed.ts#L13-L30" title="Continuable descriptor 的 between-Turn seed: Continuable child 的 creation seed 由可选继承前缀和一个 model-hidden between-Turn descriptor 组成，并通过 Session 接受规则分配 seq。" aria-label="证据 MULTIAGENT-DESCRIPTOR-SEED">MULTIAGENT-DESCRIPTOR-SEED</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/descriptor.ts#L195-L314" title="Descriptor 的 strict parse、snapshot 与 fold: 当前版本 descriptor 严格验证字段，创建前做 lossless JSON snapshot；在给定 event slice 中第一个 descriptor 是 authoritative。" aria-label="证据 MULTIAGENT-DESCRIPTOR-FOLD">MULTIAGENT-DESCRIPTOR-FOLD</a></p>
+  <div class="claim fact"><div class="claim-label">Ancestor descriptor 防串台</div><p>Fork seed 可能含祖先的 descriptor。Cold resume 因此只 fold <code>seedLength</code> 后的 child-owned suffix；projection 则采用 last valid descriptor wins，让 child 自己的记录覆盖 seed 中祖先身份。两处规则目的相同，折叠边界不同。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/projection.ts#L111-L155" title="Fork seed 中 descriptor 的 last-wins projection: Identity projection 对 descriptor last-wins，让 child 自己的 descriptor 覆盖 seed 中祖先身份；坏或未知版本重置为 null。" aria-label="证据 MULTIAGENT-DESCRIPTOR-PROJECTION">MULTIAGENT-DESCRIPTOR-PROJECTION</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/continuation.ts#L876-L932" title="Provider-independent cold resume: Cold resume inspect 持久 Session、先验证 exact direct parent、只 fold child suffix descriptor，再直接 materialize/resume；不调用原 provider。" aria-label="证据 MULTIAGENT-COLD-RESUME">MULTIAGENT-COLD-RESUME</a></p></div>
+  <p>进程重启后可恢复的是 child 对话及其声明式 composition，不是旧 Activation、run handle、accepted set 或 background Job。最终 flush 失败时，runtime 仍释放 graph，明确选择“可能 stale 的恢复”而不是“确定死锁的祖先”。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/continuation.ts#L1451-L1478" title="Best-effort final flush 与 persistence requirement: Activation quiescent 后请求 final Session flush；失败只记录恢复可能 stale 的 warning，不阻止释放；新 continuable start 要求 persistence service。" aria-label="证据 MULTIAGENT-FINAL-FLUSH">MULTIAGENT-FINAL-FLUSH</a></p>
+</section>
+
+<section>
+  <h2>16. Codex 对比：DeepSeek seam 看到一个 one-shot worker，Codex 内部仍可能编排 subagent</h2>
+  <p>仓库里的 <code>codex</code> provider 每次委派启动新的官方 <code>codex app-server --stdio</code>，只继承父 Session 的 cwd。它声明零 start capabilities、没有 <code>prepareContinuable</code>、不共享父 transcript/preset/tool scope，也不返回本地 Agent handle。换言之，DeepSeek Harness 只把整个 Codex 运行包装成一个 one-shot child；即使该 Codex Turn 内部使用自己的 subagents，那棵内部树也不会成为 DeepSeek continuation graph 的可寻址节点。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent-codex/src/index.ts#L47-L100" title="固定 Codex one-shot provider: Codex provider 固定名称、零 start capability、无父对话；它要求父 Session cwd 并通过 subprocess service 启动每个 run。" aria-label="证据 MULTIAGENT-CODEX-PROVIDER">MULTIAGENT-CODEX-PROVIDER</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent-codex/src/run.ts#L28-L199" title="Codex app-server one-shot run lifecycle: 每个 run 固定 spawn app-server，在 initialize 与 ephemeral thread 成功后才发布，随后运行一个 text-only Turn；dispose 关闭协议并回收进程树。" aria-label="证据 MULTIAGENT-CODEX-RUN">MULTIAGENT-CODEX-RUN</a></p>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>启动</h3><p>固定命令，初始化 JSON-RPC；thread 创建成功前不发布 run。</p></div>
+    <div><span>2</span><h3>隔离</h3><p><code>thread/start</code> 强制 <code>ephemeral:true</code>，cwd 指向父工作区。</p></div>
+    <div><span>3</span><h3>执行</h3><p>仅接受非空 text blocks，启动一个 Turn。</p></div>
+    <div><span>4</span><h3>回收</h3><p>关闭 wire、结束 stdin、终止并等待整个受管进程树。</p></div>
+  </div>
+  <p>Wire 只把最后一个 <code>final_answer</code>（无显式 final 时退回最后个 unphased answer）作为输出；commentary 与 reasoning 不返回。Context window exceeded 映射为 max-tokens，其他异常经 shared out-of-process settlement 变成 error/partial output。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent-codex/src/run.ts#L28-L199" title="Codex app-server one-shot run lifecycle: 每个 run 固定 spawn app-server，在 initialize 与 ephemeral thread 成功后才发布，随后运行一个 text-only Turn；dispose 关闭协议并回收进程树。" aria-label="证据 MULTIAGENT-CODEX-RUN">MULTIAGENT-CODEX-RUN</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent-codex/src/wire.ts#L128-L373" title="Codex handshake、ephemeral thread 与结果选择: Wire 执行 initialize/initialized，强制 ephemeral thread，提交一个 Turn，将 contextWindowExceeded 映射 max-tokens，并选择 last final 或 unphased answer。" aria-label="证据 MULTIAGENT-CODEX-WIRE">MULTIAGENT-CODEX-WIRE</a></p>
+  <div class="claim fact"><div class="claim-label">无人值守安全</div><p>Command/file approval 只会选择 <code>cancel</code> 或 <code>decline</code>，permission 请求返回空权限，user input 返回空 answers，MCP elicitation 被拒绝；没有把 child 的审批请求冒充成人类已同意。对应协议测试还验证 ephemeral thread、跨 thread/turn 过滤、commentary 排除和 last-final 选择。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent-codex/src/wire.ts#L294-L373" title="Codex 无人值守请求与 notification 过滤: Approval 只 cancel/decline，permission/user-input 为空，MCP elicitation 拒绝；notification 绑定 exact thread/Turn，忽略 commentary 并保留最后 final answer。" aria-label="证据 MULTIAGENT-CODEX-UNATTENDED">MULTIAGENT-CODEX-UNATTENDED</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent-codex/tests/subagent-codex.spec.ts#L363-L435" title="Codex wire 协议选择测试: 测试验证 fixed handshake、ephemeral thread、text input、跨 thread/Turn 过滤、reasoning/commentary 排除和 last-final selection。" aria-label="证据 MULTIAGENT-CODEX-WIRE-TEST">MULTIAGENT-CODEX-WIRE-TEST</a></p></div>
+  <h3>Codex 公开多 Agent 合同与本 seam 的差异</h3>
+  <div class="table-scroll"><table>
+    <thead><tr><th>维度</th><th>DeepSeek Harness 固定源码</th><th>Codex 公开文档</th></tr></thead>
+    <tbody>
+      <tr><td>编排单位</td><td>Provider-bound child Session/run；continuable child 有 durable ID</td><td>Subagent workflow 与可检查的 agent thread</td></tr>
+      <tr><td>协调责任</td><td>模型显式调用工具；direct parent 负责 follow-up，runtime 分开 report 与 settlement</td><td>Codex 负责 spawn、follow-up routing、wait 与 close，主 thread 汇总结果</td></tr>
+      <tr><td>并发边界</td><td>跨 child 可重叠；subagent seam 本身没有全局并发 cap</td><td><code>agents.max_concurrent_threads_per_session</code> 可限制并发 open threads</td></tr>
+      <tr><td>角色与配置</td><td>Provider、preset、persona/filter 与 Agent options 组合</td><td>内置/default worker/explorer 与 project/personal TOML custom agents，可覆盖 model、reasoning、sandbox、MCP 和 skills</td></tr>
+      <tr><td>权限</td><td>对应 service 已组合时，in-process child 复制显式 sandbox override，并把 approval 钉为 never</td><td>Subagent 继承当前 sandbox/permission mode 与 parent Turn 的 live overrides；无法呈现审批的非交互 run 会失败</td></tr>
+    </tbody>
+  </table></div>
+  <p>Codex 一侧仅使用 OpenAI 公开的 <a href="https://learn.chatgpt.com/docs/agent-configuration/subagents.md" rel="noreferrer">Subagents</a> 文档，检索于 2026-08-13。DeepSeek 一侧是固定 commit 的源码级证据；这个对照不推断任何未公开实现。</p>
+  <div class="claim assessment"><div class="claim-label">比较结论</div><p>这个 adapter 的强项是隔离清楚、失败收敛、进程树可回收；代价是 DeepSeek parent 只得到一次性最终结果，看不到也不能直接 steer Codex 内部 agent threads。若要把 Codex child 暴露为 DeepSeek 可持续消息路由中的节点，不能从 <code>codex</code> provider 名称推断，必须另建有明确 durable/authority 合同的 backend。</p></div>
+</section>
+
+<section>
+  <h2>17. 失败分层：在哪个提交点失败，决定谁负责善后</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>失败位置</th><th>外部可见结果</th><th>资源语义</th></tr></thead>
+    <tbody>
+      <tr><td>Provider/capability/schema 校验</td><td>Tool 立即失败，无 child ID</td><td>没有 provider work</td></tr>
+      <tr><td>未发布 create/handshake</td><td>Start reject，无 lifecycle edge</td><td>Provider/Agent factory 回滚 partial resource</td></tr>
+      <tr><td>发布后 model/transport</td><td><code>stopReason:error</code>，可能有 partial output</td><td>holder 仍必须 dispose</td></tr>
+      <tr><td>Catalog 单 child 损坏</td><td>diagnostic row</td><td>其余 children 继续列出</td></tr>
+      <tr><td>Parent 已消失</td><td>Settlement notice 丢弃</td><td>child Session 保留事实</td></tr>
+      <tr><td>Final flush/teardown 失败</td><td>warning 或 error lifecycle</td><td>仍释放 ownership，避免永久 waiting</td></tr>
+    </tbody>
+  </table></div>
+  <p>Service 在 provider dispatch 前做 capability 检查；out-of-process helper 把发布后 transport rejection 变成稳定 result；listing 把读损坏隔离到单行。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/index.ts#L404-L495" title="Provider dispatch 前的验证边界: Service 在 provider.start 前验证 provider 存在、能力、深度、schema 与 descriptor；startup reject 不发布 lifecycle，continuable capability 由 prepareContinuable 方法存在性决定。" aria-label="证据 MULTIAGENT-RUNTIME-DISPATCH">MULTIAGENT-RUNTIME-DISPATCH</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/out-of-process.ts#L155-L215" title="外部 run 的失败归一化与幂等 teardown: 发布后 attempt rejection 被归一化为 aborted/error result 并保留 partial output；Subprocess run handle 的 dispose memoize teardown 并等待实际退出。" aria-label="证据 MULTIAGENT-OUTPROCESS-SETTLEMENT">MULTIAGENT-OUTPROCESS-SETTLEMENT</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/list-children.ts#L117-L409" title="Durable child/descendant enumeration: Listing 合并 live 与 persistence corpus，通过 projection 分类，并把单 child read/fold damage 降级成 diagnostic，而不读取 Activation/provider state。" aria-label="证据 MULTIAGENT-LIST-SERVICE">MULTIAGENT-LIST-SERVICE</a></p>
+  <div class="claim fact"><div class="claim-label">运行时不变量</div><p>Lifecycle listener 的 throw/rejection 被逐个隔离；one-shot 与每个 Activation epoch 都要求 start/end 身份配对。Invariant companion 还检查 provider add/remove 一致性、非空身份、没有重复的 live runId，以及 end 与 start 的 provider/child/local 字段一致。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/lifecycle.ts#L76-L217" title="One-shot 与 Activation epoch lifecycle: Listener failure 被逐个隔离；one-shot run 与每个 continuable residency epoch 都生成配对 start/end，cold resume 使用新的 runId 并只统计 epoch suffix。" aria-label="证据 MULTIAGENT-LIFECYCLE">MULTIAGENT-LIFECYCLE</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/invariant.ts#L14-L84" title="Subagent registry 与 lifecycle invariants: Invariant companion 检查 provider add/remove、没有重复的 live runId、start/end pairing，以及 provider、child id 与 local 标志一致。" aria-label="证据 MULTIAGENT-INVARIANTS">MULTIAGENT-INVARIANTS</a></p></div>
+</section>
+
+<section>
+  <h2>18. Pinned baseline 的两项 composition 审计结论</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>发现</th><th>证据</th><th>影响</th></tr></thead>
+    <tbody>
+      <tr><td>Fork continuable 声明与 shipped preset 冲突</td><td>Provider 源码注释称没有随附调用者；base 的确是 one-shot，但 Standard、Code 和 Cordis preset 都配置 continuable</td><td>这些 preset 会走已实现的 <code>prepareContinuable</code>，并给 fork child 增加 report prompt/tool，正好破坏注释所强调的逐字节 prefix reuse 前提</td></tr>
+      <tr><td>Codex/Claude Code 是可选 package，不是默认可用工具</td><td>Preset 有 provider-bound tool row，但默认 disabled；同一 preset 未装载对应 provider plugin</td><td>“仓库含 adapter”不能写成“用户默认能调用”</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">可复核漂移</div><p>Fork 的代码确实实现 continuable seed；base 配置及其理由与源码注释一致，而三个 agent preset 的实际值相反。因为工具在 provider 存在 <code>prepareContinuable</code> 时会成功挂载，这不是死配置。应统一为 one-shot，或更新设计说明并证明 report 增量不会破坏期望的 prefix/cache 语义。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent-fork-in-process/src/index.ts#L40-L94" title="In-process fork provider 与 continuable 注释: Fork 只复制到最后 turn/end 的平衡前缀、支持全部四项能力并实现 prepareContinuable；源码注释同时称没有 shipped continuable caller。" aria-label="证据 MULTIAGENT-FORK-PROVIDER">MULTIAGENT-FORK-PROVIDER</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/bundle/base/cordis.patch.yml#L292-L338" title="Base bundle 的多 Agent 装配: Base 注册 subagent service、spawn/fork provider、控制/列表工具和 report setup，并将 spawn 配为 continuable、fork 配为 one-shot。" aria-label="证据 MULTIAGENT-BASE-COMPOSITION">MULTIAGENT-BASE-COMPOSITION</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/apps/cli/config/agent-presets/standard/agent.cordis.yml#L1-L251" title="Standard preset 的完整 delegation 配置: Standard preset 挂载控制/列表工具，把 spawn 与 fork 都配成 continuable，并将 Codex/Claude Code 工具行设为 disabled；文件中未装载对应外部 provider。" aria-label="证据 MULTIAGENT-STANDARD-PRESET">MULTIAGENT-STANDARD-PRESET</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/apps/cli/config/agent-presets/code/agent.cordis.yml#L164-L220" title="Code preset 的 continuable fork 与禁用外部工具: Code preset 把 spawn/fork 都配置为 continuable，并保留 disabled 的 Codex/Claude Code 工具行。" aria-label="证据 MULTIAGENT-CODE-PRESET">MULTIAGENT-CODE-PRESET</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/apps/cli/config/agent-presets/cordis/agent.cordis.yml#L155-L220" title="Cordis preset 的 continuable fork: Cordis preset 把 spawn 与 fork 工具都设为 continuable，并将外部产品工具保持 disabled。" aria-label="证据 MULTIAGENT-CORDIS-PRESET">MULTIAGENT-CORDIS-PRESET</a></p></div>
+  <p>Codex 的边界同样需要写准确：provider package 完整存在，但 preset 只提供 disabled 的模型入口。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent-codex/src/index.ts#L47-L100" title="固定 Codex one-shot provider: Codex provider 固定名称、零 start capability、无父对话；它要求父 Session cwd 并通过 subprocess service 启动每个 run。" aria-label="证据 MULTIAGENT-CODEX-PROVIDER">MULTIAGENT-CODEX-PROVIDER</a></p>
+</section>
+
+<section>
+  <h2>19. 保证矩阵与最终评价</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>形态</th><th>父历史</th><th>跨进程重启继续</th><th>后续消息</th><th>结果通道</th></tr></thead>
+    <tbody>
+      <tr><td>Spawn one-shot</td><td>无</td><td>否</td><td>否</td><td>Foreground result 或 Job</td></tr>
+      <tr><td>Fork one-shot</td><td>Completed-turn prefix</td><td>否</td><td>否</td><td>Foreground result 或 Job</td></tr>
+      <tr><td>Spawn continuable</td><td>无</td><td>是，需 Session persistence</td><td>Direct parent FIFO</td><td>Report + settlement notice</td></tr>
+      <tr><td>Fork continuable</td><td>创建时捕获一次 completed prefix</td><td>技术上支持；shipped 配置有漂移</td><td>Direct parent FIFO</td><td>Report + settlement notice</td></tr>
+      <tr><td>ACP/Codex/Claude/SDK</td><td>无；最多继承父 cwd（ACP/SDK 可覆盖）</td><td>否</td><td>否</td><td>One-shot result</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">最终评价</div><p>最成熟的部分不是“会派 Agent”，而是提交点：发布前失败无 ID、inbox acceptance 后 ownership 转移、interrupt 不冒充 quiescence、Session 与 Activation 分层、树级 teardown 不因单支失败跳过 sibling。最明显的空白也同样清楚：没有全局调度、共享 team state、自动结果归并、durable Job queue 或跨任意 Agent 的消息总线。把这些空白说成边界，比把一组可组合原语宣传成完整 swarm 更有价值。</p></div>
+  <div class="claim fact"><div class="claim-label">验证状态</div><p>本章在固定提交 <code>47f943859bef60e4160492346772ded9b24f765a</code> 上追踪 production source、shipped config 与 tests，并运行了 <code>packages/subagent</code> 下 28 个 Vitest <code>*.spec.ts</code> 文件（E2E 文件使用独立配置）：603 项全部通过。Codex 对照单独限定为 2026-08-13 检索的 OpenAI 公开文档；配置漂移是跨文件静态审计结论，不会因这些 package tests 通过而自动消失。</p></div>
+</section>
+<section class="learning-notes" aria-labelledby="learning-notes-title"><h2 id="learning-notes-title">我的学习体会</h2>
     <p class="privacy">内容仅自动保存到当前浏览器，不上传、不进入仓库。你可以导出 Markdown 自行归档。</p><textarea data-learning-notes aria-label="我的学习体会" placeholder="记录你的理解、疑问、反例和可迁移原则……"></textarea>
     <div class="note-footer"><span data-note-saved>本地草稿</span><button type="button" data-note-export>导出 Markdown</button>
     <button type="button" class="danger" data-note-clear>清空</button><span data-note-count>0 字符</span></div></section><nav class="pagination" aria-label="章节翻页"><a href="../pages/code-mode-self-modification.html"><small>← 上一章 · 23</small><strong>Code Mode、自修改与动态插件</strong></a><a class="next" href="../pages/workflow-ralph.html"><small>下一章 · 25 →</small><strong>Workflow 与 Ralph</strong></a></nav></article>

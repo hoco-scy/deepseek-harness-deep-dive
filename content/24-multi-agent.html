@@ -1,0 +1,276 @@
+<section>
+  <h2>结论：这不是“群体智能调度器”，而是一组可组合的委派生命周期</h2>
+  <div class="thesis"><p>DeepSeek Harness 的多 Agent 能力由四件事拼成：命名 <code>SubagentProvider</code> seam、一次性 <code>SubagentRun</code>、可冷恢复的 continuable child Session 及其进程内 <code>Activation</code> epoch，以及模型可见的委派/控制工具。这套 subagent subsystem 没有一个统一的 swarm、共享黑板、投票器或任务 DAG；协作来自父子 Session、inbox、持久 descriptor 和可选 provider 的组合。</p></div>
+  <p>这个结论很重要：看到 <code>subagent</code> 并不能推出子 Agent 是否继承历史、是否能继续对话、是否由 Job 管理，甚至不能推出它运行在同一进程。Provider 只承诺它明确声明的能力；不支持的 <code>outputSchema</code>、深度限制、工具过滤和 persona 会在启动前失败，而不是被静默忽略。<evidence id="MULTIAGENT-SEAM"></evidence></p>
+  <div class="claim fact"><div class="claim-label">实际装配</div><p>Base bundle 注册 service、spawn/fork backend、控制与列表工具，并把 spawn 绑定为 continuable、fork 绑定为 one-shot；Web bundle 保留全局 registry/backend，却把模型可见工具移到每 Session preset。这里的“多 Agent”既是 runtime 能力，也是 composition 选择。<evidence id="MULTIAGENT-BASE-COMPOSITION"></evidence><evidence id="MULTIAGENT-WEB-PLANE"></evidence></p></div>
+</section>
+
+<section>
+  <h2>1. 真实拓扑：Provider 建子节点，Manager 管可继续会话</h2>
+  <pre><code>模型工具（名称可配置）
+  subagent / subagent_fork
+        │
+        ├─ foreground ─────────→ SubagentRuntime.start(provider)
+        │                            └→ provider.start() → SubagentRun
+        ├─ one-shot background → Jobs → provider.start() → SubagentRun
+        └─ continuable bg ─────→ ContinuationManager
+                                     ├→ provider.prepareContinuable()（仅 seed 数据）
+                                     ├→ Agent create / resume + inbox
+                                     └→ durable Session + Activation epoch
+
+全局控制：send_message / interrupt_agent / list_agents
+子级返回：report（仅 continuable in-process child）</code></pre>
+  <p><code>SubagentProvider.start()</code> 拥有一次性 child 的发布前创建；返回 run 后，持有者负责等待结果并 dispose。对 continuable child，provider 只贡献“是否 seed 父历史”这份 detached data；身份、组合、Agent handle、消息、冷恢复、所有权和销毁全部由 continuation manager 接管。<evidence id="MULTIAGENT-SEAM"></evidence></p>
+  <aside class="caveat"><strong>术语边界：</strong>本仓库没有一个固定名为 <code>delegate</code> 或 <code>spawn_agent</code> 的通用 runtime 指令。委派工具名由配置决定；随附配置使用 <code>subagent</code> 与 <code>subagent_fork</code>，控制工具才是全局固定名。</aside>
+</section>
+
+<section>
+  <h2>2. 一个工具定义，实际分成三条执行路线</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>路线</th><th>触发</th><th>返回提交点</th><th>后续控制</th></tr></thead>
+    <tbody>
+      <tr><td>Foreground one-shot</td><td><code>run_in_background:false</code></td><td>child 结束且 run 已 dispose 后返回 output</td><td>没有可继续 ID</td></tr>
+      <tr><td>Background one-shot</td><td><code>backgroundMode:one-shot</code> 且显式 <code>true</code></td><td>Job 注册后返回 <code>jobId</code></td><td><code>job_output</code>/<code>job_kill</code></td></tr>
+      <tr><td>Background continuable</td><td><code>backgroundMode:continuable</code> 且省略或传 <code>true</code></td><td>初始消息被 child inbox 接受即返回 <code>subagentId</code></td><td><code>send_message</code>/<code>interrupt_agent</code></td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">路由事实</div><p><code>backgroundMode</code> 既选后台机制，也决定省略参数时的默认值；即使 provider 支持 continuation，显式前台仍走 <code>start()</code> 的 one-shot 合同。Continuable 启动返回时，模型请求甚至还不必开始，初始 prompt 也可能尚未被 claim 成 <code>user/message</code> event；acceptance 本身已记录为 Inbox splice。<evidence id="MULTIAGENT-TOOL-ROUTES"></evidence><evidence id="MULTIAGENT-CONTINUABLE-START"></evidence><evidence id="MULTIAGENT-CONTINUATION-ACCEPTANCE-TEST"></evidence><evidence id="MULTIAGENT-INBOX-SPLICE"></evidence></p></div>
+  <p>因此“后台 Agent”不是一种状态：one-shot 后台是普通 Job，continuable 后台是有 durable Session ID 的对话。把两者都画成 running/done 会丢掉最重要的控制差异。</p>
+</section>
+
+<section>
+  <h2>3. Provider 矩阵：同一个 seam，六种不同隔离边界</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Provider</th><th>进程/上下文</th><th>父对话</th><th>Continuable</th><th>Start capabilities</th></tr></thead>
+    <tbody>
+      <tr><td><code>spawn</code></td><td>同进程，独立 Agent/Session</td><td>无</td><td>是</td><td>schema、depth、filter、persona 全部支持</td></tr>
+      <tr><td><code>fork</code></td><td>同进程，独立 Agent/Session</td><td>已完成 Turn 前缀</td><td>实现了</td><td>四项全部支持</td></tr>
+      <tr><td><code>acp</code></td><td>外部 ACP 进程</td><td>无</td><td>否</td><td>无</td></tr>
+      <tr><td><code>codex</code></td><td>每次新 app-server 进程</td><td>无</td><td>否</td><td>无</td></tr>
+      <tr><td><code>claude-code</code></td><td>官方 SDK/CLI 子进程</td><td>无</td><td>否</td><td>无</td></tr>
+      <tr><td><code>dsh-sdk</code></td><td>完整独立 runtime 进程</td><td>无</td><td>否</td><td>无</td></tr>
+    </tbody>
+  </table></div>
+  <p>Spawn/fork 是真正进入本地父子图的 backend；外部 provider 不继承父对话，唯一可能来自父级的上下文是 workspace cwd（ACP/SDK 也可改用配置的 cwd），并通过 one-shot result seam 返回。ACP、Codex、Claude Code 与 SDK package 是可选能力，不等于默认产品面：Standard/Code preset 中 Codex 与 Claude Code 的工具行明确 <code>disabled</code>。<evidence id="MULTIAGENT-SPAWN-PROVIDER"></evidence><evidence id="MULTIAGENT-FORK-PROVIDER"></evidence><evidence id="MULTIAGENT-ACP-PROVIDER"></evidence><evidence id="MULTIAGENT-SDK-PROVIDER"></evidence><evidence id="MULTIAGENT-CODEX-PROVIDER"></evidence><evidence id="MULTIAGENT-CLAUDE-PROVIDER"></evidence><evidence id="MULTIAGENT-STANDARD-PRESET"></evidence><evidence id="MULTIAGENT-CODE-PRESET"></evidence></p>
+</section>
+
+<section>
+  <h2>4. Spawn 与 Fork 的差异只在会话 seed，不在 child 是否“独立”</h2>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>Spawn</h3><p>不传 seed；child 从空对话开始，委派 prompt 必须自包含。</p></div>
+    <div><span>2</span><h3>Fork</h3><p>复制父 Session 从 seq 0 到最后一个 <code>turn/end</code> 的平衡前缀。</p></div>
+    <div><span>3</span><h3>排除当前 Turn</h3><p>正在调用委派工具的 Turn 尚未闭合，不能作为合法 child seed。</p></div>
+    <div><span>4</span><h3>后续独立</h3><p>两者都拥有新的 Session ID、自己的 inbox、Turn 和输出后缀。</p></div>
+  </div>
+  <div class="claim fact"><div class="claim-label">上下文语义</div><p>Fork 的“继承上下文”仅指已完成对话历史；它不意味着共享当前 reasoning、live inbox 或同一个 Session。测试在父级第二个 Turn 悬挂时 fork，验证 child seed 只包含首个已完成 Turn。<evidence id="MULTIAGENT-SPAWN-PROVIDER"></evidence><evidence id="MULTIAGENT-FORK-PROVIDER"></evidence><evidence id="MULTIAGENT-FORK-OPEN-TURN-TEST"></evidence></p></div>
+  <p>两种 in-process child 都会加入父级正在运行的同一 preset generation——同一批 plugin instance、工具注册和 prompt section，而不是按 preset 名重新读取可能已变化的配置。<evidence id="MULTIAGENT-PRESET-INHERITANCE"></evidence></p>
+</section>
+
+<section>
+  <h2>5. 继承矩阵：路线、工作区和能力是不同维度</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>项目</th><th>规则</th><th>是否耐久</th></tr></thead>
+    <tbody>
+      <tr><td>Provider / model / maxTokens</td><td>默认取父级，child request 可覆盖</td><td>provider/model 写入 continuable descriptor；maxTokens 不写</td></tr>
+      <tr><td>Workspace / lineage</td><td>继承 cwd，记录 direct parent、origin、depth，以及存在时的非零 seedLength</td><td>写入 Session header</td></tr>
+      <tr><td>Prompt / tools</td><td>加入父级 exact live preset，再叠 child persona/filter</td><td>preset ID 与 descriptor 支撑恢复</td></tr>
+      <tr><td>Conversation</td><td>只有 fork 复制 completed-turn prefix</td><td>seed 成为 child 自己的 log 前缀</td></tr>
+      <tr><td>Sandbox / approval</td><td>Sandbox policy 已组合时只复制显式 Session override；approval 已组合时钉为 <code>never</code></td><td>只有已定义的 override 才成为 delegation-source event</td></tr>
+    </tbody>
+  </table></div>
+  <p>不会继承的内容同样重要：spawn 不看父 transcript；fork 不看 open Turn；一次性授权不会下放；部署 sandbox 默认值不会被快照；child 的 persona 和工具过滤只在自身 scope 中生效，不污染父级或 sibling。<evidence id="MULTIAGENT-CHILD-INHERITANCE"></evidence><evidence id="MULTIAGENT-CHILD-COMPOSITION"></evidence><evidence id="MULTIAGENT-DELEGATED-POLICY"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">设计判断</div><p>这里的继承不是对象浅拷贝，而是有意拆开的四条通道：Session seed、Agent options、preset scope 和 durable policy events。这比一个含糊的 <code>inheritContext=true</code> 更可审计。</p></div>
+</section>
+
+<section>
+  <h2>6. 递归预算和权限边界都沿父子 lineage 单调收紧</h2>
+  <p>Tool loader 的默认 <code>maxDepth</code> 是 3；<code>provider-managed</code> 用于无法由父 runtime 强制的外部 provider。底层 depth 读取持久 header 与 runtime option 的较大值，再加一生成 child，因此恢复后的 child 不能伪装回 depth 0。Direct apply 若省略 cap 则可无上限，这说明“默认 3”属于工具配置，不是 service 的全局定律。<evidence id="MULTIAGENT-TOOL-CONFIG"></evidence><evidence id="MULTIAGENT-DEPTH"></evidence></p>
+  <div class="claim fact"><div class="claim-label">调用权限</div><p><code>send_message</code> 只允许 exact live direct parent；<code>interrupt_agent</code> 可以由 exact live ancestor 作用于更深 descendant。身份比较的是活 Agent 对象与持久 parent lineage，不是调用者提交一个可猜的 Session 字符串。<evidence id="MULTIAGENT-CONTROL-TOOLS"></evidence><evidence id="MULTIAGENT-COLD-RESUME"></evidence><evidence id="MULTIAGENT-INTERRUPT"></evidence></p></div>
+  <p>这不是 role-based team：没有 leader/member 角色表，也没有 sibling 直发通道。现有 authority 是树形且窄化的；想做 team、共享队列或任意 Agent 路由，需要新增显式协议，而不是把现有 <code>parentSession</code> 当成万能 ACL。</p>
+</section>
+
+<section>
+  <h2>7. One-shot 的核心合同：发布前 provider 所有，发布后 run holder 所有</h2>
+  <pre><code>validate provider + capabilities + schema + descriptor
+  → provider.start()
+      → unpublished setup / rollback on failure
+      → publish child or external run
+  → emit subagent/start
+  → await run.result ──────────→ emit subagent/end
+  → map stopReason / preserve partial output
+  → holder runs dispose() to quiescence</code></pre>
+  <div class="claim fact"><div class="claim-label">提交点</div><p>Provider 启动 reject 时没有 run、也没有 lifecycle edge；一旦返回，Turn/transport failure 进入 <code>result</code>。In-process driver 发布 child 后只提交一个 user prompt并等待 idle，AbortSignal 会 cancel child；<code>dispose()</code> 是幂等资源释放边界。<evidence id="MULTIAGENT-RUNTIME-DISPATCH"></evidence><evidence id="MULTIAGENT-ONE-SHOT-DRIVER"></evidence></p></div>
+  <p>结果从 seed/activation boundary 后的 child-owned suffix 读取。<code>completed</code>、<code>aborted</code>、<code>error</code>、<code>max-tokens</code>、<code>refusal</code> 不会被压成一个布尔值；取消或截断仍可携带 partial output。One-shot 的 <code>subagent/end</code> 跟随 result settlement，可能早于 holder 完成 dispose；continuable epoch 的 end 则等待 teardown outcome。后台 Job 只有 completed 才把 final text 当成功输出，其他 reason 映射为 killed/failed，并且总在 settle 后 dispose。<evidence id="MULTIAGENT-ONE-SHOT-RESULT"></evidence><evidence id="MULTIAGENT-LIFECYCLE"></evidence><evidence id="MULTIAGENT-RUN-SETTLEMENT"></evidence></p>
+</section>
+
+<section>
+  <h2>8. “最终答案”与“结构化结果”是两套独立提交协议</h2>
+  <p>普通输出的统一选择规则是最后一条非空 assistant message；若没有，则使用累计 text delta；都没有才为空。选择与 stop reason 独立，因此 error/max-tokens 也可能携带诊断价值很高的 partial answer。<evidence id="MULTIAGENT-ASSISTANT-OUTPUT"></evidence></p>
+  <div class="claim fact"><div class="claim-label">Structured output</div><p>只有支持该 capability 的 in-process provider 才会在 child scope 安装真实 schema 的 <code>structured_output</code> 工具、专属 prompt 和单调 guard。模型调用工具只是 staged；必须等 authoritative <code>tools/result</code> 成功，Code Mode 下还要等外层调用成功，才提交 capture。Child 声称 completed 却没有有效 capture 时，run 被改判为 error。<evidence id="MULTIAGENT-STRUCTURED-OUTPUT"></evidence><evidence id="MULTIAGENT-ONE-SHOT-RESULT"></evidence></p></div>
+  <p>这解释了 external provider 为什么声明零 capabilities：工作目录相同不代表父 runtime 能强制其工具 catalog、persona、递归预算或结构化提交点。</p>
+</section>
+
+<section>
+  <h2>9. Continuable 的 durable Session 与 process-local Activation 必须分开看</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>状态</th><th>依据</th><th>含义</th></tr></thead>
+    <tbody>
+      <tr><td><code>running</code></td><td>Agent 正运行，或有已接受但尚未离开 inbox 的 waking message</td><td>当前 epoch 不能 settle</td></tr>
+      <tr><td><code>waiting</code></td><td>Agent idle，但仍拥有未 dispose 的 child Activation</td><td>父级被子树所有权钉住</td></tr>
+      <tr><td><code>settled</code></td><td>Agent idle 且 owned children 为空</td><td>dispose live handle；durable Session 仍可再恢复</td></tr>
+    </tbody>
+  </table></div>
+  <p><code>Activation</code> 是一个驻留 epoch，不是 durable Task。它持有 exact handle、弱引用 ancestry、owned-child set、accepted message IDs 和一次性 disposal transaction；稳定的是 child Session ID，每次冷恢复会获得新的 lifecycle <code>runId</code>。<evidence id="MULTIAGENT-ACTIVATION-MODEL"></evidence><evidence id="MULTIAGENT-ACTIVATION-OWNERSHIP"></evidence><evidence id="MULTIAGENT-LIFECYCLE"></evidence></p>
+  <aside class="caveat"><strong>边界：</strong>只有 continuation-managed parent 会因 child 存活而进入 <code>waiting</code>。顶层 parent 不在这张 ownership graph 中；它是否继续工作由自己的 Turn/inbox 调度决定。</aside>
+</section>
+
+<section>
+  <h2>10. Follow-up 的权威提交点是 inbox acceptance；冷恢复不再调用 provider</h2>
+  <pre><code>send_message(childId)
+  ├─ resident + running → 排入同一 Agent inbox，等当前 Turn 结束
+  ├─ resident + waiting → 唤醒同一 Agent
+  └─ no Activation      → inspect durable Session
+                           → 校验 exact direct parent
+                           → fold own descriptor suffix
+                           → ctx.agents.resume()
+                           → 排入 inbox</code></pre>
+  <p>每个 child 的 delivery、release 和 disposal 先经过同一把 <code>ChildLock</code>；Agent inbox 是唯一 FIFO。调用方 AbortSignal 只拥有 acceptance 之前的阶段，消息被接受后不能通过这次 <code>send_message</code> 取消。<evidence id="MULTIAGENT-FOLLOWUP"></evidence></p>
+  <div class="claim fact"><div class="claim-label">Provider 不参与恢复</div><p>Cold resume 从持久 Session header 和 child 自己 suffix 中的 descriptor 重建 provider/model、persona 与 tool filter，然后直接走 <code>agents.resume()</code>；它不 dispatch 原 provider。因此 provider 卸载会阻止新 start，却不必阻止已有 continuable child 恢复。Descriptor 不保存 <code>maxTokens</code> 或 <code>outputSchema</code>，恢复时不能假定这两个 activation-local 约束仍然存在。<evidence id="MULTIAGENT-COLD-RESUME"></evidence><evidence id="MULTIAGENT-DESCRIPTOR"></evidence></p></div>
+</section>
+
+<section>
+  <h2>11. 返回通道有四种，完成与报告绝不能混为一谈</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>通道</th><th>谁发送</th><th>会不会结束 child</th><th>Parent 得到什么</th></tr></thead>
+    <tbody>
+      <tr><td>Foreground result</td><td>run holder</td><td>是，一次性</td><td>直接 tool result</td></tr>
+      <tr><td>Background Job outcome</td><td>Job runtime</td><td>是，一次性</td><td>Job 状态/通知</td></tr>
+      <tr><td><code>report</code></td><td>Continuable child 主动选择</td><td>否</td><td>direct parent inbox 的 relay</td></tr>
+      <tr><td>Settlement notice</td><td>Continuation manager</td><td>在 teardown 后发送</td><td>stop reason + 可用 closing message</td></tr>
+    </tbody>
+  </table></div>
+  <p><code>send_message</code> 只返回被接受的 <code>messageId</code>，不是 child 的回答。Child-scoped <code>report</code> 只能发给 direct parent，可按 <code>wakeup</code> 或 <code>quiet</code> 调度，且报告不会结束 Turn/Activation。<evidence id="MULTIAGENT-CONTROL-TOOLS"></evidence><evidence id="MULTIAGENT-REPORT-TOOL"></evidence><evidence id="MULTIAGENT-REPORT-DELIVERY"></evidence></p>
+  <div class="claim fact"><div class="claim-label">兜底通知</div><p>只要 caller 曾收到 child ID，Activation settlement 就独立于 <code>report</code> 尝试投递 runtime notice；即使 max-tokens、失败、取消或 child 忘记报告，parent 仍有机会看到结果。Parent 已不 live 时通知被丢弃而不阻塞 teardown，child Session 是剩余的 durable record。<evidence id="MULTIAGENT-SETTLEMENT-NOTICE"></evidence></p></div>
+</section>
+
+<section>
+  <h2>12. <code>list_agents</code> 是发现面，不是任务结果面</h2>
+  <p>底层 listing 从 live Session store 与可选 persistence 合并 corpus，按 durable header 的 <code>origin:subagent</code> 找 direct children/descendants，再通过 projection 分类 mode/label。冷读并发固定为 4；单个 child 损坏或暂时读不到会成为 <code>corrupt</code>/<code>unavailable</code> diagnostic，而不是让整次 listing 失败。它不读取 Activation manager 或 provider 状态。<evidence id="MULTIAGENT-LIST-SERVICE"></evidence><evidence id="MULTIAGENT-LIST-CONCURRENCY"></evidence></p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>模型状态</th><th>真实含义</th><th>不是</th></tr></thead>
+    <tbody>
+      <tr><td><code>running</code></td><td>Live Agent 正在驱动</td><td>某个 Job 的 running</td></tr>
+      <tr><td><code>idle</code></td><td>Live Agent 在 Turn 间；可能正等 descendant</td><td>已完成、可收集结果</td></tr>
+      <tr><td><code>ready</code></td><td>只有存储记录，可被 direct parent 恢复</td><td>terminal success</td></tr>
+    </tbody>
+  </table></div>
+  <p>模型工具过滤掉 one-shot child，因为它们不能被 <code>send_message</code>；descendants 仍会穿过这些节点做稳定 pre-order 遍历。Depth 1 才能 follow-up，更深节点只可作为 ancestor interrupt 候选。<evidence id="MULTIAGENT-LIST-TOOL"></evidence></p>
+</section>
+
+<section>
+  <h2>13. 并发策略是“跨 child 可重叠、单 child 线性化”，不是全局调度</h2>
+  <div class="claim fact"><div class="claim-label">可并行部分</div><p>Provider contract 明确允许不同 child 的 starts 重叠；委派工具声明 concurrency-safe，并在 continuable prompt 中鼓励把独立委派放进同一 assistant message。One-shot background 还会进入 Job registry 的 owner capacity 规则。<evidence id="MULTIAGENT-SEAM"></evidence><evidence id="MULTIAGENT-TOOL-CONCURRENCY"></evidence><evidence id="MULTIAGENT-JOB-CAPACITY"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">必须串行部分</div><p>同一 durable child 的 follow-up、释放和销毁由 <code>ChildLock</code> 排队；accepted-ID set 覆盖“消息已同步插入、Agent status 尚未切到 running”的微任务窗口，避免 settlement 提前赢过已经接受的工作。父级 owned-child set 又把整个 descendant 生命周期纳入 parent settle 条件。<evidence id="MULTIAGENT-CHILD-LOCK"></evidence><evidence id="MULTIAGENT-FOLLOWUP"></evidence><evidence id="MULTIAGENT-ACTIVATION-OWNERSHIP"></evidence></p></div>
+  <p>Subagent 层没有全局 worker pool、公平队列、优先级、配额分配或结果归并器。它提供正确的并发边界；“派几个、何时派、如何合并”仍由模型 prompt、Job 层或更高阶 workflow 负责。</p>
+</section>
+
+<section>
+  <h2>14. Interrupt 只停当前 Turn；Drain 才销毁整棵 Activation 子树</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>操作</th><th>立即动作</th><th>保留内容</th><th>完成等待</th></tr></thead>
+    <tbody>
+      <tr><td>Foreground AbortSignal</td><td>cancel one-shot child/run</td><td>已产生 partial output</td><td>holder 最终 dispose</td></tr>
+      <tr><td>Job kill</td><td>abort task-owned controller</td><td>Job identity 到 settlement</td><td>Job producer settle + dispose</td></tr>
+      <tr><td><code>interrupt_agent</code></td><td><code>cancel(..., keepInbox:true)</code></td><td>Activation、未 claim 消息、descendants</td><td>不等待，fire-and-return</td></tr>
+      <tr><td>Manager/scoped drain</td><td>同步关闭 admission，自顶向下 cancel</td><td>只保留 durable Session</td><td>自底向上 release，汇总失败</td></tr>
+    </tbody>
+  </table></div>
+  <p>Interrupt 对 absent/已完成/one-shot ID 是 accepted no-op；它不是 subtree kill。外部 one-shot provider 在本地取消赢得竞态时把结果归一化为 aborted，并由幂等 handle teardown 等到子进程树退出。<evidence id="MULTIAGENT-INTERRUPT"></evidence><evidence id="MULTIAGENT-OUTPROCESS-SETTLEMENT"></evidence></p>
+  <div class="claim fact"><div class="claim-label">树级静止</div><p>Drain 先封 admission，等已接纳 materialization 发布或回滚，再对所有 root 并行；每棵树先 top-down 传播 cancel、后 child-first 释放 handle。单支失败不会跳过 sibling，最终以 aggregate error 报告。最终 Session flush 是 best effort；失败会警告“恢复可能缺失或陈旧”，但不能永久钉住 ancestor。<evidence id="MULTIAGENT-DRAIN"></evidence><evidence id="MULTIAGENT-ACTIVATION-DISPOSAL"></evidence></p></div>
+</section>
+
+<section>
+  <h2>15. 耐久性来自 Session descriptor，不来自驻留 Agent 或 Task queue</h2>
+  <pre><code>Session header
+  parentSession / origin=subagent / delegationDepth / seedLength / agentPreset
+
+subagent/descriptor v2（model-hidden, log-only）
+  one-shot:    mode / provider / optional label
+  continuable: mode / provider / label / agentProvider / agentModel / persona / toolFilter
+  intentionally omitted: outputSchema / maxTokens / subagentDepth</code></pre>
+  <p>Continuable creation 把 fork prefix（若有）之后追加一个 between-turn descriptor seed，再接受初始 prompt。Descriptor 先做 lossless JSON snapshot；当前版 parser 拒绝未知字段，版本不支持则不可恢复。<evidence id="MULTIAGENT-DESCRIPTOR"></evidence><evidence id="MULTIAGENT-DESCRIPTOR-SEED"></evidence><evidence id="MULTIAGENT-DESCRIPTOR-FOLD"></evidence></p>
+  <div class="claim fact"><div class="claim-label">Ancestor descriptor 防串台</div><p>Fork seed 可能含祖先的 descriptor。Cold resume 因此只 fold <code>seedLength</code> 后的 child-owned suffix；projection 则采用 last valid descriptor wins，让 child 自己的记录覆盖 seed 中祖先身份。两处规则目的相同，折叠边界不同。<evidence id="MULTIAGENT-DESCRIPTOR-PROJECTION"></evidence><evidence id="MULTIAGENT-COLD-RESUME"></evidence></p></div>
+  <p>进程重启后可恢复的是 child 对话及其声明式 composition，不是旧 Activation、run handle、accepted set 或 background Job。最终 flush 失败时，runtime 仍释放 graph，明确选择“可能 stale 的恢复”而不是“确定死锁的祖先”。<evidence id="MULTIAGENT-FINAL-FLUSH"></evidence></p>
+</section>
+
+<section>
+  <h2>16. Codex 对比：DeepSeek seam 看到一个 one-shot worker，Codex 内部仍可能编排 subagent</h2>
+  <p>仓库里的 <code>codex</code> provider 每次委派启动新的官方 <code>codex app-server --stdio</code>，只继承父 Session 的 cwd。它声明零 start capabilities、没有 <code>prepareContinuable</code>、不共享父 transcript/preset/tool scope，也不返回本地 Agent handle。换言之，DeepSeek Harness 只把整个 Codex 运行包装成一个 one-shot child；即使该 Codex Turn 内部使用自己的 subagents，那棵内部树也不会成为 DeepSeek continuation graph 的可寻址节点。<evidence id="MULTIAGENT-CODEX-PROVIDER"></evidence><evidence id="MULTIAGENT-CODEX-RUN"></evidence></p>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>启动</h3><p>固定命令，初始化 JSON-RPC；thread 创建成功前不发布 run。</p></div>
+    <div><span>2</span><h3>隔离</h3><p><code>thread/start</code> 强制 <code>ephemeral:true</code>，cwd 指向父工作区。</p></div>
+    <div><span>3</span><h3>执行</h3><p>仅接受非空 text blocks，启动一个 Turn。</p></div>
+    <div><span>4</span><h3>回收</h3><p>关闭 wire、结束 stdin、终止并等待整个受管进程树。</p></div>
+  </div>
+  <p>Wire 只把最后一个 <code>final_answer</code>（无显式 final 时退回最后个 unphased answer）作为输出；commentary 与 reasoning 不返回。Context window exceeded 映射为 max-tokens，其他异常经 shared out-of-process settlement 变成 error/partial output。<evidence id="MULTIAGENT-CODEX-RUN"></evidence><evidence id="MULTIAGENT-CODEX-WIRE"></evidence></p>
+  <div class="claim fact"><div class="claim-label">无人值守安全</div><p>Command/file approval 只会选择 <code>cancel</code> 或 <code>decline</code>，permission 请求返回空权限，user input 返回空 answers，MCP elicitation 被拒绝；没有把 child 的审批请求冒充成人类已同意。对应协议测试还验证 ephemeral thread、跨 thread/turn 过滤、commentary 排除和 last-final 选择。<evidence id="MULTIAGENT-CODEX-UNATTENDED"></evidence><evidence id="MULTIAGENT-CODEX-WIRE-TEST"></evidence></p></div>
+  <h3>Codex 公开多 Agent 合同与本 seam 的差异</h3>
+  <div class="table-scroll"><table>
+    <thead><tr><th>维度</th><th>DeepSeek Harness 固定源码</th><th>Codex 公开文档</th></tr></thead>
+    <tbody>
+      <tr><td>编排单位</td><td>Provider-bound child Session/run；continuable child 有 durable ID</td><td>Subagent workflow 与可检查的 agent thread</td></tr>
+      <tr><td>协调责任</td><td>模型显式调用工具；direct parent 负责 follow-up，runtime 分开 report 与 settlement</td><td>Codex 负责 spawn、follow-up routing、wait 与 close，主 thread 汇总结果</td></tr>
+      <tr><td>并发边界</td><td>跨 child 可重叠；subagent seam 本身没有全局并发 cap</td><td><code>agents.max_concurrent_threads_per_session</code> 可限制并发 open threads</td></tr>
+      <tr><td>角色与配置</td><td>Provider、preset、persona/filter 与 Agent options 组合</td><td>内置/default worker/explorer 与 project/personal TOML custom agents，可覆盖 model、reasoning、sandbox、MCP 和 skills</td></tr>
+      <tr><td>权限</td><td>对应 service 已组合时，in-process child 复制显式 sandbox override，并把 approval 钉为 never</td><td>Subagent 继承当前 sandbox/permission mode 与 parent Turn 的 live overrides；无法呈现审批的非交互 run 会失败</td></tr>
+    </tbody>
+  </table></div>
+  <p>Codex 一侧仅使用 OpenAI 公开的 <a href="https://learn.chatgpt.com/docs/agent-configuration/subagents.md" rel="noreferrer">Subagents</a> 文档，检索于 2026-08-13。DeepSeek 一侧是固定 commit 的源码级证据；这个对照不推断任何未公开实现。</p>
+  <div class="claim assessment"><div class="claim-label">比较结论</div><p>这个 adapter 的强项是隔离清楚、失败收敛、进程树可回收；代价是 DeepSeek parent 只得到一次性最终结果，看不到也不能直接 steer Codex 内部 agent threads。若要把 Codex child 暴露为 DeepSeek 可持续消息路由中的节点，不能从 <code>codex</code> provider 名称推断，必须另建有明确 durable/authority 合同的 backend。</p></div>
+</section>
+
+<section>
+  <h2>17. 失败分层：在哪个提交点失败，决定谁负责善后</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>失败位置</th><th>外部可见结果</th><th>资源语义</th></tr></thead>
+    <tbody>
+      <tr><td>Provider/capability/schema 校验</td><td>Tool 立即失败，无 child ID</td><td>没有 provider work</td></tr>
+      <tr><td>未发布 create/handshake</td><td>Start reject，无 lifecycle edge</td><td>Provider/Agent factory 回滚 partial resource</td></tr>
+      <tr><td>发布后 model/transport</td><td><code>stopReason:error</code>，可能有 partial output</td><td>holder 仍必须 dispose</td></tr>
+      <tr><td>Catalog 单 child 损坏</td><td>diagnostic row</td><td>其余 children 继续列出</td></tr>
+      <tr><td>Parent 已消失</td><td>Settlement notice 丢弃</td><td>child Session 保留事实</td></tr>
+      <tr><td>Final flush/teardown 失败</td><td>warning 或 error lifecycle</td><td>仍释放 ownership，避免永久 waiting</td></tr>
+    </tbody>
+  </table></div>
+  <p>Service 在 provider dispatch 前做 capability 检查；out-of-process helper 把发布后 transport rejection 变成稳定 result；listing 把读损坏隔离到单行。<evidence id="MULTIAGENT-RUNTIME-DISPATCH"></evidence><evidence id="MULTIAGENT-OUTPROCESS-SETTLEMENT"></evidence><evidence id="MULTIAGENT-LIST-SERVICE"></evidence></p>
+  <div class="claim fact"><div class="claim-label">运行时不变量</div><p>Lifecycle listener 的 throw/rejection 被逐个隔离；one-shot 与每个 Activation epoch 都要求 start/end 身份配对。Invariant companion 还检查 provider add/remove 一致性、非空身份、没有重复的 live runId，以及 end 与 start 的 provider/child/local 字段一致。<evidence id="MULTIAGENT-LIFECYCLE"></evidence><evidence id="MULTIAGENT-INVARIANTS"></evidence></p></div>
+</section>
+
+<section>
+  <h2>18. Pinned baseline 的两项 composition 审计结论</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>发现</th><th>证据</th><th>影响</th></tr></thead>
+    <tbody>
+      <tr><td>Fork continuable 声明与 shipped preset 冲突</td><td>Provider 源码注释称没有随附调用者；base 的确是 one-shot，但 Standard、Code 和 Cordis preset 都配置 continuable</td><td>这些 preset 会走已实现的 <code>prepareContinuable</code>，并给 fork child 增加 report prompt/tool，正好破坏注释所强调的逐字节 prefix reuse 前提</td></tr>
+      <tr><td>Codex/Claude Code 是可选 package，不是默认可用工具</td><td>Preset 有 provider-bound tool row，但默认 disabled；同一 preset 未装载对应 provider plugin</td><td>“仓库含 adapter”不能写成“用户默认能调用”</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">可复核漂移</div><p>Fork 的代码确实实现 continuable seed；base 配置及其理由与源码注释一致，而三个 agent preset 的实际值相反。因为工具在 provider 存在 <code>prepareContinuable</code> 时会成功挂载，这不是死配置。应统一为 one-shot，或更新设计说明并证明 report 增量不会破坏期望的 prefix/cache 语义。<evidence id="MULTIAGENT-FORK-PROVIDER"></evidence><evidence id="MULTIAGENT-BASE-COMPOSITION"></evidence><evidence id="MULTIAGENT-STANDARD-PRESET"></evidence><evidence id="MULTIAGENT-CODE-PRESET"></evidence><evidence id="MULTIAGENT-CORDIS-PRESET"></evidence></p></div>
+  <p>Codex 的边界同样需要写准确：provider package 完整存在，但 preset 只提供 disabled 的模型入口。<evidence id="MULTIAGENT-CODEX-PROVIDER"></evidence></p>
+</section>
+
+<section>
+  <h2>19. 保证矩阵与最终评价</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>形态</th><th>父历史</th><th>跨进程重启继续</th><th>后续消息</th><th>结果通道</th></tr></thead>
+    <tbody>
+      <tr><td>Spawn one-shot</td><td>无</td><td>否</td><td>否</td><td>Foreground result 或 Job</td></tr>
+      <tr><td>Fork one-shot</td><td>Completed-turn prefix</td><td>否</td><td>否</td><td>Foreground result 或 Job</td></tr>
+      <tr><td>Spawn continuable</td><td>无</td><td>是，需 Session persistence</td><td>Direct parent FIFO</td><td>Report + settlement notice</td></tr>
+      <tr><td>Fork continuable</td><td>创建时捕获一次 completed prefix</td><td>技术上支持；shipped 配置有漂移</td><td>Direct parent FIFO</td><td>Report + settlement notice</td></tr>
+      <tr><td>ACP/Codex/Claude/SDK</td><td>无；最多继承父 cwd（ACP/SDK 可覆盖）</td><td>否</td><td>否</td><td>One-shot result</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">最终评价</div><p>最成熟的部分不是“会派 Agent”，而是提交点：发布前失败无 ID、inbox acceptance 后 ownership 转移、interrupt 不冒充 quiescence、Session 与 Activation 分层、树级 teardown 不因单支失败跳过 sibling。最明显的空白也同样清楚：没有全局调度、共享 team state、自动结果归并、durable Job queue 或跨任意 Agent 的消息总线。把这些空白说成边界，比把一组可组合原语宣传成完整 swarm 更有价值。</p></div>
+  <div class="claim fact"><div class="claim-label">验证状态</div><p>本章在固定提交 <code>47f943859bef60e4160492346772ded9b24f765a</code> 上追踪 production source、shipped config 与 tests，并运行了 <code>packages/subagent</code> 下 28 个 Vitest <code>*.spec.ts</code> 文件（E2E 文件使用独立配置）：603 项全部通过。Codex 对照单独限定为 2026-08-13 检索的 OpenAI 公开文档；配置漂移是跨文件静态审计结论，不会因这些 package tests 通过而自动消失。</p></div>
+</section>
