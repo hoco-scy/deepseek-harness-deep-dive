@@ -6,7 +6,7 @@
 <body data-page="turn-step-loop" data-baseline="47f943859bef60e4160492346772ded9b24f765a" data-lang="en">
   <header class="topbar"><button class="icon-button nav-toggle" type="button" data-nav-toggle aria-label="Open chapter directory" aria-expanded="false">☰</button>
     <a class="brand" href="../index.html"><span class="brand-mark">DS</span><span>Harness Systems Dissection</span></a>
-    <span class="topbar-meta">Pinned baseline 47f943859b · 3 verified / 3 in progress / 36 chapters</span>
+    <span class="topbar-meta">Pinned baseline 47f943859b · 4 verified / 3 in progress / 36 chapters</span>
     <div class="topbar-actions"><a class="language-switch" href="../zh/pages/turn-step-loop.html" lang="zh-CN" aria-label="Read this chapter in Chinese">中文</a><button class="icon-button" type="button" data-theme-toggle aria-label="Toggle light or dark theme">◐</button></div></header>
   <div class="layout"><aside class="sidebar" data-sidebar aria-label="Chapter directory"><input class="filter" data-chapter-filter type="search" placeholder="Filter chapters…" aria-label="Filter chapters"><section class="nav-part" data-part><h2 class="part-title">Introduction</h2>
     <a class="chapter-link" data-chapter-item href="../pages/reading-guide.html">
@@ -17,7 +17,7 @@
     <a class="chapter-link" data-chapter-item href="../pages/boot-profiles-bundles.html">
       <span class="chapter-number">04</span><span>Boot, Profiles, Bundles, and Configuration Layers</span><span class="status-dot verified" title="Verified"></span></a><a class="chapter-link" data-chapter-item href="../pages/agent-object-lifecycle.html">
       <span class="chapter-number">05</span><span>Agent Objects, Registry, and Lifecycle</span><span class="status-dot verified" title="Verified"></span></a><a class="chapter-link current" data-chapter-item href="../pages/turn-step-loop.html">
-      <span class="chapter-number">06</span><span>The Turn / Step / Loop State Machine</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/prompt-context.html">
+      <span class="chapter-number">06</span><span>The Turn / Step / Loop State Machine</span><span class="status-dot verified" title="Verified"></span></a><a class="chapter-link" data-chapter-item href="../pages/prompt-context.html">
       <span class="chapter-number">07</span><span>Prompt Assembly and Context Injection</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/llm-adapters.html">
       <span class="chapter-number">08</span><span>LLM Adapters and Conversation Protocol Translation</span><span class="status-dot queued" title="Queued"></span></a></section><section class="nav-part" data-part><h2 class="part-title">Sessions and Persistence</h2>
     <a class="chapter-link" data-chapter-item href="../pages/session-event-model.html">
@@ -56,10 +56,159 @@
       <span class="chapter-number">34</span><span>Gaps, Limitations, and Open Questions</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/glossary-evidence.html">
       <span class="chapter-number">35</span><span>Glossary, Evidence Catalog, and Source Index</span><span class="status-dot queued" title="Queued"></span></a></section></aside>
     <main class="main"><div class="page-shell"><article class="article" data-article><header><div class="page-kicker"><span>Core Runtime</span><span>·</span><span>Chapter 06</span></div>
-      <h1>The Turn / Step / Loop State Machine</h1><p class="subtitle">From input claims through model calls and tools to turn stop points</p><div class="page-meta"><span class="status queued">Queued</span><span>Upstream 47f943859b</span><span>Scope: Trace durable turns, steps, waterfalls, empty steps, failures, and next-step input branch by branch.</span></div></header>
-      <section class="placeholder"><p class="eyebrow">Research queue</p><h2>This chapter has not reached a conclusion state</h2>
-    <p><strong>Current scope:</strong> Trace durable turns, steps, waterfalls, empty steps, failures, and next-step input branch by branch.</p><p>This page is part of the complete research map, but its source-level control-flow audit is not complete. It must cover all of the following before it can be marked Verified:</p>
-    <ul class="placeholder-checks"><li>Actual bundle and profile assembly entry points</li><li>Public types, events, and configuration schemas</li><li>Normal control flow and exact mutation points</li><li>Concurrency, scope, ownership, and cleanup</li><li>Error, cancellation, retry, and degradation branches</li><li>Persistence, projections, and replay semantics</li><li>Production-path tests and runtime invariants</li><li>Benefits, costs, limitations, and open questions</li></ul></section><section class="learning-notes" aria-labelledby="learning-notes-title"><h2 id="learning-notes-title">My Learning Notes</h2>
+      <h1>The Turn / Step / Loop State Machine</h1><p class="subtitle">From input claims through model calls and tools to turn stop points</p><div class="page-meta"><span class="status verified">Verified</span><span>Upstream 47f943859b</span><span>Scope: Trace durable turns, steps, waterfalls, empty steps, failures, and next-step input branch by branch.</span></div></header>
+      <section>
+  <h2>Conclusion: the loop is small, but it guards event order and reconstructability</h2>
+  <div class="thesis"><p>The default loop owns one semantic spine: claim input → open Turn/Step → reconstruct a request from the log → call the model → persist stream and completion → execute tools → continue or stop. Compaction, permission, retry policy, planning, and multi-Agent behavior participate through plugin seams instead of rewriting this spine.</p></div>
+  <p>“Small” does not mean simple. Its value is concentrated in exact commit order: every model request actually dispatched can be independently reconstructed from the Session log immediately before dispatch.</p>
+</section>
+
+<section>
+  <h2>1. Do not conflate four levels</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Level</th><th>Begins when</th><th>What it owns</th><th>Ends when</th></tr></thead>
+    <tbody>
+      <tr><td>Driver activity</td><td>Waking input starts from idle</td><td>One <code>AbortController</code>, initiator scope, and the drain of consecutive queued turns</td><td>No continuable work remains, or failure/cancellation converges</td></tr>
+      <tr><td>Turn</td><td>The driver calls <code>turn()</code></td><td>Durable accounting for a unit of work, from <code>turn/start</code> to one <code>turn/end</code></td><td>completed / max-tokens / blocked / aborted / error</td></tr>
+      <tr><td>Step</td><td>Pre-step accepts a non-empty first batch, or tool continuation requires another request</td><td>One model call and its tool batch, from <code>step/start</code> to <code>step/end</code></td><td>Model completion, tool continuation, tool conclusion, or exception</td></tr>
+      <tr><td>Request attempt</td><td><code>buildRequest()</code> runs inside a Step</td><td>Frozen route/system/tools/messages; provider failures may retry inside the same Step</td><td>Successful finish or an unrecovered failure</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Architecture fact</div><p>The official sequences separate turns, steps, prompt assembly, LLM streaming, tool settlement, and stop points. Turn/step boundaries are durable SessionEvents rather than a mirrored <code>agent/*</code> stream. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/docs/architecture.md#L63-L90" title="Turn and step flow: The relationship among turns, steps, prompts, LLM calls, tools, and live waterfalls." aria-label="Evidence ARCH-TURN">ARCH-TURN</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/docs/agent-lifecycle.md#L19-L80" title="Agent turn and step sequence: The sequence of input claims, durable events, parallel tool settlement, stop points, and SDK-facing events." aria-label="Evidence TURN-SEQUENCE">TURN-SEQUENCE</a></p></div>
+</section>
+
+<section>
+  <h2>2. The outer driver only loops, contains, and converges</h2>
+  <div class="claim fact"><div class="claim-label">Production control flow</div><p><code>wakeDriver()</code> synchronously changes the phase to running and starts <code>kick()</code> inside <code>ctx.agents.withInitiator(agent, ...)</code>. <code>kick()</code> only performs <code>while (await turn())</code>; reported failures and cancellation are contained there, then phase returns to idle and replays a wake latched during cancellation convergence. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/agent.ts#L195-L243" title="Driver containment and pre-step preparation: kick contains turn failure and cancellation at the driver boundary; preStep claims input, assembles the prompt, projects runtime context, and then enters the agent/pre-step waterfall." aria-label="Evidence LOOP-DRIVER-PRESTEP">LOOP-DRIVER-PRESTEP</a></p></div>
+  <p>One running interval may execute several queued turns. If the Inbox still has pending work after a turn ends, the loop installs a fresh AbortController, resets the step counter, and continues. It exits the driver only when no work remains.</p>
+  <div class="claim assessment"><div class="claim-label">Design assessment</div><p>An exception does not destroy the Agent object. Failure belongs to the current turn, the driver converges to idle, and a later wake may start a new turn. Loop survival and work success are deliberately separate facts.</p></div>
+</section>
+
+<section>
+  <h2>3. A Turn opens before the system knows whether it will have a Step</h2>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>Append turn/start</h3><p>The turn number is the previous turn plus one and becomes durable before any input is claimed.</p></div>
+    <div><span>2</span><h3>Propose the first pre-step</h3><p>The target is next-turn: claim every next-step item plus one next-turn prompt, assemble prompt/context, and enter the waterfall.</p></div>
+    <div><span>3</span><h3>Possibly open a Step</h3><p>Only an accepted branch requiring a model call appends <code>step/start</code>, commits accepted user messages, and calls <code>step()</code>.</p></div>
+    <div><span>4</span><h3>Close every opened Step</h3><p><code>step/end</code> is appended in finally, so an opened Step has a terminal boundary even if the model, a tool, or a plugin fails.</p></div>
+    <div><span>5</span><h3>Offer turn-stopping</h3><p>When a Step has a terminal result and no next-step input is pending, serial listeners get one last chance to steer another Step.</p></div>
+    <div><span>6</span><h3>Append turn/end</h3><p>Except for failures earlier than a successful turn/start append, an opened Turn records exactly one ending in finally.</p></div>
+  </div>
+  <div class="claim fact"><div class="claim-label">Production state machine</div><p>If the first pre-step is rejected, the Turn ends <code>blocked</code> with no <code>step/start</code>, <code>user/message</code>, or model request. If the first decision enters with no messages, the Turn ends <code>completed</code> without opening a Step. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/agent.ts#L245-L330" title="Turn state machine and end reasons: Covers turn/start before claims, reject, empty initial steps, the step loop, turn-stopping, error normalization, turn/end, and consecutive queued turns." aria-label="Evidence LOOP-TURN-STATE">LOOP-TURN-STATE</a></p></div>
+  <div class="claim fact"><div class="claim-label">Branch tests</div><p>Tests prove that a blocked prompt leaves only turn boundaries, an empty post-completion pre-step opens no phantom Step, and inject/steer arriving after the claim cannot enter the current request but remain for the next Step or wake. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/tests/interception.spec.ts#L207-L363" title="Empty continuation, blocked step, and concurrent pre-step input tests: Tests cover an empty post-completion decision opening no step, rejection retaining only turn boundaries, and steer/inject arriving after a claim remaining for the next step or wake." aria-label="Evidence LOOP-INTERCEPTION-TEST">LOOP-INTERCEPTION-TEST</a></p></div>
+</section>
+
+<section>
+  <h2>4. Pre-step order determines context ownership</h2>
+  <div class="claim fact"><div class="claim-label">Exact order</div><p><code>preStep()</code> atomically claims the Inbox, assembles the Agent's system prompt and tool schemas, renders dynamic context sections, asks RuntimeContextProjection whether a new snapshot message is needed, and finally invokes the <code>agent/pre-step</code> waterfall. The default decision combines claimed messages with a changed runtime-context message. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/agent.ts#L195-L243" title="Driver containment and pre-step preparation: kick contains turn failure and cancellation at the driver boundary; preStep claims input, assembles the prompt, projects runtime context, and then enters the agent/pre-step waterfall." aria-label="Evidence LOOP-DRIVER-PRESTEP">LOOP-DRIVER-PRESTEP</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/runtime-context.ts#L24-L75" title="Dynamic runtime-context projection: Restores the latest retained snapshot from the surface, follows replacements, proposes an uncommitted user message only on change, and uses a cleared marker to retire old semantics." aria-label="Evidence LOOP-RUNTIME-CONTEXT">LOOP-RUNTIME-CONTEXT</a></p></div>
+  <p>This produces three important semantics:</p>
+  <ul class="audit-list">
+    <li>Claim is the exclusive boundary. Messages arriving while the waterfall runs remain in the Inbox and are not part of the frozen proposed batch.</li>
+    <li>Prompt assembly precedes <code>agent/pre-step</code>. A listener may change messages entering history, but the proposed position and cancellation signal are already established.</li>
+    <li>Dynamic runtime context is not a hidden string spliced into a request. When it changes, it becomes a candidate UserMessage with a plugin source and is logged with the accepted batch.</li>
+  </ul>
+  <div class="claim assessment"><div class="claim-label">Design assessment</div><p>A plugin can reject, wrap, or extend a Step, but it must accept that claiming already occurred. Rejection does not automatically put the prompt back. The durable <code>blocked</code> Turn accounts for work consumed without reaching the model.</p></div>
+</section>
+
+<section>
+  <h2>5. A Step is one reconstruct-request, stream, and tool-settlement cycle</h2>
+  <div class="claim fact"><div class="claim-label">Model path</div><p>A Step renders system text from that assembly and calls <code>session.deriveMessages()</code> at each request attempt. Every streamed chunk is immediately appended as <code>assistant/chunk</code> and fed to BlockAssembler. Every successful finish writes an <code>assistant/message</code> completion anchor—even with empty content—with usage, provenance, and exact <code>sourceEventSeqs</code>. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/agent.ts#L332-L400" title="Step model stream and tool continuation: Each request uses deriveMessages, logs every chunk, and writes assistant/message on success; max-tokens, no-tool, concluded-tool, and continuation branches are explicit." aria-label="Evidence LOOP-STEP-STATE">LOOP-STEP-STATE</a></p></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Model finish</th><th>Step returns</th><th>Tool behavior</th><th>Turn tendency</th></tr></thead>
+    <tbody>
+      <tr><td>Normal, no tool call</td><td><code>completed</code></td><td>None</td><td>End after turn-stopping</td></tr>
+      <tr><td><code>max-tokens</code></td><td><code>max-tokens</code></td><td>Do not dispatch even if content contains tool calls</td><td>Reason is sticky within this Turn</td></tr>
+      <tr><td>Normal, tool calls, not concluded</td><td><code>null</code></td><td>Execute and persist results</td><td>Open another Step so the model reads results</td></tr>
+      <tr><td>Normal, tool calls, concluded</td><td><code>completed</code></td><td>Execute and persist results</td><td>May end immediately unless steering is pending</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Round-trip tests</div><p>A simple-turn test proves strict boundary order—turn/start → step/start → step/end → turn/end—with Inbox receipt earlier. A tool test proves call/result enter the Session log and the next derived request in the same Turn. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/tests/loop.spec.ts#L162-L233" title="Simple-turn and tool-round-trip ordering tests: Tests prove inbox receipt precedes the turn, four boundaries nest strictly, assistant usage is durable, and tool call/result enter the second derived request." aria-label="Evidence LOOP-ORDER-TEST">LOOP-ORDER-TEST</a></p></div>
+  <aside class="caveat"><strong>Later chapters:</strong> this page explains only how the loop invokes <code>executeToolCalls()</code> and interprets continuation. Barriers, the rolling parallel pool, permission stages, and result-context ordering are analyzed in the tool chapters.</aside>
+</section>
+
+<section>
+  <h2>6. A Request is a foldable log snapshot, not an opaque memory object</h2>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>Seed route proposal</h3><p>The first Step starts from AgentOptions. Later Steps remove fields marked adapter-derived from the latest header so a new route can resolve its own defaults.</p></div>
+    <div><span>2</span><h3>agent/request waterfall</h3><p>Plugins may return provider/model/temperature/maxTokens/stop and related config; both route fields must exist before dispatch.</p></div>
+    <div><span>3</span><h3>Prepare the exact adapter call</h3><p><code>llm.prepareCall()</code> validates adapter-owned fields, materializes exact-model defaults, and freezes the adapter registration and retry policy.</p></div>
+    <div><span>4</span><h3>Commit request/header</h3><p>The canonical header contains effective config, adapter-default markers, system, and tools. A loop instance writes initial/resume first, then change snapshots only when needed.</p></div>
+    <div><span>5</span><h3>Commit request/context</h3><p>A capacity record is added only when provider, model, or contextWindow changes.</p></div>
+    <div><span>6</span><h3>Freeze the dispatch object</h3><p>Construct and mark the loop request from durable-derived messages, header system/tools, sessionId, and the turn signal.</p></div>
+  </div>
+  <div class="claim fact"><div class="claim-label">Production control flow</div><p>The prepared call retains the exact adapter registration that resolved defaults, preventing HMR from combining one adapter's capability decision with another adapter's dispatch. An unregistered route temporarily keeps the proposal so <code>llm/stream</code> middleware may take full ownership; unhandled terminal dispatch still fails with NO_ADAPTER. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/agent.ts#L403-L495" title="Construction of reconstructable frozen requests: Shows the request waterfall, exact-adapter prepareCall, adapter-default markers, request/header, request/context, and the final frozen marked request in order." aria-label="Evidence LOOP-REQUEST-BUILD">LOOP-REQUEST-BUILD</a></p></div>
+  <div class="claim fact"><div class="claim-label">Runtime invariant</div><p>The invariant companion checks only loop-marked requests: request and messages must be frozen, the Session must be live, and step/start plus request/header must exist. It then independently compares <code>session.deriveMessages()</code> and the folded header, reporting any mismatch as reconstruction desynchronization. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/invariant.ts#L18-L55" title="Log-reconstruction invariant for LLM requests: For loop-marked requests, verifies freezing, a live session, step/header presence, and independently compares deriveMessages and the folded header." aria-label="Evidence LOOP-REQUEST-INVARIANT">LOOP-REQUEST-INVARIANT</a></p></div>
+  <div class="claim fact"><div class="claim-label">Theorem-style test</div><p>Across tool Steps, later Turns, system-prompt changes, and request-config changes, the test replays the pre-dispatch event prefix into a new Session and proves field-by-field equality with the real messages and header. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/tests/request-reconstruction.spec.ts#L566-L613" title="Byte-equal request reconstruction from the log: Across tool steps, later turns, prompt changes, and request-config changes, a fresh Session rebuilds messages and folded headers from pre-dispatch events with field equality." aria-label="Evidence LOOP-RECONSTRUCTION-TEST">LOOP-RECONSTRUCTION-TEST</a></p></div>
+</section>
+
+<section>
+  <h2>7. End reasons are durable accounting, not merely UI state</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>TurnEndReason</th><th>Trigger</th><th>May have a Step?</th><th>Meaning for claimed work</th></tr></thead>
+    <tbody>
+      <tr><td><code>completed</code></td><td>Normal finish, a concluding tool, or an empty first batch</td><td>Yes or no</td><td>Work settled through a normal boundary</td></tr>
+      <tr><td><code>max-tokens</code></td><td>Any Step reaches the output cap</td><td>Yes</td><td>The truncation fact remains even if a forced later Step succeeds</td></tr>
+      <tr><td><code>blocked</code></td><td>Pre-step rejection</td><td>No</td><td>Claimed input was consumed without reaching the model</td></tr>
+      <tr><td><code>aborted</code></td><td>The turn signal is aborted by user/parent/disposal cause</td><td>Possibly</td><td>Records cancellation source; started effects still drain</td></tr>
+      <tr><td><code>error</code></td><td>Unrecovered model, plugin, or tool failure</td><td>Possibly</td><td>LlmError retains structured failure; other errors become UNKNOWN + errorChain</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Outcome tests</div><p>Mid-stream cancel records aborted with its cause. Max-tokens is sticky inside one Turn even if <code>turn-stopping</code> forces a successful next Step, but does not contaminate the next Turn. Tool calls from a max-token-truncated finish do not execute. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/tests/loop.spec.ts#L945-L1054" title="Abort and sticky max-tokens outcome tests: Tests confirm mid-stream cancellation records aborted, max-tokens is sticky within one turn but not across turns, and a truncated step does not execute tool calls." aria-label="Evidence LOOP-OUTCOME-TEST">LOOP-OUTCOME-TEST</a></p></div>
+</section>
+
+<section>
+  <h2>8. Recovery owns model-request failures, not every exception</h2>
+  <div class="claim fact"><div class="claim-label">Request recovery</div><p>When BlockAssembler produces an error/aborted finish, the loop invokes the <code>agent/request-error</code> waterfall with turn/step, provider, structured failure, the prepared registration's immutable retryPolicy, and signal. Only <code>{kind:'retry'}</code> rebuilds and resends within the same Step; otherwise the loop throws LlmError. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/agent.ts#L332-L400" title="Step model stream and tool continuation: Each request uses deriveMessages, logs every chunk, and writes assistant/message on success; max-tokens, no-tool, concluded-tool, and continuation branches are explicit." aria-label="Evidence LOOP-STEP-STATE">LOOP-STEP-STATE</a></p></div>
+  <div class="claim fact"><div class="claim-label">Boundary tests</div><p>An <code>agent/request</code> middleware throw bypasses request recovery. Provider failures may be repeatedly recovered by one listener. If a listener cancels and also returns retry, cancellation wins. A recovery listener that fails ends the Turn in error. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/tests/request-error.spec.ts#L30-L141" title="Request-error recovery boundary tests: Middleware failures bypass recovery, provider failures may retry repeatedly within one step, cancellation beats retry, and a failing recovery listener ends the turn in error." aria-label="Evidence LOOP-REQUEST-ERROR-TEST">LOOP-REQUEST-ERROR-TEST</a></p></div>
+  <p>Other failures—prompt rendering, pre-step plugins, tools/result processing, and request middleware—go directly to the Turn error boundary. <code>throwError()</code> first emits live <code>agent/error</code>; Turn finally records the durable error reason; the driver contains the reported error and returns to idle. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/tests/loop.spec.ts#L1353-L1398" title="Durable error and loop-unload tests: A model failure becomes both live agent/error and durable turn/end error; unloading an owner mid-turn stops the driver and removes it from the registry." aria-label="Evidence LOOP-ERROR-CONTAINMENT-TEST">LOOP-ERROR-CONTAINMENT-TEST</a></p>
+</section>
+
+<section>
+  <h2>9. Extension seams decide which layer owns a capability</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Extension need</th><th>Owning seam</th><th>Why it is outside the loop</th></tr></thead>
+    <tbody>
+      <tr><td>Compaction trigger / overflow repair</td><td><code>agent/pre-step</code> / <code>agent/request-error</code></td><td>Context policy, not mechanical Turn structure</td></tr>
+      <tr><td>Model route and request config</td><td><code>agent/request</code></td><td>Provider selection is replaceable and must enter the logged header</td></tr>
+      <tr><td>Retry wait and policy</td><td><code>agent/request-error</code></td><td>The loop understands a retry action, not backoff policy</td></tr>
+      <tr><td>Tool permission, approval, and sandboxing</td><td><code>tools/pre-execute</code> / guards / post / result</td><td>Per-call governance must compose across plugins</td></tr>
+      <tr><td>Force continuation or termination</td><td><code>agent/turn-stopping</code></td><td>The loop exposes its natural stop point; policy may steer or cancel</td></tr>
+      <tr><td>Persistence, UI, and telemetry</td><td><code>session/event</code></td><td>The durable fact is already shared; the loop need not invoke each consumer</td></tr>
+    </tbody>
+  </table></div>
+  <p>The default loop has no built-in turn budget. Tools or steering can keep producing Steps. A deployment that needs runaway-turn limits must count and cancel at an existing seam. This is deliberate “mechanism in core, policy in plugins,” and a risk control operators must actively provide.</p>
+</section>
+
+<section>
+  <h2>10. Benefits, costs, and semantic boundaries</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Choice</th><th>Benefit</th><th>Cost</th></tr></thead>
+    <tbody>
+      <tr><td>Durable Turn/Step boundaries</td><td>Failure, cancellation, and tool continuation are replayable and attributable</td><td>Even no-step and blocked work adds lifecycle events</td></tr>
+      <tr><td>deriveMessages on every Step</td><td>No hidden conversation buffer; resume and replay are isomorphic</td><td>Event-vocabulary and projection compatibility become core burdens</td></tr>
+      <tr><td>Request-header snapshots</td><td>Prompt, tools, route defaults, and model capacity are explainable</td><td>Canonicalization and default markers must remain exact for cache and replay</td></tr>
+      <tr><td>Raw chunks plus completion anchor</td><td>UI fidelity and canonical history coexist</td><td>Larger logs and explicit chunk-to-message provenance</td></tr>
+      <tr><td>Narrow request-error recovery</td><td>Retry only repeats provider requests that are safe to reconstruct</td><td>Plugin authors must distinguish request failure from Step/Turn failure</td></tr>
+      <tr><td>Plugin-owned policy</td><td>The loop stays stable while compaction, permission, and planning compose independently</td><td>Behavior spreads across waterfall ordering, making composition tests essential</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">Chapter assessment</div><p>The default loop is not designed as the “Agent brain.” It is an event-commit machine. Its strongest principle is that what the model saw and how work ended become reconstructable log facts. Its largest risk is extension dispersion: correctness no longer belongs to agent.ts alone, but to every waterfall, tool pipeline stage, and Session projection jointly honoring the order contract.</p></div>
+</section>
+
+<section>
+  <h2>Chapter verification checklist</h2>
+  <ul class="audit-list">
+    <li>Separated driver, Turn, Step, and request attempt.</li>
+    <li>Traced turn/start, claim, pre-step, Step boundaries, and turn/end across principal branches.</li>
+    <li>Verified reject, empty initial Step, empty continuation, and input arriving after a claim.</li>
+    <li>Traced streamed chunks, assistant completion anchors, tool continuation, and concluded tools.</li>
+    <li>Verified request proposals, adapter defaults, header/context logging, and frozen dispatch.</li>
+    <li>Used the invariant and reconstruction test to verify independent request reconstruction from the log.</li>
+    <li>Verified completed, max-tokens, blocked, aborted, and error outcomes.</li>
+    <li>Separated request-error recovery from other Step/Turn exceptions.</li>
+  </ul>
+</section>
+<section class="learning-notes" aria-labelledby="learning-notes-title"><h2 id="learning-notes-title">My Learning Notes</h2>
     <p class="privacy">Autosaved only in this browser. Nothing is uploaded or committed. Export Markdown whenever you want to keep a copy.</p><textarea data-learning-notes aria-label="My Learning Notes" placeholder="Record your understanding, questions, counterexamples, and transferable principles…"></textarea>
     <div class="note-footer"><span data-note-saved>Local draft</span><button type="button" data-note-export>Export Markdown</button>
     <button type="button" class="danger" data-note-clear>Clear</button><span data-note-count>0 characters</span></div></section><nav class="pagination" aria-label="Chapter pagination"><a href="../pages/agent-object-lifecycle.html"><small>← Previous chapter · 05</small><strong>Agent Objects, Registry, and Lifecycle</strong></a><a class="next" href="../pages/prompt-context.html"><small>Next chapter · 07 →</small><strong>Prompt Assembly and Context Injection</strong></a></nav></article>
