@@ -113,7 +113,7 @@
     "part": "Sessions and Persistence",
     "title": "Projections, Checkpoints, and Cold Start",
     "subtitle": "Which disposable acceleration state exists beyond the complete event log",
-    "status": "queued",
+    "status": "verified",
     "text": "Research queue This chapter has not reached a conclusion state Current scope: Distinguish semantic checkpoints, projection caches, watermarks, write-behind, tail replay, and recovery thresholds. This page is part of the complete research map, but its source-level control-flow audit is not complete. It must cover all of the following before it can be marked Verified: Actual bundle and profile assembly entry points Public types, events, and configuration schemas Normal control flow and exact mutation points Concurrency, scope, ownership, and cleanup Error, cancellation, retry, and degradation branches Persistence, projections, and replay semantics Production-path tests and runtime invariants Benefits, costs, limitations, and open questions"
   },
   {
