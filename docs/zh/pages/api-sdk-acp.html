@@ -6,7 +6,7 @@
 <body data-page="api-sdk-acp" data-baseline="47f943859bef60e4160492346772ded9b24f765a" data-lang="zh">
   <header class="topbar"><button class="icon-button nav-toggle" type="button" data-nav-toggle aria-label="打开章节目录" aria-expanded="false">☰</button>
     <a class="brand" href="../index.html"><span class="brand-mark">DS</span><span>Harness 系统拆解</span></a>
-    <span class="topbar-meta">固定基线 47f943859b · 28 已复核 / 1 撰写中 / 36 章</span>
+    <span class="topbar-meta">固定基线 47f943859b · 29 已复核 / 1 撰写中 / 36 章</span>
     <div class="topbar-actions"><a class="language-switch" href="../../pages/api-sdk-acp.html" lang="en" aria-label="阅读本章英文版">English</a><button class="icon-button" type="button" data-theme-toggle aria-label="切换明暗主题">◐</button></div></header>
   <div class="layout"><aside class="sidebar" data-sidebar aria-label="章节目录"><input class="filter" data-chapter-filter type="search" placeholder="筛选章节……" aria-label="筛选章节"><section class="nav-part" data-part><h2 class="part-title">导论</h2>
     <a class="chapter-link" data-chapter-item href="../pages/reading-guide.html">
@@ -47,7 +47,7 @@
     <a class="chapter-link" data-chapter-item href="../pages/failure-recovery.html">
       <span class="chapter-number">27</span><span>重试、错误、取消与恢复</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link" data-chapter-item href="../pages/observability.html">
       <span class="chapter-number">28</span><span>可观测、Telemetry 与轨迹</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link current" data-chapter-item href="../pages/api-sdk-acp.html">
-      <span class="chapter-number">29</span><span>API、SDK、JSON-RPC 与 ACP</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/web-ui.html">
+      <span class="chapter-number">29</span><span>API、SDK、JSON-RPC 与 ACP</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link" data-chapter-item href="../pages/web-ui.html">
       <span class="chapter-number">30</span><span>Web UI 插件架构</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/security-trust.html">
       <span class="chapter-number">31</span><span>安全模型与信任边界</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/testing-invariants.html">
       <span class="chapter-number">32</span><span>测试、快照与运行时不变量</span><span class="status-dot queued" title="待研究"></span></a></section><section class="nav-part" data-part><h2 class="part-title">综合结论</h2>
@@ -56,10 +56,236 @@
       <span class="chapter-number">34</span><span>缺口、限制与待验证问题</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/glossary-evidence.html">
       <span class="chapter-number">35</span><span>术语、证据目录与源码索引</span><span class="status-dot queued" title="待研究"></span></a></section></aside>
     <main class="main"><div class="page-shell"><article class="article" data-article><header><div class="page-kicker"><span>可靠性与产品面</span><span>·</span><span>第 29 章</span></div>
-      <h1>API、SDK、JSON-RPC 与 ACP</h1><p class="subtitle">同一个 Agent runtime 如何被浏览器、自动化和外部客户端驱动</p><div class="page-meta"><span class="status queued">待研究</span><span>上游 47f943859b</span><span>范围: 分析 Host remotes、Typert、WebSocket、stdio SDK、ACP 映射、事件订阅和协议边界验证。</span></div></header>
-      <section class="placeholder"><p class="eyebrow">研究队列</p><h2>本章尚未进入结论状态</h2>
-    <p><strong>当前范围:</strong> 分析 Host remotes、Typert、WebSocket、stdio SDK、ACP 映射、事件订阅和协议边界验证。</p><p>页面已经纳入全量研究地图，但尚未完成源码控制流复核。以下是升级为“已复核”之前必须覆盖的检查面：</p>
-    <ul class="placeholder-checks"><li>实际 bundle / profile 装配入口</li><li>公开类型、事件与配置 schema</li><li>正常控制流与状态突变时机</li><li>并发、scope、所有权与 cleanup</li><li>错误、取消、重试和降级分支</li><li>持久化、projection 与 replay 语义</li><li>生产路径测试与运行时不变量</li><li>优势、代价、限制与待验证问题</li></ul></section><section class="learning-notes" aria-labelledby="learning-notes-title"><h2 id="learning-notes-title">我的学习体会</h2>
+      <h1>API、SDK、JSON-RPC 与 ACP</h1><p class="subtitle">同一个 Agent runtime 如何被浏览器、自动化和外部客户端驱动</p><div class="page-meta"><span class="status verified">已复核</span><span>上游 47f943859b</span><span>范围: 分析 Host remotes、Typert、WebSocket、stdio SDK、ACP 映射、事件订阅和协议边界验证。</span></div></header>
+      <section>
+  <h2>结论：这里不是“一套 API”，而是四种所有权完全不同的协议</h2>
+  <div class="thesis"><p>DeepSeek Harness 同时存在浏览器 Host API、生成式 Typert Remote、私有 SDK JSON-RPC，以及标准 ACP adapter。它们共享一部分 Agent 与 Session 能力，却不共享稳定性、认证、取消、重连或生命周期承诺。最危险的读法，是看到它们都使用 JSON 就把它们当成可互换的远程 API。</p></div>
+  <p>最简洁的判断是：浏览器 API 服务同版本 UI；Remote 把编译期 descriptor 投影到同一浏览器载体；SDK 服务由调用方拥有的本地子进程；ACP 服务懂标准协议的自动化客户端。边界选错后，最先失真的通常不是类型，而是“谁拥有进程、谁可以取消、断线后谁负责恢复”。</p>
+</section>
+
+<section>
+  <h2>1. 四张协议面：先按消费者和生命周期分开</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>协议面</th><th>典型消费者</th><th>物理载体</th><th>会话所有者</th><th>定位</th></tr></thead>
+    <tbody>
+      <tr><td>Browser ApiProxy</td><td>随宿主发布的 Web 客户端</td><td>HTTP POST 上行 + 两条 WebSocket 下行</td><td>宿主进程</td><td>完整产品 UI 合约</td></tr>
+      <tr><td>Typert Remote</td><td>编译时选定 contribution 的客户端插件</td><td>复用 <code>/api</code> HTTP 与 Host event stream</td><td>宿主 Service / Context</td><td>严格生成的 BFF 调用面</td></tr>
+      <tr><td>SDK JSON-RPC</td><td>TypeScript、Python 自动化调用方</td><td>子进程 stdio，JSONL</td><td>SDK 实例</td><td>极小的私有 runtime wire</td></tr>
+      <tr><td>ACP</td><td>标准 ACP 客户端或进程外 child backend</td><td>stdio 上的标准 JSON-RPC</td><td>ACP connection</td><td>最小自动化 adapter</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">推论</div><p>“都能发送 prompt”不是兼容性。兼容性至少还包括握手顺序、会话恢复、错误分类、取消传播、凭据边界和断线后的状态重建。</p></div>
+</section>
+
+<section>
+  <h2>2. Browser API 的逻辑语法：四象限消息，而不是一组随意的 fetch</h2>
+  <p>ApiProxy 把消息与载体分离成四种：<code>client-request</code>、<code>server-response</code>、<code>server-request</code>、<code>client-response</code>。发起者生成 <code>rpcId</code>，响应者原样回显；服务端请求既可表示需要回答的 approval/question，也可表示纯 push，是否需要回应由 method 静态决定。客户端回答通过 <code>POST /api/respond</code> 回送，late 或 duplicate response 只得到 carrier receipt。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/src/api/rpc.ts#L1-L193" title="浏览器 API 的四象限 RPC 消息模型: 逻辑消息与 HTTP、WebSocket、进程内载体解耦；请求方生成 rpcId，响应方回显；客户端请求、服务端响应、服务端请求与客户端响应构成封闭联合，并以 RpcResult 承载业务错误。" aria-label="证据 API-RPC-MODEL">API-RPC-MODEL</a></p>
+  <p>解析采用两层 discipline：第一层只判断四种信封、rpcId 与错误联合，payload/value 保持 <code>unknown</code>；第二层才根据 method 解析具体业务 schema。这样 transport 能报告可关联的坏信封，业务 contract 又不会被一个宽泛 JSON schema 稀释。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/src/api/rpc.schema.ts#L1-L140" title="两阶段 wire 校验: 外层 Zod schema 只验证消息信封并保留 unknown payload/value；业务方法再做第二次解析，错误体按 code 判别且 details 必填。" aria-label="证据 API-RPC-SCHEMAS">API-RPC-SCHEMAS</a></p>
+  <div class="claim fact"><div class="claim-label">事实</div><p>业务失败不是异常，而是 <code>RpcResult&lt;T&gt;</code> 的错误分支；transport exception 可以折叠成 <code>internal</code>。因此 HTTP status、RPC envelope 和业务结果是三层不同语义。</p></div>
+</section>
+
+<section>
+  <h2>3. Browser API 的版本立场：共同发布，不做协议协商</h2>
+  <p><code>HostApi</code> 明确写着客户端与宿主共同发布，所以现在没有 <code>protocolVersion</code>；<code>host.describe.version</code> 被定义为宿主应用版本，而不是 wire 版本。只有出现独立发布的客户端时，才计划增加协议版本协商。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/src/api/host.ts#L1-L53" title="Host API 明确没有协议版本: 接口注释说明客户端与宿主共同发布，因此暂不引入 protocolVersion；host.describe 的 version 被定义为宿主应用包版本。" aria-label="证据 API-HOST-VERSION-CONTRACT">API-HOST-VERSION-CONTRACT</a></p>
+  <div class="claim fact"><div class="claim-label">漂移</div><p>当前实现没有返回真实应用版本：源码 TODO 仍固定返回 <code>0.0.1</code>。因此它既不能用来协商协议，也暂时不能可靠判断宿主构建版本。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/src/api-proxy.ts#L2923-L2938" title="host.describe 仍返回占位版本: 实现中的 TODO 说明 version 尚未读取 CLI package.json，当前固定返回 0.0.1。" aria-label="证据 API-HOST-VERSION-PLACEHOLDER">API-HOST-VERSION-PLACEHOLDER</a></p></div>
+  <aside class="caveat"><strong>兼容边界：</strong>这个 API 的兼容策略是原子部署，而不是跨版本互操作。把浏览器 bundle 与另一个版本的 Host 混用，超出了当前合约。</aside>
+</section>
+
+<section>
+  <h2>4. Browser 物理载体：HTTP 上行、WebSocket 下行，错误分层并不对称</h2>
+  <p>通用 Remote／Connection RPC handler 只接受 <code>POST</code> 与 <code>application/json</code>，要求 URL endpoint 与信封 method 一致。非法信封和不匹配 method 返回 typed <code>bad-request</code>；业务 handler 未预期抛错则直接成为 HTTP 500，浏览器 carrier 再把非 2xx 视为 transport failure。这个限定不涵盖同一 <code>/api</code> 面上的 event WebSocket upgrade 与 session export route。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/connection/src/rpc-host.ts#L144-L223" title="HTTP RPC 分派与错误边界: 通用 Remote／Connection RPC handler 仅接受 POST application/json；校验外层信封和 URL 方法一致性；无效请求得到 typed bad-request，而未预期的 handler 抛错成为 HTTP 500。" aria-label="证据 API-HTTP-HANDLER">API-HTTP-HANDLER</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/connection/src/client/rpc.ts#L24-L46" title="浏览器 HTTP carrier 的 transport failure: 浏览器把非 2xx HTTP response 直接抛为 transport failure，再校验 response envelope 与 rpcId。" aria-label="证据 API-HTTP-CLIENT">API-HTTP-CLIENT</a></p>
+  <p>所有 <code>/api</code> 请求先经过 Host authority、Fetch Metadata 与 Origin fence。它防 DNS rebinding 和 cross-site browser request，但源码明确说它<strong>不是认证层</strong>；配置 trusted host 只允许携带该 authority 的请求通过这道 fence，不证明网络可达性或请求者身份。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/connection/src/api-request-trust.ts#L1-L123" title="浏览器 trust fence 不是认证层: 所有 /api 请求都校验 Host authority，并拒绝 cross-site Fetch Metadata 或不匹配 Origin；源码明确把网络可达性与身份认证排除在该 fence 之外。" aria-label="证据 API-TRUST-FENCE">API-TRUST-FENCE</a></p>
+  <p>Trusted-host LAN 面也并非让全部方法拥有相同权限：settings、credentials、native dialog、agent-preset management 与 draft-credential model discovery 等 privileged method 另用空 trusted-host 集合锁到 loopback authority，并继续经过共享的 Fetch Metadata／Origin-authority 检查；HTTP 与两条 WebSocket upgrade 都经过基础 trust fence。这里不是完整的 scheme／host／port same-origin 判定，因为 Origin 可缺省，存在时只比较 authority。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/connection/src/index.ts#L69-L195" title="Privileged Browser API 的 loopback fence: Settings、credentials、native dialog、preset management 与 draft-credential model discovery 另锁 loopback authority，并经过共享 Fetch Metadata／Origin-authority 检查；Origin 可缺省，存在时只比较 authority，因此不是完整 same-origin 判定。" aria-label="证据 API-PRIVILEGED-LOOPBACK">API-PRIVILEGED-LOOPBACK</a></p>
+  <p>HTTP bridge 会把整个请求体缓冲进内存，默认上限 160 MiB；浏览器断开通过 response close 转成 Fetch <code>AbortSignal</code>，响应流按 socket drain 做背压。这个 signal 能通知下游，却不能强制停止忽略取消的进程内业务。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/connection/src/http-bridge.ts#L8-L99" title="HTTP bridge 的容量、取消与背压: 请求体在内存中缓冲，默认上限 160 MiB；浏览器断开会 abort Fetch signal，响应流按 drain 施加背压。" aria-label="证据 API-HTTP-BRIDGE">API-HTTP-BRIDGE</a></p>
+</section>
+
+<section>
+  <h2>5. 两条 WebSocket 是只下行流；畸形 frame 与断线是两种不同故障</h2>
+  <p>Host 为 mux 与 host event 各开一条只下行 WebSocket。客户端发送任何业务消息都会以 policy violation 关闭；source 抛错时 Host 尝试先发 <code>stream/error</code>，关闭时 abort source，并等待所有 pump 收敛。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/connection/src/websocket-downlink.ts#L46-L137" title="只下行 WebSocket 载体: mux 与 host 使用独立只下行 socket；客户端发送消息会以 1008 关闭，source 失败尝试先发 stream/error，teardown 等待 pump 清理。" aria-label="证据 API-WS-HOST">API-WS-HOST</a></p>
+  <p>浏览器端对 binary、非法 JSON、非法信封或非法业务 frame 的策略是记录并丢弃，不让它们终止 generation。换言之，schema corruption 不自动触发 reconnect；只有 socket 结束才结束流。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/connection/src/client/web-api-client.ts#L34-L90" title="浏览器端 WebSocket 解析策略: 二进制、非法 JSON、非法信封或业务 frame 被记录并丢弃；只有 socket 关闭结束流，AbortSignal 负责关闭 socket。" aria-label="证据 API-WS-CLIENT">API-WS-CLIENT</a></p>
+  <div class="claim assessment"><div class="claim-label">取舍</div><p>丢弃单个坏 frame 可以避免一次局部扩展不兼容拖垮连接，但也意味着关键增量若被丢弃，客户端只能依靠后续 reconnect/resync 修复，当前 generation 没有逐 frame 重放。</p></div>
+</section>
+
+<section>
+  <h2>6. Browser 重连单位是完整 generation，不是单 socket 补洞</h2>
+  <p>每一代并发启动 mux、host 和 <code>host.describe</code>。正常 readiness 需要两条流 open 且 describe 成功；若代理从不发 open，3 秒 guard 允许降级为 connected。在 describe／handshake 能收敛的前提下，任一流结束会 abort 整代并同时重建两条流；退避从 500ms 指数增长到 10s，延迟在 cap 的一半到 cap 之间抖动。成功握手把 attempt 清零；业务 sink 抛错只记录，不会杀 pump。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/connection/src/client/connection.ts#L3-L201" title="双流 connection generation 与重连: 每代同时打开 mux、host 与 host.describe；describe/handshake 收敛后，流结束才进入共享退避并重建两流。stream-open 有 3 秒 guard，但 describe 没有 generation signal/timeout，故可在已 abort 后挂住重连；sink 异常被隔离。" aria-label="证据 API-CONNECTION-LOOP">API-CONNECTION-LOOP</a></p>
+  <aside class="caveat"><strong>已知活性缺口：</strong><code>host.describe</code> 没有 generation signal 或自身 timeout。若 WebSocket 在 readiness 期间结束、describe 又永不 settle，generation 虽已 abort，却会卡在 handshake await，无法进入共享 backoff／rebuild。</aside>
+  <div class="claim fact"><div class="claim-label">事实</div><p>载体没有 resume token 或逐帧 offset。<code>onConnected</code> 是上层重新读取 list/snapshot 的时机；连接层只恢复可达性，不恢复业务状态。</p></div>
+</section>
+
+<section>
+  <h2>7. Typert Remote：编译期 descriptor 变成运行期 live Service 调用</h2>
+  <p>Remote request 的载体无关形状只有 namespace、method、精确命名 args，以及只对声明 cancellation 的方法注入的 signal；Gateway 还声明一组稳定的 boundary failure category。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/api/gateway/src/types.ts#L6-L46" title="Typert Remote 的载体无关合约: 调用以 namespace、method、精确命名 args 与可选注入 signal 表示，并声明稳定的 gateway failure 分类。" aria-label="证据 REMOTE-GATEWAY-TYPES">REMOTE-GATEWAY-TYPES</a></p>
+  <p>Host 每次调用都重新读取当前严格 descriptor、验证字段集合、解析 lookup 或 Context identity、绑定当前 Service，并在返回前再次验证结果。若一个严格 endpoint 曾出现后又撤回，Gateway 会 fail closed，拒绝退回弱 SRC 推导；这避免热卸载后同名方法悄悄换成更宽的 contract。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/api/gateway/src/index.ts#L90-L235" title="Remote host 的严格 descriptor 分派: Gateway 每次调用重新解析当前 descriptor、校验精确参数、解析 Context/lookup、绑定真实 Service 并验证结果；已见过后撤回的严格定义禁止降级到 SRC。" aria-label="证据 REMOTE-HOST-DISPATCH">REMOTE-HOST-DISPATCH</a></p>
+  <p>取消并非普遍能力：没有 cancellation descriptor 的方法不会收到 signal。声明了取消的方法若在 signal 已 abort 后抛错，wire 映射为 <code>cancelled</code>；lookup policy 的既有 RpcError 保留，其余 Gateway 或业务异常折叠成 <code>internal</code>，所以同进程丰富错误分类并不全部穿过 wire。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/api/gateway/src/index.ts#L159-L489" title="Remote 取消与 wire 错误折叠: 只有声明 cancellation 的方法得到 signal；业务调用在 signal 已 abort 后抛错会映射 cancelled，lookup policy 错误保留原 RpcError，其余 gateway/业务异常在 wire 上折叠为 internal。" aria-label="证据 REMOTE-HOST-ERRORS">REMOTE-HOST-ERRORS</a></p>
+</section>
+
+<section>
+  <h2>8. Remote 的挂载、撤回与事件面都是显式 capability</h2>
+  <p>客户端 contribution 只接受严格 codec，在公开方法前检查重复 descriptor、namespace 和 Service 冲突；部分安装失败逆序回滚。每个 mount token 自带 AbortController，撤回会先标记 inactive、abort 在途调用，再卸载方法。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/api/gateway/src/client/index.ts#L174-L260" title="生成 Remote contribution 的事务式挂载: 客户端只挂载严格 descriptor；预先检查重复与 namespace 冲突，部分安装失败会逆序回滚，卸载 token 同时 abort 在途调用。" aria-label="证据 REMOTE-CLIENT-MOUNT">REMOTE-CLIENT-MOUNT</a></p>
+  <p>调用端把位置参数转换为 descriptor 命名字段，并把 caller signal 与 mount lifetime 融合；返回值在客户端再次 parse。调用时、进入 carrier <code>try</code> 前若没有 active Connection，仍会直接抛异常；Connection 已建立后，RPC rejection、abort 或坏 response 才折叠进 <code>RemoteResult</code> 错误分支。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/api/gateway/src/client/index.ts#L327-L415" title="Remote 客户端调用与生命周期取消: 客户端把位置参数投影成命名 wire args，以 mount lifetime 与 caller signal 融合取消并再次校验响应；无 active Connection 在 try 外直接抛错，已有 Connection 后的 RPC rejection、abort 与坏 response 才折叠进 RemoteResult。" aria-label="证据 REMOTE-CLIENT-INVOKE">REMOTE-CLIENT-INVOKE</a></p>
+  <p>事件也不是自动透传：当前只有一个 11 项 allowlist，沿 wire 保持原 Cordis event name 与 argument list，不做 projection、rename 或 redaction。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/api/remotes/src/remote-events.ts#L1-L29" title="Remote event 的唯一 allowlist: 11 个可转发事件由一个常量控制，wire 使用宿主原事件名和参数列表，不投影、不重命名、不脱敏。" aria-label="证据 REMOTE-EVENT-ALLOWLIST">REMOTE-EVENT-ALLOWLIST</a> Host 在入队前只证明参数 JSON-safe，再包装成 <code>host/remote-event</code>。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/src/api-proxy.ts#L3617-L3635" title="Allowlist event 的实际转发: 宿主为每个 allowlist 事件注册 listener，先证明参数 JSON-safe，再包装成 host/remote-event 推入 host stream。" aria-label="证据 REMOTE-EVENT-FORWARD">REMOTE-EVENT-FORWARD</a></p>
+  <p>Agent/Session identity lookup 属于 BFF 生命周期策略：live Agent 直接复用，普通冷 Session 的并发 resume 按 ID 合并；cold resume 前在入口、durable inspection 后和调用 resume 前多点检查 subagent ownership。若 publication race 使 resume 失败，catch 再重查已发布 identity，并把相应冲突映射为 <code>agent-busy</code>，避免通用 API 接管另一个路由所有的 child。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/api/remotes/src/agent-lookup.ts#L113-L211" title="Remote session identity 的冷恢复策略: live Agent 直接复用，普通冷 session 按 ID 合并并发 resume；入口、durable inspection 后与 resume 前多点 fence subagent ownership，resume race 失败后重查已发布 identity 并分类 agent-busy。" aria-label="证据 REMOTE-AGENT-RESOLVE">REMOTE-AGENT-RESOLVE</a></p>
+</section>
+
+<section>
+  <h2>9. SDK JSONL：出站写 JSON-RPC 2.0，入站宽松分类</h2>
+  <p>SDK transport 的出站 request／response／notification 都写入 <code>"jsonrpc":"2.0"</code>，一行一个紧凑 frame；入站则只按 <code>id</code>／<code>method</code> 组合分类，不校验 <code>jsonrpc</code> 字段或完整 JSON-RPC envelope。<code>StringDecoder</code> 防止多字节 UTF-8 被 chunk 切坏。非法 JSON 行、非对象与未知 response id 被忽略；handler 缺失返回 <code>-32601</code>，handler rejection 返回 <code>-32603</code>。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/sdk/protocol/src/transport.ts#L1-L268" title="SDK 的 newline JSON transport: 出站 frame 总是写 jsonrpc:2.0；入站只按 id/method 分类，不校验该字段或完整 envelope。StringDecoder 保护拆分 UTF-8；非法行、未知 response id 被忽略，请求 handler 缺失与抛错分别映射 -32601/-32603。" aria-label="证据 SDK-JSONL-TRANSPORT">SDK-JSONL-TRANSPORT</a></p>
+  <p>应用 vocabulary 只有三个 client request：<code>initialize</code>、<code>session/prompt</code>、<code>shutdown</code>；以及四个 server notification：<code>session.event</code>、<code>session.status</code>、<code>subagent.started</code>、<code>subagent.finished</code>。prompt response 只是 durable queue receipt 的 <code>messageId</code>；完整 SessionEvent 穿 wire，使 session event vocabulary 也成为兼容面。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/sdk/protocol/src/types.ts#L15-L105" title="SDK wire 的三请求四通知: 客户端只有 initialize、session/prompt、shutdown；服务端通知 session.event、session.status、subagent.started、subagent.finished；prompt 只返回 messageId，完整 SessionEvent 进入 wire vocabulary。" aria-label="证据 SDK-WIRE-METHODS">SDK-WIRE-METHODS</a></p>
+  <pre><code>initialize ───────────────→ serverInfo
+session/prompt ───────────→ messageId  （只证明入队）
+       ├─ session.event ──→ durable facts
+       ├─ session.status ─→ whole-agent running / idle
+       └─ subagent.* ─────→ 进程内 child lineage / completion
+shutdown ─────────────────→ {}</code></pre>
+</section>
+
+<section>
+  <h2>10. SDK 兼容与安全立场：无版本协商、无 wire auth、无 prompt cancel</h2>
+  <p>公开限制直接说明：<code>serverInfo.version</code> 固定为 <code>0.0.1</code>，客户端不与期望版本比较；没有 prompt cancel 或 session close；服务端到客户端 request 当前没有生产者，只留下未来 approval flow 的 transport 能力。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/sdk/protocol/README.md#L35-L39" title="SDK wire 的公开限制: 协议没有版本协商、prompt cancel 或 session close；serverInfo.version 为 0.0.1 且客户端不比较预期版本，服务端到客户端 request 当前是 dead capability。" aria-label="证据 SDK-WIRE-LIMITS">SDK-WIRE-LIMITS</a></p>
+  <div class="claim fact"><div class="claim-label">事实</div><p>SDK 的安全边界是调用方启动并拥有的本地子进程与 stdio，不是线上身份协议。wire 没有 authenticate 方法。模型凭据通过子进程环境或 runtime 自身配置进入，因而环境构造方式是 credential policy 的一部分。</p></div>
+  <div class="claim assessment"><div class="claim-label">推论</div><p>在 pre-release 阶段，包版本相同仍不足以证明 wire 兼容；最安全做法是 SDK 与 runtime 同版本发布、同生命周期升级，并把 <code>serverInfo</code> 仅当诊断信息，而不是协商结果。</p></div>
+</section>
+
+<section>
+  <h2>11. SDK server：全局事件源，客户端才负责 session-tree 过滤</h2>
+  <p>Server 构造时订阅 context 中<strong>每一个</strong> Session event 与 Agent status，而不是只订阅 SDK 创建的 Session；child created 同样全局上报。subagent finished 只有 service snapshot 的 <code>local</code> 为真才发送，不能凭相同 ID 或 parent lineage 猜测 locality。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/sdk/server/src/server.ts#L48-L103" title="SDK server 的全局通知订阅: 构造时订阅 context 内全部 session/event、agent/status 与 child lifecycle；只以 snapshotted local 标志报告本地 subagent 完成，不按 ID 或 lineage 猜 locality。" aria-label="证据 SDK-SERVER-EVENTS">SDK-SERVER-EVENTS</a></p>
+  <p><code>initialize</code> 解析 cwd，保存 provider/model/maxTokens，并仅在没有 owner 时自动挂载 DeepSeek fallback。类注释声称重复初始化不支持，但实现没有握手状态字段；<code>handleRequest</code> 也没有阻止 pre-initialize prompt。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/sdk/server/src/server.ts#L48-L201" title="SDK server initialize 与分派状态: 类注释称重复初始化不支持，但类没有 initialized 状态；initialize 每次改写 cwd/provider/model/maxTokens，handleRequest 也不在 session/prompt 前检查握手。" aria-label="证据 SDK-SERVER-INIT">SDK-SERVER-INIT</a></p>
+  <p>Session 在首次 prompt 时惰性创建，同 ID 的并发创建被 promise map 合并；每次 prompt 都确认 retained handle 仍等于 live registry instance。shutdown 封闭新 admission、等待创建收敛、移除订阅，并 allSettled 所有 agent 与 fallback adapter，多个失败聚合报告。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/sdk/server/src/server.ts#L127-L239" title="SDK session 创建与 teardown: sessionId 首次 prompt 时惰性创建，同 ID 并发创建被合并；prompt 验证 agent 仍是 live exact instance；shutdown 拒绝新创建、等待在途创建并 allSettled 所有 handle 与 fallback adapter。" aria-label="证据 SDK-SERVER-SESSIONS">SDK-SERVER-SESSIONS</a></p>
+  <p>协议 <code>shutdown</code> 的 response 写出后，下一事件循环执行 transport flush、root fiber disposal 与 <code>exit(0)</code>。只卸载插件的成功路径先 shutdown server、再 close transport 且不退出整个进程；但 disposer 没有 <code>finally</code>，若 server teardown reject，transport close 会被跳过。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/sdk/server/src/index.ts#L40-L91" title="SDK runtime 的 shutdown/exit 顺序: shutdown result 写出后，下一事件循环 flush transport、dispose root fiber 并 exit 0；插件单独卸载的成功路径先 shutdown server 再 close transport，但前者 reject 会因缺少 finally 而跳过 close。" aria-label="证据 SDK-SERVER-SHUTDOWN">SDK-SERVER-SHUTDOWN</a></p>
+</section>
+
+<section>
+  <h2>12. TypeScript SDK：run 是 receipt-to-idle 区间，不是一一对应的 turn result</h2>
+  <p>低层 <code>HarnessClient</code> 惰性 spawn runtime。initialize 只要求返回的 name/version 是字符串，不校验预期值；request timeout 只从本地 pending map 放弃等待，服务端工作继续到 runtime 关闭。JSON-RPC error 保留 code/data，transport failure 添加 exit code 和最多 400 行 stderr tail。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/sdk/client/src/client.ts#L175-L401" title="TypeScript SDK 的错误、超时与关闭: 客户端惰性启动子进程，initialize 只校验身份字段为字符串；timeout 只删除本地 pending，服务端工作继续；wire error 保留 code/data，transport error 添加 exit code 与 400 行 stderr tail；close 先 best-effort shutdown 后权威回收进程。" aria-label="证据 SDK-TS-CLIENT">SDK-TS-CLIENT</a></p>
+  <p>高层 <code>run()</code> 在发送 prompt 前订阅 session tree，拿到 <code>messageId</code> 后丢弃匹配 durable inbox receipt 之前的通知，再收集到根 Agent 下一次 idle。<code>finalResponse</code> 是这个区间最后一个已提交 assistant 文本；其他 producer 在 idle 前加入的工作也可能贡献，因此它不是由该 prompt 唯一因果归属的响应。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/sdk/client/src/api.ts#L139-L245" title="TypeScript 高层 run 的活动区间: 订阅先于 prompt，客户端忽略 durable inbox receipt 之前的通知，从匹配 messageId 收集到下一次 whole-agent idle；finalResponse 是该区间最后一个已提交 assistant 文本，不是 prompt-causal 结果。" aria-label="证据 SDK-TS-RUN">SDK-TS-RUN</a></p>
+  <p>关闭是本地权威终止：先 bounded best-effort <code>shutdown</code>，再走 stdin EOF → POSIX SIGTERM → SIGKILL，并只在观察到 process exit 后 resolve；Windows 直接进入强制终止层。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/sdk/client/src/dispose.ts#L13-L99" title="TypeScript SDK 的进程回收阶梯: 回收依次尝试 stdin EOF、POSIX SIGTERM、SIGKILL，并在每层清理 timer/listener；最终只有观察到 exit 才 resolve，Windows 直接走强制终止。" aria-label="证据 SDK-TS-DISPOSE">SDK-TS-DISPOSE</a></p>
+</section>
+
+<section>
+  <h2>13. Python SDK 说同一 wire，但并非 TypeScript API 的机械翻译</h2>
+  <p>Python <code>HarnessClient</code> 是同步客户端，发送相同的三种 request，并额外公开 <code>next_request()</code>、<code>respond()</code> 与 <code>respond_error()</code>，可以消费未来的 server request；当前 server 不会发送这种 request。Python 的 env 默认复制父环境后 merge override，与 TypeScript 的显式 env“完整替换”不同。其 initialize response model 也允许 <code>serverInfo</code>、name 与 version 缺省。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/python/sdk/src/deepseek_harness/client.py#L24-L397" title="Python SDK 的同步客户端与双向 request 面: Python 客户端发送相同请求并公开 future server-request API；环境从父进程复制后 merge override。close 在 shutdown response 后若进程仍活即 terminate；清空 _proc 后同一实例可 restart，但 start 不清除 close 留在 global notification／server-request queue 的 sentinel。" aria-label="证据 SDK-PY-CLIENT">SDK-PY-CLIENT</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/python/sdk/src/deepseek_harness/models.py#L26-L32" title="Python initialize response 的宽松模型: Python 的 ServerInfo.name/version 与 InitializeResponse.serverInfo 都可缺省。" aria-label="证据 SDK-PY-MODELS">SDK-PY-MODELS</a></p>
+  <p>reader thread 按 id 把 response 送入 waiter queue，把 notification fan-out 到 subscription，并把带 id+method 的 frame 送到 server-request queue。timeout 删除 waiter、附加 exit/stderr 诊断，但同样没有向 runtime 发送 cancellation。filter 抛错只终止自己的 subscription。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/python/sdk/src/deepseek_harness/client.py#L228-L396" title="Python SDK 的等待、解析与订阅: 每个请求由 UUID 和 queue 关联；超时删除 waiter 并附进程诊断，reader 忽略非法 JSON，把服务端 request、response、notification 分流，filter 抛错只终止自己的订阅。" aria-label="证据 SDK-PY-READER">SDK-PY-READER</a></p>
+  <p>高层 Python <code>Session.run()</code> 也采用 receipt-to-idle 区间，但比 TypeScript 多提取最后一个 <code>turn/end.reason.kind</code> 作为 <code>finish_reason</code>；缺少字符串 kind 会抛 <code>SdkProtocolError</code>。这仍是区间摘要，不是 prompt-specific verdict。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/python/sdk/src/deepseek_harness/api.py#L97-L242" title="Python 高层 run 的 receipt-to-idle 语义: Python 同样先订阅 session tree，再以 messageId receipt 为起点收集到 idle；它额外从最后一个 turn/end 提取 finish_reason，并在 reason.kind 非字符串时抛 SdkProtocolError。" aria-label="证据 SDK-PY-RUN">SDK-PY-RUN</a></p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>差异</th><th>TypeScript</th><th>Python</th><th>影响</th></tr></thead>
+    <tbody>
+      <tr><td>显式 env</td><td>替换完整 child env</td><td>复制 parent 后 merge</td><td>凭据继承策略不同</td></tr>
+      <tr><td>serverInfo 校验</td><td>要求 name/version 为 string</td><td>字段都可缺省</td><td>坏 runtime 的接受范围不同</td></tr>
+      <tr><td>RunResult</td><td>无 finish reason</td><td>含 finish_reason、session_root</td><td>高层 API 不同构</td></tr>
+      <tr><td>server request</td><td>没有 consumer API</td><td>generic queue/respond API</td><td>当前为 dead capability，未来扩展姿态不同</td></tr>
+      <tr><td>close／复用</td><td>默认 6 秒（可配置）EOF grace 后再升级终止；low-level client 永久关闭</td><td>shutdown response 后若仍存活就立即 terminate；同一实例可再次 start，但旧 generation 留在 global notification／server-request queue 的 close sentinel 不会被清空</td><td>Python 可能在 runtime 正做 root／persistence disposal 时发送 TERM；重启后的首次 low-level queue read 也可能先读到旧 sentinel</td></tr>
+    </tbody>
+  </table></div>
+  <p>TypeScript 的公开类型固定了 env replacement 与四字段 RunResult。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/sdk/client/src/types.ts#L22-L70" title="TypeScript SDK 的 launch 与 RunResult 合约: 显式 env 会完整替换子进程环境；RunResult 只有 sessionId、finalResponse、events、notifications，没有 finish reason。" aria-label="证据 SDK-TS-RESULT">SDK-TS-RESULT</a> Python 的配置则额外提供 session root、base URL、API key convenience，并返回额外字段。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/python/sdk/src/deepseek_harness/api.py#L13-L84" title="Python SDK 的配置与 RunResult 合约: Python 高层配置提供 session_root、base_url、api_key 等便利入口并合并到环境；RunResult 额外含 finish_reason 与 session_root。" aria-label="证据 SDK-PY-RESULT">SDK-PY-RESULT</a></p>
+</section>
+
+<section>
+  <h2>14. SDK 漂移与 enforcement gap：文档意图不等于 wire 状态机</h2>
+  <div class="claim fact"><div class="claim-label">漂移</div><p><code>SdkProtocolError</code> 的 JSDoc 仍以“prompt response 缺少 <code>accepted:true</code>”为例，但当前 wire 和实现已经要求 <code>messageId</code>。这是局部注释遗留，不是双格式兼容。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/sdk/client/src/client.ts#L55-L290" title="TypeScript SdkProtocolError 注释已过时: 类注释仍以缺少 accepted:true 的 prompt 响应为例，但当前实现和 wire 合约要求 messageId。" aria-label="证据 SDK-DOC-STALE-ACCEPTED">SDK-DOC-STALE-ACCEPTED</a></p></div>
+  <div class="claim fact"><div class="claim-label">Enforcement gap</div><p>重复 initialize “不支持”只写在类注释里；源码没有拒绝第二次 initialize，也没有拒绝 initialize 前的 prompt。官方 SDK wrapper 会按顺序握手，因此正常路径隐藏了这个缺口；任意 raw JSON-RPC client 则能触达它。</p></div>
+  <div class="claim assessment"><div class="claim-label">影响</div><p>第二次 initialize 会改写后续新 Session 的 cwd/provider/model/maxTokens，而既有 Session 保持旧配置，形成同一 connection 内的混合 generation。修复应是显式 connection state machine，而不是让客户端“约定不要这样做”。</p></div>
+</section>
+
+<section>
+  <h2>15. ACP：标准协议版本，刻意缩小到 automation baseline</h2>
+  <p>Adapter 自身是公开 <code>0.1.0-rc.5</code> 包，并 pin <code>@agentclientprotocol/sdk 0.25.1</code>。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/acp/acp/package.json#L1-L36" title="ACP adapter 的发布版本与标准 SDK pin: 公开 adapter 包版本为 0.1.0-rc.5，并固定依赖 @agentclientprotocol/sdk 0.25.1。" aria-label="证据 ACP-PACKAGE">ACP-PACKAGE</a>运行时直接从该 SDK 导入 <code>PROTOCOL_VERSION</code>、<code>ndJsonStream</code> 与 <code>AgentSideConnection</code>，再以标准 stream 构造 connection；framing、method machinery 与协议常量因此来自 SDK，而非自创 wire。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/acp/acp/src/index.ts#L18-L35" title="ACP adapter 的标准 SDK 导入: Adapter 直接从 @agentclientprotocol/sdk 导入 PROTOCOL_VERSION、ndJsonStream、AgentSideConnection 与相关 ACP 类型。" aria-label="证据 ACP-SDK-IMPORTS">ACP-SDK-IMPORTS</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/acp/acp/src/index.ts#L348-L353" title="ACP standard stream 与 connection wiring: Adapter 以 SDK 的 ndJsonStream 包装 stdio，再构造 SDK AgentSideConnection。" aria-label="证据 ACP-SDK-CONNECTION">ACP-SDK-CONNECTION</a></p>
+  <p><code>initialize</code> 无论客户端请求哪个版本，都返回该 build 支持的 <code>PROTOCOL_VERSION</code>，同时只广告 text/resource-link baseline 所需能力，<code>authMethods</code> 为空，<code>authenticate</code> 为 no-op。<code>session/new</code> 只创建 fresh Session，要求绝对 cwd，并拒绝非空 additional directories 与 MCP servers。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/acp/acp/src/index.ts#L231-L436" title="ACP initialize、认证与 fresh session: server 总是返回标准 SDK 的 PROTOCOL_VERSION、最小 prompt capability 与空 authMethods，authenticate 为 no-op；session/new 只接受绝对主 cwd、空 additionalDirectories 与空 MCP server 列表，并生成 fresh session。" aria-label="证据 ACP-HANDSHAKE">ACP-HANDSHAKE</a></p>
+  <div class="claim fact"><div class="claim-label">事实</div><p>ACP 的“标准兼容”是标准 envelope 与 baseline method compatibility，不代表实现了 ACP 的全部可选能力。客户端必须读取 capability 和返回的协议版本，不能按协议名字推断 resume、filesystem、terminal 或 MCP 已存在。</p></div>
+  <aside class="caveat"><strong>认证：</strong>空 authMethods 与 no-op authenticate 适合可信 stdio peer，不是可直接暴露到不可信网络的认证方案。</aside>
+</section>
+
+<section>
+  <h2>16. ACP 输出与错误：只发 committed answer，牺牲 token latency 换清洁结果</h2>
+  <p>bridge 不转发 raw delta、reasoning、tool trace、plan 或 title；它只把已提交 <code>assistant/message</code> 的文本发成 <code>agent_message_chunk</code>，image 变成显式 attachment placeholder。<code>sessionUpdate()</code> 的 transport／write rejection 会被捕获并告警；JSON-RPC notification 没有 response，因此客户端 handler failure 不能经 notification 反向反馈。对自有 tool-call approval，bridge 发 one-shot allow/reject permission request，取消或未知选择不授予权限。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/acp/acp/src/index.ts#L130-L229" title="ACP committed output 与权限请求: bridge 只发送已提交 assistant/message 的文本或 image placeholder；sessionUpdate transport／write rejection 被捕获并告警，client handler failure 无法通过无 response 的 notification 反馈；自有 tool-call approval 是 one-shot allow/reject，取消或未知选择 fail closed。" aria-label="证据 ACP-OUTPUT-PERMISSION">ACP-OUTPUT-PERMISSION</a></p>
+  <p>每个 Session 只允许一个在途 prompt。bridge 先以 user messageId 建 slot，在 <code>agent/inbox/claimed</code> 时捕获 turn；该 captured turn 的 <code>turn/end</code> 会被精确关联，正常 ending 仍等 whole-agent idle 才返回。另一路 <code>agent/error</code> fallback 反而只在 turn 尚未捕获或 turn 不同的时候 reject 当前 slot，没有 message-level causality：先前 autonomous turn，或 prompt turn 后、idle 前的 competing turn failure，都可能被误归给等待中的 ACP prompt。输出同样覆盖该 Session 到 idle 的全部 committed assistant message，而非只限 prompt turn。<code>session/cancel</code> 对未知 ID 是 no-op；已知 ID 只 cancel 对应 Agent 并立即将该 prompt 结算为 <code>cancelled</code>。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/acp/acp/src/index.ts#L145-L345" title="ACP prompt 相关性、错误与 cancel: 每 session 一个在途 prompt；captured turn 的 turn/end 精确关联，但 turn 未捕获或不同的 agent/error fallback 无 message causality，可误归因；输出/结算覆盖 whole-agent-to-idle，max-token wrapper 降为 end_turn；cancel 只影响目标。" aria-label="证据 ACP-PROMPT-CANCEL">ACP-PROMPT-CANCEL</a></p>
+  <p>内容 codec 原样拼接 text，把 resource link 渲染成带 name/URI 的方括号引用，拒绝 richer block。turn end 到 ACP stop reason 的映射是有损的；codec 本身把 max-token 映射为 <code>max_tokens</code>，但 prompt wrapper 在 whole-agent idle 结算时另将它降为 <code>end_turn</code>，因为它不声称 prompt-specific turn outcome。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/acp/acp/src/codec.ts#L9-L65" title="ACP 内容与 stop reason 映射: baseline text 原样拼接，resource_link 变成明确方括号引用，其他块拒绝；completed、interrupted、max-token 等 turn ending 映射到 ACP vocabulary，其中 max-token 在 codec 层为 max_tokens。" aria-label="证据 ACP-CODEC">ACP-CODEC</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/acp/acp/src/index.ts#L145-L345" title="ACP prompt 相关性、错误与 cancel: 每 session 一个在途 prompt；captured turn 的 turn/end 精确关联，但 turn 未捕获或不同的 agent/error fallback 无 message causality，可误归因；输出/结算覆盖 whole-agent-to-idle，max-token wrapper 降为 end_turn；cancel 只影响目标。" aria-label="证据 ACP-PROMPT-CANCEL">ACP-PROMPT-CANCEL</a></p>
+</section>
+
+<section>
+  <h2>17. ACP 生命周期：一个 connection 可有多 Session，但没有单 Session close</h2>
+  <p>connection close 与插件 disposal 共享一次 memoized quiesce：同步封闭 admission、清空 map、cancel Agent 并结算所有 prompt；之后只 drain 这些 top-level Agent 下的 continuable descendants，再并行 dispose handles。Descendant-drain failure 只 warning 并继续；只有 handle-disposal failures 被聚合抛出。其他 frontend 在同一 context 下拥有的森林不会被误清。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/acp/acp/src/index.ts#L348-L415" title="ACP connection-owned quiescence: connection close 与 plugin disposal 共享 memoized quiesce：先封闭 admission、清 map、cancel 并结算 prompts；自有 descendant drain 失败只 warning，之后 handle disposal failures 才 allSettled 聚合抛出。" aria-label="证据 ACP-QUIESCE">ACP-QUIESCE</a></p>
+  <div class="claim assessment"><div class="claim-label">取舍</div><p>这提供了 connection-owned isolation，以及成功路径上的确定 ownership 与 teardown ordering；即使 descendant drain 失败，top-level handle disposal 仍继续，但不能证明所有 descendant 已释放。它没有 session/load、resume、fork 或 per-session close。长寿命客户端需要把 connection 本身视为资源容器，而不是把 Session 当可独立回收的远程对象。</p></div>
+</section>
+
+<section>
+  <h2>18. ACP 还是一个 child backend：每次 run 都是 fresh process transaction</h2>
+  <p>进程外 provider 明确广告不支持 output schema、depth limit、tool filter、persona，也不继承 parent conversation。child cwd 必须来自显式配置或 delegating parent Session；缺少 workspace 时 fail loud，绝不退回 server process cwd。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent-acp/src/index.ts#L124-L169" title="ACP child backend 的 capability 与 cwd 边界: 每个进程外 child 使用配置 cwd 或 parent session cwd，拒绝无 workspace 的隐式 process-cwd 回退；provider 宣告不支持 output schema、depth、tool filter、persona，且不继承 parent context。" aria-label="证据 ACP-CHILD-CAPABILITIES">ACP-CHILD-CAPABILITIES</a></p>
+  <p>每次 run 启动一个 fresh process。parent 生成独立 lifecycle id，避免不同 child 内相同 ACP session id 冲突；只有 spawn、initialize 与 session/new 全部成功才发布 handle，之前任一错误或取消都先回收私有进程。环境经共享 subprocess policy 清除 credential-shaped 与 <code>DSH_*</code> ambient names，再由 local spawn layer merge 显式 child env。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent-acp/src/run.ts#L190-L367" title="ACP child 的启动事务: 每次 run 启动 fresh process，parent 另生成全局 lifecycle id；initialize 和 session/new 全部成功后才发布 handle，spawn/握手/cancel 任一失败都会先回收私有 child。" aria-label="证据 ACP-CHILD-START">ACP-CHILD-START</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subprocess/subprocess/src/index.ts#L37-L65" title="共享 subprocess 环境清洗策略: 共享 scrub 从 ambient parent env 移除 credential-shaped 与 DSH_* 名称，保留普通运行环境；显式 env 在其后另行合并。" aria-label="证据 ACP-CHILD-ENV-POLICY">ACP-CHILD-ENV-POLICY</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subprocess/subprocess-local/src/spawn.ts#L17-L352" title="Local subprocess 的显式 env merge: Local spawn 以 scrubbedParentEnv 为基底，按目标平台语义 merge 显式 env/tombstone，并把结果交给 process spawn。" aria-label="证据 ACP-CHILD-ENV-MERGE">ACP-CHILD-ENV-MERGE</a></p>
+  <p>caller abort 可以立刻以当前已收集文本返回 <code>aborted</code>，并 best-effort 发送 ACP cancel；这不证明 child 已停止。<code>dispose()</code> 才是权威 quiescence：它确保尚未请求时发出一次 best-effort cancel，再执行 stdin EOF → terminate escalation → whole-tree exit proof。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent-acp/src/run.ts#L94-L367" title="ACP child 取消、部分输出与权威回收: caller abort 可立即以已收集部分文本结算 aborted，并 best-effort 发送一次 session/cancel；dispose 仍是权威边界，仅在尚未请求时补发 cancel，再执行共享 EOF→terminate→whole-tree exit 回收。" aria-label="证据 ACP-CHILD-CANCEL">ACP-CHILD-CANCEL</a></p>
+</section>
+
+<section>
+  <h2>19. 版本、认证、取消、重连与恢复矩阵</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>维度</th><th>Browser API / Remote</th><th>SDK JSON-RPC</th><th>ACP adapter</th></tr></thead>
+    <tbody>
+      <tr><td>版本</td><td>共同发布；无 protocolVersion；describe 版本仍是占位</td><td>serverInfo 0.0.1；无协商、无期望值比较</td><td>标准 SDK <code>PROTOCOL_VERSION</code>；capability 子集</td></tr>
+      <tr><td>认证</td><td>Host/Origin trust fence，不是身份认证</td><td>无 wire auth；依赖本地子进程所有权</td><td>空 authMethods；可信 stdio</td></tr>
+      <tr><td>取消</td><td>HTTP disconnect/caller signal；只有声明方法注入；协作式</td><td>timeout 仅本地 abandon；终止要 close runtime</td><td><code>session/cancel</code> 路由到目标 Agent并结算 prompt</td></tr>
+      <tr><td>重连</td><td>readiness 收敛后，双流整代重建 + 上层 snapshot resync；hung describe 会卡住收敛</td><td>成功握手后 transport death 为终结；不自动 reconnect</td><td>没有 connection resume；断开释放自有 Session</td></tr>
+      <tr><td>Session 恢复</td><td>BFF 可冷 resume 普通持久 Session</td><td>同 runtime 按 sessionId 复用；wire 无 load/resume</td><td>fresh only</td></tr>
+      <tr><td>进程 teardown</td><td>宿主拥有</td><td>SDK shutdown + EOF/TERM/KILL</td><td>server connection quiesce；child backend 另做 whole-tree 回收</td></tr>
+      <tr><td>结果语义</td><td>typed RPC result + event streams</td><td>messageId receipt；高层 receipt-to-idle 区间</td><td>committed chunks + stopReason，但不声称 prompt-causal turn</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>20. 与 Codex App Server 的公开合约比较</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>维度</th><th>DeepSeek Harness（本章源码）</th><th>Codex（仅公开文档）</th></tr></thead>
+    <tbody>
+      <tr><td>目标</td><td>浏览器面、窄 SDK 与 ACP adapter 分开</td><td>App Server 用于 rich client；SDK 用于自动化/CI</td></tr>
+      <tr><td>JSON-RPC framing</td><td>SDK 出站带 2.0 header、入站仅宽松分类；ACP 使用标准 SDK framing；浏览器 API 自有信封</td><td>双向 JSON-RPC 2.0，但 wire 省略 <code>jsonrpc</code> 字段；stdio 为 JSONL，另有实验 WebSocket 与 Unix socket</td></tr>
+      <tr><td>握手</td><td>SDK server 缺少强制状态机；ACP 返回标准版本</td><td>每 connection 只允许一次 initialize，再发 initialized；握手前请求与重复 initialize 均拒绝</td></tr>
+      <tr><td>会话</td><td>SDK 隐式 get/create；ACP fresh only；Browser BFF 可 cold resume</td><td>公开 thread start/resume/fork/read/list 与 turn start/steer/interrupt</td></tr>
+      <tr><td>取消与结果</td><td>SDK 无 wire cancel；ACP 有 session/cancel；Browser signal 按 descriptor 注入</td><td>turn/interrupt 后以 turn/completed 的 final status 收敛</td></tr>
+      <tr><td>远程认证</td><td>本章这些 adapter 没有可公开网络身份认证</td><td>远程 WebSocket 可配置 capability token 或 signed bearer，且在 initialize 前认证</td></tr>
+      <tr><td>兼容策略</td><td>Browser 同步发布；SDK pre-release 无协商；ACP capability 子集</td><td>可为所运行的精确 Codex 版本生成 TypeScript/JSON Schema；实验 method/field 需 capability opt-in</td></tr>
+      <tr><td>背压</td><td>Browser HTTP/WS 与 SDK 各自处理；SDK 无 overload code</td><td>WebSocket ingress 满时返回 <code>-32001</code>，公开建议 exponential backoff + jitter</td></tr>
+      <tr><td>服务端请求</td><td>Browser approval 可回应；ACP permission；SDK 当前 dead capability</td><td>公开 approval 与其他 server-initiated request，客户端返回 decision</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">公开事实</div><p>以上 Codex 信息来自 <a href="https://learn.chatgpt.com/docs/app-server.md" target="_blank" rel="noreferrer">Codex App Server 官方文档</a>（检索于 2026-08-13）。这里只比较公开协议能力，不推断其私有实现。</p></div>
+  <div class="claim assessment"><div class="claim-label">判断</div><p>Codex App Server 更像一个有握手状态、版本配套 schema、长寿命 thread/turn 与显式 approval 的 rich-client protocol；DeepSeek 的 SDK 更像最小 subprocess automation pipe，而 ACP adapter 用标准兼容换取更小的产品面。这不是简单的“功能多少”差异，而是面向的客户端寿命与独立发布程度不同。</p></div>
+</section>
+
+<section>
+  <h2>21. 如何安全选择：按需要的保证，而不是按最熟悉的格式</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>需求</th><th>优先选择</th><th>必须自行补齐</th></tr></thead>
+    <tbody>
+      <tr><td>随产品发布的完整 Web UI</td><td>Browser ApiProxy + Remote</td><td>真实身份认证、跨版本部署纪律、reconnect 后 snapshot resync</td></tr>
+      <tr><td>本地脚本、CI、批量自动化</td><td>TypeScript/Python SDK</td><td>同版本 runtime pin、进程关闭、超时后是否终止整个 runtime 的策略</td></tr>
+      <tr><td>接入通用 agent client</td><td>ACP</td><td>只依赖 advertised capability；接受 fresh-only、committed-only 与 connection-owned lifetime</td></tr>
+      <tr><td>进程外 child Agent</td><td>ACP child backend</td><td>明确 cwd、显式凭据、permission policy、始终 dispose</td></tr>
+      <tr><td>独立发布的 rich client</td><td>当前没有等价的统一 DeepSeek protocol</td><td>版本协商、认证、resume、schema generation、overload/replay contract</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">核心取舍</div><p>最小协议降低实现与 token 表面成本，却把状态归属、升级和恢复责任推给客户端；丰富协议提供更强的独立客户端生命周期，但必须承担 capability negotiation、鉴权、backpressure、replay 与更大的兼容测试矩阵。</p></div>
+</section>
+
+<section>
+  <h2>22. 验证范围与可复现结果</h2>
+  <p>本章以提交 <code>47f943859bef60e4160492346772ded9b24f765a</code> 为固定基线。focused Vitest 覆盖 SDK transport/server/client、ACP bridge/codec/permission/multi-session/disposal、ACP child backend、Typert Gateway、Remote identity resolver，以及 browser trust/HTTP bridge/WebSocket/reconnect。SDK transport suite 固定 framing 与错误语义。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/sdk/protocol/tests/transport.spec.ts#L1-L307" title="JSON-RPC transport 回归测试: 测试覆盖请求、通知、错误 code/data、非法 frame、UTF-8 拆分、abort abandonment、flush、stream end 与未知 response id。" aria-label="证据 TEST-SDK-PROTOCOL">TEST-SDK-PROTOCOL</a> ACP bridge suite 固定版本、auth、fresh session 与输入边界。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/acp/acp/tests/bridge.spec.ts#L14-L147" title="ACP handshake、session 与输入边界测试: 测试固定 capability、版本响应、no-op auth、fresh session、baseline prompt、resource link、unsupported workspace/MCP 以及 unknown cancel 行为。" aria-label="证据 TEST-ACP">TEST-ACP</a></p>
+  <p>Connection suite 固定双流 generation 与 reconnect。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/connection/tests/connection.client.spec.ts#L1-L322" title="Connection generation 与重连测试: 测试覆盖 describe 加双流 readiness、stream/error、sink isolation、open-timeout 降级与状态去重；readiness 中流结束的重建 fixture 必须先手工 resolve hung describe，暴露 describe 自身无 timeout/signal 的缺口。" aria-label="证据 TEST-CONNECTION">TEST-CONNECTION</a> Remote client suite 固定 strict mount、withdraw cancellation、scope 与错误折叠。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/api/gateway/tests/gateway.client.spec.ts#L1-L829" title="Generated Remote 客户端测试: 测试覆盖严格 boundary、mount rollback、withdraw-inflight cancellation、scope projection、carrier failure folding 与 forwarded-event listener isolation。" aria-label="证据 TEST-REMOTE">TEST-REMOTE</a></p>
+  <pre><code>pnpm exec vitest run \
+  packages/sdk/protocol/tests/transport.spec.ts \
+  packages/sdk/server/tests/{server,plugin-apply,plugin-shape}.spec.ts \
+  packages/sdk/client/tests/{sdk-client,dispose}.spec.ts \
+  packages/acp/acp/tests/{approval,bridge,codec,dispose,edges,multi-session,turns}.spec.ts \
+  packages/subagent/subagent-acp/tests/subagent-acp.spec.ts \
+  packages/api/gateway/tests/{gateway.client,gateway.host}.spec.ts \
+  packages/api/remotes/tests/agent-lookup.spec.ts \
+  packages/client/connection/tests/{api-request-trust.host,http-bridge.host,websocket-downlink.host,connection.client}.spec.ts \
+  --reporter=verbose
+
+结果：21 个 test files 全部通过，313/313 tests 通过。
+耗时：21.01s（Vitest 报告）。</code></pre>
+  <aside class="caveat"><strong>未验证：</strong>本轮没有构建发布 artifact，也没有运行需要独立打包 binary 的 E2E。Python test runner 未安装（环境中没有 <code>uv</code> 或 <code>pytest</code>），因此 Python 结论来自固定源码与已有测试代码的控制流复核，不伪装成一次新的 Python test pass。</aside>
+</section>
+<section class="learning-notes" aria-labelledby="learning-notes-title"><h2 id="learning-notes-title">我的学习体会</h2>
     <p class="privacy">内容仅自动保存到当前浏览器，不上传、不进入仓库。你可以导出 Markdown 自行归档。</p><textarea data-learning-notes aria-label="我的学习体会" placeholder="记录你的理解、疑问、反例和可迁移原则……"></textarea>
     <div class="note-footer"><span data-note-saved>本地草稿</span><button type="button" data-note-export>导出 Markdown</button>
     <button type="button" class="danger" data-note-clear>清空</button><span data-note-count>0 字符</span></div></section><nav class="pagination" aria-label="章节翻页"><a href="../pages/observability.html"><small>← 上一章 · 28</small><strong>可观测、Telemetry 与轨迹</strong></a><a class="next" href="../pages/web-ui.html"><small>下一章 · 30 →</small><strong>Web UI 插件架构</strong></a></nav></article>

@@ -1,0 +1,228 @@
+<section>
+  <h2>结论：这里不是“一套 API”，而是四种所有权完全不同的协议</h2>
+  <div class="thesis"><p>DeepSeek Harness 同时存在浏览器 Host API、生成式 Typert Remote、私有 SDK JSON-RPC，以及标准 ACP adapter。它们共享一部分 Agent 与 Session 能力，却不共享稳定性、认证、取消、重连或生命周期承诺。最危险的读法，是看到它们都使用 JSON 就把它们当成可互换的远程 API。</p></div>
+  <p>最简洁的判断是：浏览器 API 服务同版本 UI；Remote 把编译期 descriptor 投影到同一浏览器载体；SDK 服务由调用方拥有的本地子进程；ACP 服务懂标准协议的自动化客户端。边界选错后，最先失真的通常不是类型，而是“谁拥有进程、谁可以取消、断线后谁负责恢复”。</p>
+</section>
+
+<section>
+  <h2>1. 四张协议面：先按消费者和生命周期分开</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>协议面</th><th>典型消费者</th><th>物理载体</th><th>会话所有者</th><th>定位</th></tr></thead>
+    <tbody>
+      <tr><td>Browser ApiProxy</td><td>随宿主发布的 Web 客户端</td><td>HTTP POST 上行 + 两条 WebSocket 下行</td><td>宿主进程</td><td>完整产品 UI 合约</td></tr>
+      <tr><td>Typert Remote</td><td>编译时选定 contribution 的客户端插件</td><td>复用 <code>/api</code> HTTP 与 Host event stream</td><td>宿主 Service / Context</td><td>严格生成的 BFF 调用面</td></tr>
+      <tr><td>SDK JSON-RPC</td><td>TypeScript、Python 自动化调用方</td><td>子进程 stdio，JSONL</td><td>SDK 实例</td><td>极小的私有 runtime wire</td></tr>
+      <tr><td>ACP</td><td>标准 ACP 客户端或进程外 child backend</td><td>stdio 上的标准 JSON-RPC</td><td>ACP connection</td><td>最小自动化 adapter</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">推论</div><p>“都能发送 prompt”不是兼容性。兼容性至少还包括握手顺序、会话恢复、错误分类、取消传播、凭据边界和断线后的状态重建。</p></div>
+</section>
+
+<section>
+  <h2>2. Browser API 的逻辑语法：四象限消息，而不是一组随意的 fetch</h2>
+  <p>ApiProxy 把消息与载体分离成四种：<code>client-request</code>、<code>server-response</code>、<code>server-request</code>、<code>client-response</code>。发起者生成 <code>rpcId</code>，响应者原样回显；服务端请求既可表示需要回答的 approval/question，也可表示纯 push，是否需要回应由 method 静态决定。客户端回答通过 <code>POST /api/respond</code> 回送，late 或 duplicate response 只得到 carrier receipt。<evidence id="API-RPC-MODEL"></evidence></p>
+  <p>解析采用两层 discipline：第一层只判断四种信封、rpcId 与错误联合，payload/value 保持 <code>unknown</code>；第二层才根据 method 解析具体业务 schema。这样 transport 能报告可关联的坏信封，业务 contract 又不会被一个宽泛 JSON schema 稀释。<evidence id="API-RPC-SCHEMAS"></evidence></p>
+  <div class="claim fact"><div class="claim-label">事实</div><p>业务失败不是异常，而是 <code>RpcResult&lt;T&gt;</code> 的错误分支；transport exception 可以折叠成 <code>internal</code>。因此 HTTP status、RPC envelope 和业务结果是三层不同语义。</p></div>
+</section>
+
+<section>
+  <h2>3. Browser API 的版本立场：共同发布，不做协议协商</h2>
+  <p><code>HostApi</code> 明确写着客户端与宿主共同发布，所以现在没有 <code>protocolVersion</code>；<code>host.describe.version</code> 被定义为宿主应用版本，而不是 wire 版本。只有出现独立发布的客户端时，才计划增加协议版本协商。<evidence id="API-HOST-VERSION-CONTRACT"></evidence></p>
+  <div class="claim fact"><div class="claim-label">漂移</div><p>当前实现没有返回真实应用版本：源码 TODO 仍固定返回 <code>0.0.1</code>。因此它既不能用来协商协议，也暂时不能可靠判断宿主构建版本。<evidence id="API-HOST-VERSION-PLACEHOLDER"></evidence></p></div>
+  <aside class="caveat"><strong>兼容边界：</strong>这个 API 的兼容策略是原子部署，而不是跨版本互操作。把浏览器 bundle 与另一个版本的 Host 混用，超出了当前合约。</aside>
+</section>
+
+<section>
+  <h2>4. Browser 物理载体：HTTP 上行、WebSocket 下行，错误分层并不对称</h2>
+  <p>通用 Remote／Connection RPC handler 只接受 <code>POST</code> 与 <code>application/json</code>，要求 URL endpoint 与信封 method 一致。非法信封和不匹配 method 返回 typed <code>bad-request</code>；业务 handler 未预期抛错则直接成为 HTTP 500，浏览器 carrier 再把非 2xx 视为 transport failure。这个限定不涵盖同一 <code>/api</code> 面上的 event WebSocket upgrade 与 session export route。<evidence id="API-HTTP-HANDLER"></evidence><evidence id="API-HTTP-CLIENT"></evidence></p>
+  <p>所有 <code>/api</code> 请求先经过 Host authority、Fetch Metadata 与 Origin fence。它防 DNS rebinding 和 cross-site browser request，但源码明确说它<strong>不是认证层</strong>；配置 trusted host 只允许携带该 authority 的请求通过这道 fence，不证明网络可达性或请求者身份。<evidence id="API-TRUST-FENCE"></evidence></p>
+  <p>Trusted-host LAN 面也并非让全部方法拥有相同权限：settings、credentials、native dialog、agent-preset management 与 draft-credential model discovery 等 privileged method 另用空 trusted-host 集合锁到 loopback authority，并继续经过共享的 Fetch Metadata／Origin-authority 检查；HTTP 与两条 WebSocket upgrade 都经过基础 trust fence。这里不是完整的 scheme／host／port same-origin 判定，因为 Origin 可缺省，存在时只比较 authority。<evidence id="API-PRIVILEGED-LOOPBACK"></evidence></p>
+  <p>HTTP bridge 会把整个请求体缓冲进内存，默认上限 160 MiB；浏览器断开通过 response close 转成 Fetch <code>AbortSignal</code>，响应流按 socket drain 做背压。这个 signal 能通知下游，却不能强制停止忽略取消的进程内业务。<evidence id="API-HTTP-BRIDGE"></evidence></p>
+</section>
+
+<section>
+  <h2>5. 两条 WebSocket 是只下行流；畸形 frame 与断线是两种不同故障</h2>
+  <p>Host 为 mux 与 host event 各开一条只下行 WebSocket。客户端发送任何业务消息都会以 policy violation 关闭；source 抛错时 Host 尝试先发 <code>stream/error</code>，关闭时 abort source，并等待所有 pump 收敛。<evidence id="API-WS-HOST"></evidence></p>
+  <p>浏览器端对 binary、非法 JSON、非法信封或非法业务 frame 的策略是记录并丢弃，不让它们终止 generation。换言之，schema corruption 不自动触发 reconnect；只有 socket 结束才结束流。<evidence id="API-WS-CLIENT"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">取舍</div><p>丢弃单个坏 frame 可以避免一次局部扩展不兼容拖垮连接，但也意味着关键增量若被丢弃，客户端只能依靠后续 reconnect/resync 修复，当前 generation 没有逐 frame 重放。</p></div>
+</section>
+
+<section>
+  <h2>6. Browser 重连单位是完整 generation，不是单 socket 补洞</h2>
+  <p>每一代并发启动 mux、host 和 <code>host.describe</code>。正常 readiness 需要两条流 open 且 describe 成功；若代理从不发 open，3 秒 guard 允许降级为 connected。在 describe／handshake 能收敛的前提下，任一流结束会 abort 整代并同时重建两条流；退避从 500ms 指数增长到 10s，延迟在 cap 的一半到 cap 之间抖动。成功握手把 attempt 清零；业务 sink 抛错只记录，不会杀 pump。<evidence id="API-CONNECTION-LOOP"></evidence></p>
+  <aside class="caveat"><strong>已知活性缺口：</strong><code>host.describe</code> 没有 generation signal 或自身 timeout。若 WebSocket 在 readiness 期间结束、describe 又永不 settle，generation 虽已 abort，却会卡在 handshake await，无法进入共享 backoff／rebuild。</aside>
+  <div class="claim fact"><div class="claim-label">事实</div><p>载体没有 resume token 或逐帧 offset。<code>onConnected</code> 是上层重新读取 list/snapshot 的时机；连接层只恢复可达性，不恢复业务状态。</p></div>
+</section>
+
+<section>
+  <h2>7. Typert Remote：编译期 descriptor 变成运行期 live Service 调用</h2>
+  <p>Remote request 的载体无关形状只有 namespace、method、精确命名 args，以及只对声明 cancellation 的方法注入的 signal；Gateway 还声明一组稳定的 boundary failure category。<evidence id="REMOTE-GATEWAY-TYPES"></evidence></p>
+  <p>Host 每次调用都重新读取当前严格 descriptor、验证字段集合、解析 lookup 或 Context identity、绑定当前 Service，并在返回前再次验证结果。若一个严格 endpoint 曾出现后又撤回，Gateway 会 fail closed，拒绝退回弱 SRC 推导；这避免热卸载后同名方法悄悄换成更宽的 contract。<evidence id="REMOTE-HOST-DISPATCH"></evidence></p>
+  <p>取消并非普遍能力：没有 cancellation descriptor 的方法不会收到 signal。声明了取消的方法若在 signal 已 abort 后抛错，wire 映射为 <code>cancelled</code>；lookup policy 的既有 RpcError 保留，其余 Gateway 或业务异常折叠成 <code>internal</code>，所以同进程丰富错误分类并不全部穿过 wire。<evidence id="REMOTE-HOST-ERRORS"></evidence></p>
+</section>
+
+<section>
+  <h2>8. Remote 的挂载、撤回与事件面都是显式 capability</h2>
+  <p>客户端 contribution 只接受严格 codec，在公开方法前检查重复 descriptor、namespace 和 Service 冲突；部分安装失败逆序回滚。每个 mount token 自带 AbortController，撤回会先标记 inactive、abort 在途调用，再卸载方法。<evidence id="REMOTE-CLIENT-MOUNT"></evidence></p>
+  <p>调用端把位置参数转换为 descriptor 命名字段，并把 caller signal 与 mount lifetime 融合；返回值在客户端再次 parse。调用时、进入 carrier <code>try</code> 前若没有 active Connection，仍会直接抛异常；Connection 已建立后，RPC rejection、abort 或坏 response 才折叠进 <code>RemoteResult</code> 错误分支。<evidence id="REMOTE-CLIENT-INVOKE"></evidence></p>
+  <p>事件也不是自动透传：当前只有一个 11 项 allowlist，沿 wire 保持原 Cordis event name 与 argument list，不做 projection、rename 或 redaction。<evidence id="REMOTE-EVENT-ALLOWLIST"></evidence> Host 在入队前只证明参数 JSON-safe，再包装成 <code>host/remote-event</code>。<evidence id="REMOTE-EVENT-FORWARD"></evidence></p>
+  <p>Agent/Session identity lookup 属于 BFF 生命周期策略：live Agent 直接复用，普通冷 Session 的并发 resume 按 ID 合并；cold resume 前在入口、durable inspection 后和调用 resume 前多点检查 subagent ownership。若 publication race 使 resume 失败，catch 再重查已发布 identity，并把相应冲突映射为 <code>agent-busy</code>，避免通用 API 接管另一个路由所有的 child。<evidence id="REMOTE-AGENT-RESOLVE"></evidence></p>
+</section>
+
+<section>
+  <h2>9. SDK JSONL：出站写 JSON-RPC 2.0，入站宽松分类</h2>
+  <p>SDK transport 的出站 request／response／notification 都写入 <code>"jsonrpc":"2.0"</code>，一行一个紧凑 frame；入站则只按 <code>id</code>／<code>method</code> 组合分类，不校验 <code>jsonrpc</code> 字段或完整 JSON-RPC envelope。<code>StringDecoder</code> 防止多字节 UTF-8 被 chunk 切坏。非法 JSON 行、非对象与未知 response id 被忽略；handler 缺失返回 <code>-32601</code>，handler rejection 返回 <code>-32603</code>。<evidence id="SDK-JSONL-TRANSPORT"></evidence></p>
+  <p>应用 vocabulary 只有三个 client request：<code>initialize</code>、<code>session/prompt</code>、<code>shutdown</code>；以及四个 server notification：<code>session.event</code>、<code>session.status</code>、<code>subagent.started</code>、<code>subagent.finished</code>。prompt response 只是 durable queue receipt 的 <code>messageId</code>；完整 SessionEvent 穿 wire，使 session event vocabulary 也成为兼容面。<evidence id="SDK-WIRE-METHODS"></evidence></p>
+  <pre><code>initialize ───────────────→ serverInfo
+session/prompt ───────────→ messageId  （只证明入队）
+       ├─ session.event ──→ durable facts
+       ├─ session.status ─→ whole-agent running / idle
+       └─ subagent.* ─────→ 进程内 child lineage / completion
+shutdown ─────────────────→ {}</code></pre>
+</section>
+
+<section>
+  <h2>10. SDK 兼容与安全立场：无版本协商、无 wire auth、无 prompt cancel</h2>
+  <p>公开限制直接说明：<code>serverInfo.version</code> 固定为 <code>0.0.1</code>，客户端不与期望版本比较；没有 prompt cancel 或 session close；服务端到客户端 request 当前没有生产者，只留下未来 approval flow 的 transport 能力。<evidence id="SDK-WIRE-LIMITS"></evidence></p>
+  <div class="claim fact"><div class="claim-label">事实</div><p>SDK 的安全边界是调用方启动并拥有的本地子进程与 stdio，不是线上身份协议。wire 没有 authenticate 方法。模型凭据通过子进程环境或 runtime 自身配置进入，因而环境构造方式是 credential policy 的一部分。</p></div>
+  <div class="claim assessment"><div class="claim-label">推论</div><p>在 pre-release 阶段，包版本相同仍不足以证明 wire 兼容；最安全做法是 SDK 与 runtime 同版本发布、同生命周期升级，并把 <code>serverInfo</code> 仅当诊断信息，而不是协商结果。</p></div>
+</section>
+
+<section>
+  <h2>11. SDK server：全局事件源，客户端才负责 session-tree 过滤</h2>
+  <p>Server 构造时订阅 context 中<strong>每一个</strong> Session event 与 Agent status，而不是只订阅 SDK 创建的 Session；child created 同样全局上报。subagent finished 只有 service snapshot 的 <code>local</code> 为真才发送，不能凭相同 ID 或 parent lineage 猜测 locality。<evidence id="SDK-SERVER-EVENTS"></evidence></p>
+  <p><code>initialize</code> 解析 cwd，保存 provider/model/maxTokens，并仅在没有 owner 时自动挂载 DeepSeek fallback。类注释声称重复初始化不支持，但实现没有握手状态字段；<code>handleRequest</code> 也没有阻止 pre-initialize prompt。<evidence id="SDK-SERVER-INIT"></evidence></p>
+  <p>Session 在首次 prompt 时惰性创建，同 ID 的并发创建被 promise map 合并；每次 prompt 都确认 retained handle 仍等于 live registry instance。shutdown 封闭新 admission、等待创建收敛、移除订阅，并 allSettled 所有 agent 与 fallback adapter，多个失败聚合报告。<evidence id="SDK-SERVER-SESSIONS"></evidence></p>
+  <p>协议 <code>shutdown</code> 的 response 写出后，下一事件循环执行 transport flush、root fiber disposal 与 <code>exit(0)</code>。只卸载插件的成功路径先 shutdown server、再 close transport 且不退出整个进程；但 disposer 没有 <code>finally</code>，若 server teardown reject，transport close 会被跳过。<evidence id="SDK-SERVER-SHUTDOWN"></evidence></p>
+</section>
+
+<section>
+  <h2>12. TypeScript SDK：run 是 receipt-to-idle 区间，不是一一对应的 turn result</h2>
+  <p>低层 <code>HarnessClient</code> 惰性 spawn runtime。initialize 只要求返回的 name/version 是字符串，不校验预期值；request timeout 只从本地 pending map 放弃等待，服务端工作继续到 runtime 关闭。JSON-RPC error 保留 code/data，transport failure 添加 exit code 和最多 400 行 stderr tail。<evidence id="SDK-TS-CLIENT"></evidence></p>
+  <p>高层 <code>run()</code> 在发送 prompt 前订阅 session tree，拿到 <code>messageId</code> 后丢弃匹配 durable inbox receipt 之前的通知，再收集到根 Agent 下一次 idle。<code>finalResponse</code> 是这个区间最后一个已提交 assistant 文本；其他 producer 在 idle 前加入的工作也可能贡献，因此它不是由该 prompt 唯一因果归属的响应。<evidence id="SDK-TS-RUN"></evidence></p>
+  <p>关闭是本地权威终止：先 bounded best-effort <code>shutdown</code>，再走 stdin EOF → POSIX SIGTERM → SIGKILL，并只在观察到 process exit 后 resolve；Windows 直接进入强制终止层。<evidence id="SDK-TS-DISPOSE"></evidence></p>
+</section>
+
+<section>
+  <h2>13. Python SDK 说同一 wire，但并非 TypeScript API 的机械翻译</h2>
+  <p>Python <code>HarnessClient</code> 是同步客户端，发送相同的三种 request，并额外公开 <code>next_request()</code>、<code>respond()</code> 与 <code>respond_error()</code>，可以消费未来的 server request；当前 server 不会发送这种 request。Python 的 env 默认复制父环境后 merge override，与 TypeScript 的显式 env“完整替换”不同。其 initialize response model 也允许 <code>serverInfo</code>、name 与 version 缺省。<evidence id="SDK-PY-CLIENT"></evidence><evidence id="SDK-PY-MODELS"></evidence></p>
+  <p>reader thread 按 id 把 response 送入 waiter queue，把 notification fan-out 到 subscription，并把带 id+method 的 frame 送到 server-request queue。timeout 删除 waiter、附加 exit/stderr 诊断，但同样没有向 runtime 发送 cancellation。filter 抛错只终止自己的 subscription。<evidence id="SDK-PY-READER"></evidence></p>
+  <p>高层 Python <code>Session.run()</code> 也采用 receipt-to-idle 区间，但比 TypeScript 多提取最后一个 <code>turn/end.reason.kind</code> 作为 <code>finish_reason</code>；缺少字符串 kind 会抛 <code>SdkProtocolError</code>。这仍是区间摘要，不是 prompt-specific verdict。<evidence id="SDK-PY-RUN"></evidence></p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>差异</th><th>TypeScript</th><th>Python</th><th>影响</th></tr></thead>
+    <tbody>
+      <tr><td>显式 env</td><td>替换完整 child env</td><td>复制 parent 后 merge</td><td>凭据继承策略不同</td></tr>
+      <tr><td>serverInfo 校验</td><td>要求 name/version 为 string</td><td>字段都可缺省</td><td>坏 runtime 的接受范围不同</td></tr>
+      <tr><td>RunResult</td><td>无 finish reason</td><td>含 finish_reason、session_root</td><td>高层 API 不同构</td></tr>
+      <tr><td>server request</td><td>没有 consumer API</td><td>generic queue/respond API</td><td>当前为 dead capability，未来扩展姿态不同</td></tr>
+      <tr><td>close／复用</td><td>默认 6 秒（可配置）EOF grace 后再升级终止；low-level client 永久关闭</td><td>shutdown response 后若仍存活就立即 terminate；同一实例可再次 start，但旧 generation 留在 global notification／server-request queue 的 close sentinel 不会被清空</td><td>Python 可能在 runtime 正做 root／persistence disposal 时发送 TERM；重启后的首次 low-level queue read 也可能先读到旧 sentinel</td></tr>
+    </tbody>
+  </table></div>
+  <p>TypeScript 的公开类型固定了 env replacement 与四字段 RunResult。<evidence id="SDK-TS-RESULT"></evidence> Python 的配置则额外提供 session root、base URL、API key convenience，并返回额外字段。<evidence id="SDK-PY-RESULT"></evidence></p>
+</section>
+
+<section>
+  <h2>14. SDK 漂移与 enforcement gap：文档意图不等于 wire 状态机</h2>
+  <div class="claim fact"><div class="claim-label">漂移</div><p><code>SdkProtocolError</code> 的 JSDoc 仍以“prompt response 缺少 <code>accepted:true</code>”为例，但当前 wire 和实现已经要求 <code>messageId</code>。这是局部注释遗留，不是双格式兼容。<evidence id="SDK-DOC-STALE-ACCEPTED"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">Enforcement gap</div><p>重复 initialize “不支持”只写在类注释里；源码没有拒绝第二次 initialize，也没有拒绝 initialize 前的 prompt。官方 SDK wrapper 会按顺序握手，因此正常路径隐藏了这个缺口；任意 raw JSON-RPC client 则能触达它。</p></div>
+  <div class="claim assessment"><div class="claim-label">影响</div><p>第二次 initialize 会改写后续新 Session 的 cwd/provider/model/maxTokens，而既有 Session 保持旧配置，形成同一 connection 内的混合 generation。修复应是显式 connection state machine，而不是让客户端“约定不要这样做”。</p></div>
+</section>
+
+<section>
+  <h2>15. ACP：标准协议版本，刻意缩小到 automation baseline</h2>
+  <p>Adapter 自身是公开 <code>0.1.0-rc.5</code> 包，并 pin <code>@agentclientprotocol/sdk 0.25.1</code>。<evidence id="ACP-PACKAGE"></evidence>运行时直接从该 SDK 导入 <code>PROTOCOL_VERSION</code>、<code>ndJsonStream</code> 与 <code>AgentSideConnection</code>，再以标准 stream 构造 connection；framing、method machinery 与协议常量因此来自 SDK，而非自创 wire。<evidence id="ACP-SDK-IMPORTS"></evidence><evidence id="ACP-SDK-CONNECTION"></evidence></p>
+  <p><code>initialize</code> 无论客户端请求哪个版本，都返回该 build 支持的 <code>PROTOCOL_VERSION</code>，同时只广告 text/resource-link baseline 所需能力，<code>authMethods</code> 为空，<code>authenticate</code> 为 no-op。<code>session/new</code> 只创建 fresh Session，要求绝对 cwd，并拒绝非空 additional directories 与 MCP servers。<evidence id="ACP-HANDSHAKE"></evidence></p>
+  <div class="claim fact"><div class="claim-label">事实</div><p>ACP 的“标准兼容”是标准 envelope 与 baseline method compatibility，不代表实现了 ACP 的全部可选能力。客户端必须读取 capability 和返回的协议版本，不能按协议名字推断 resume、filesystem、terminal 或 MCP 已存在。</p></div>
+  <aside class="caveat"><strong>认证：</strong>空 authMethods 与 no-op authenticate 适合可信 stdio peer，不是可直接暴露到不可信网络的认证方案。</aside>
+</section>
+
+<section>
+  <h2>16. ACP 输出与错误：只发 committed answer，牺牲 token latency 换清洁结果</h2>
+  <p>bridge 不转发 raw delta、reasoning、tool trace、plan 或 title；它只把已提交 <code>assistant/message</code> 的文本发成 <code>agent_message_chunk</code>，image 变成显式 attachment placeholder。<code>sessionUpdate()</code> 的 transport／write rejection 会被捕获并告警；JSON-RPC notification 没有 response，因此客户端 handler failure 不能经 notification 反向反馈。对自有 tool-call approval，bridge 发 one-shot allow/reject permission request，取消或未知选择不授予权限。<evidence id="ACP-OUTPUT-PERMISSION"></evidence></p>
+  <p>每个 Session 只允许一个在途 prompt。bridge 先以 user messageId 建 slot，在 <code>agent/inbox/claimed</code> 时捕获 turn；该 captured turn 的 <code>turn/end</code> 会被精确关联，正常 ending 仍等 whole-agent idle 才返回。另一路 <code>agent/error</code> fallback 反而只在 turn 尚未捕获或 turn 不同的时候 reject 当前 slot，没有 message-level causality：先前 autonomous turn，或 prompt turn 后、idle 前的 competing turn failure，都可能被误归给等待中的 ACP prompt。输出同样覆盖该 Session 到 idle 的全部 committed assistant message，而非只限 prompt turn。<code>session/cancel</code> 对未知 ID 是 no-op；已知 ID 只 cancel 对应 Agent 并立即将该 prompt 结算为 <code>cancelled</code>。<evidence id="ACP-PROMPT-CANCEL"></evidence></p>
+  <p>内容 codec 原样拼接 text，把 resource link 渲染成带 name/URI 的方括号引用，拒绝 richer block。turn end 到 ACP stop reason 的映射是有损的；codec 本身把 max-token 映射为 <code>max_tokens</code>，但 prompt wrapper 在 whole-agent idle 结算时另将它降为 <code>end_turn</code>，因为它不声称 prompt-specific turn outcome。<evidence id="ACP-CODEC"></evidence><evidence id="ACP-PROMPT-CANCEL"></evidence></p>
+</section>
+
+<section>
+  <h2>17. ACP 生命周期：一个 connection 可有多 Session，但没有单 Session close</h2>
+  <p>connection close 与插件 disposal 共享一次 memoized quiesce：同步封闭 admission、清空 map、cancel Agent 并结算所有 prompt；之后只 drain 这些 top-level Agent 下的 continuable descendants，再并行 dispose handles。Descendant-drain failure 只 warning 并继续；只有 handle-disposal failures 被聚合抛出。其他 frontend 在同一 context 下拥有的森林不会被误清。<evidence id="ACP-QUIESCE"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">取舍</div><p>这提供了 connection-owned isolation，以及成功路径上的确定 ownership 与 teardown ordering；即使 descendant drain 失败，top-level handle disposal 仍继续，但不能证明所有 descendant 已释放。它没有 session/load、resume、fork 或 per-session close。长寿命客户端需要把 connection 本身视为资源容器，而不是把 Session 当可独立回收的远程对象。</p></div>
+</section>
+
+<section>
+  <h2>18. ACP 还是一个 child backend：每次 run 都是 fresh process transaction</h2>
+  <p>进程外 provider 明确广告不支持 output schema、depth limit、tool filter、persona，也不继承 parent conversation。child cwd 必须来自显式配置或 delegating parent Session；缺少 workspace 时 fail loud，绝不退回 server process cwd。<evidence id="ACP-CHILD-CAPABILITIES"></evidence></p>
+  <p>每次 run 启动一个 fresh process。parent 生成独立 lifecycle id，避免不同 child 内相同 ACP session id 冲突；只有 spawn、initialize 与 session/new 全部成功才发布 handle，之前任一错误或取消都先回收私有进程。环境经共享 subprocess policy 清除 credential-shaped 与 <code>DSH_*</code> ambient names，再由 local spawn layer merge 显式 child env。<evidence id="ACP-CHILD-START"></evidence><evidence id="ACP-CHILD-ENV-POLICY"></evidence><evidence id="ACP-CHILD-ENV-MERGE"></evidence></p>
+  <p>caller abort 可以立刻以当前已收集文本返回 <code>aborted</code>，并 best-effort 发送 ACP cancel；这不证明 child 已停止。<code>dispose()</code> 才是权威 quiescence：它确保尚未请求时发出一次 best-effort cancel，再执行 stdin EOF → terminate escalation → whole-tree exit proof。<evidence id="ACP-CHILD-CANCEL"></evidence></p>
+</section>
+
+<section>
+  <h2>19. 版本、认证、取消、重连与恢复矩阵</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>维度</th><th>Browser API / Remote</th><th>SDK JSON-RPC</th><th>ACP adapter</th></tr></thead>
+    <tbody>
+      <tr><td>版本</td><td>共同发布；无 protocolVersion；describe 版本仍是占位</td><td>serverInfo 0.0.1；无协商、无期望值比较</td><td>标准 SDK <code>PROTOCOL_VERSION</code>；capability 子集</td></tr>
+      <tr><td>认证</td><td>Host/Origin trust fence，不是身份认证</td><td>无 wire auth；依赖本地子进程所有权</td><td>空 authMethods；可信 stdio</td></tr>
+      <tr><td>取消</td><td>HTTP disconnect/caller signal；只有声明方法注入；协作式</td><td>timeout 仅本地 abandon；终止要 close runtime</td><td><code>session/cancel</code> 路由到目标 Agent并结算 prompt</td></tr>
+      <tr><td>重连</td><td>readiness 收敛后，双流整代重建 + 上层 snapshot resync；hung describe 会卡住收敛</td><td>成功握手后 transport death 为终结；不自动 reconnect</td><td>没有 connection resume；断开释放自有 Session</td></tr>
+      <tr><td>Session 恢复</td><td>BFF 可冷 resume 普通持久 Session</td><td>同 runtime 按 sessionId 复用；wire 无 load/resume</td><td>fresh only</td></tr>
+      <tr><td>进程 teardown</td><td>宿主拥有</td><td>SDK shutdown + EOF/TERM/KILL</td><td>server connection quiesce；child backend 另做 whole-tree 回收</td></tr>
+      <tr><td>结果语义</td><td>typed RPC result + event streams</td><td>messageId receipt；高层 receipt-to-idle 区间</td><td>committed chunks + stopReason，但不声称 prompt-causal turn</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>20. 与 Codex App Server 的公开合约比较</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>维度</th><th>DeepSeek Harness（本章源码）</th><th>Codex（仅公开文档）</th></tr></thead>
+    <tbody>
+      <tr><td>目标</td><td>浏览器面、窄 SDK 与 ACP adapter 分开</td><td>App Server 用于 rich client；SDK 用于自动化/CI</td></tr>
+      <tr><td>JSON-RPC framing</td><td>SDK 出站带 2.0 header、入站仅宽松分类；ACP 使用标准 SDK framing；浏览器 API 自有信封</td><td>双向 JSON-RPC 2.0，但 wire 省略 <code>jsonrpc</code> 字段；stdio 为 JSONL，另有实验 WebSocket 与 Unix socket</td></tr>
+      <tr><td>握手</td><td>SDK server 缺少强制状态机；ACP 返回标准版本</td><td>每 connection 只允许一次 initialize，再发 initialized；握手前请求与重复 initialize 均拒绝</td></tr>
+      <tr><td>会话</td><td>SDK 隐式 get/create；ACP fresh only；Browser BFF 可 cold resume</td><td>公开 thread start/resume/fork/read/list 与 turn start/steer/interrupt</td></tr>
+      <tr><td>取消与结果</td><td>SDK 无 wire cancel；ACP 有 session/cancel；Browser signal 按 descriptor 注入</td><td>turn/interrupt 后以 turn/completed 的 final status 收敛</td></tr>
+      <tr><td>远程认证</td><td>本章这些 adapter 没有可公开网络身份认证</td><td>远程 WebSocket 可配置 capability token 或 signed bearer，且在 initialize 前认证</td></tr>
+      <tr><td>兼容策略</td><td>Browser 同步发布；SDK pre-release 无协商；ACP capability 子集</td><td>可为所运行的精确 Codex 版本生成 TypeScript/JSON Schema；实验 method/field 需 capability opt-in</td></tr>
+      <tr><td>背压</td><td>Browser HTTP/WS 与 SDK 各自处理；SDK 无 overload code</td><td>WebSocket ingress 满时返回 <code>-32001</code>，公开建议 exponential backoff + jitter</td></tr>
+      <tr><td>服务端请求</td><td>Browser approval 可回应；ACP permission；SDK 当前 dead capability</td><td>公开 approval 与其他 server-initiated request，客户端返回 decision</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">公开事实</div><p>以上 Codex 信息来自 <a href="https://learn.chatgpt.com/docs/app-server.md" target="_blank" rel="noreferrer">Codex App Server 官方文档</a>（检索于 2026-08-13）。这里只比较公开协议能力，不推断其私有实现。</p></div>
+  <div class="claim assessment"><div class="claim-label">判断</div><p>Codex App Server 更像一个有握手状态、版本配套 schema、长寿命 thread/turn 与显式 approval 的 rich-client protocol；DeepSeek 的 SDK 更像最小 subprocess automation pipe，而 ACP adapter 用标准兼容换取更小的产品面。这不是简单的“功能多少”差异，而是面向的客户端寿命与独立发布程度不同。</p></div>
+</section>
+
+<section>
+  <h2>21. 如何安全选择：按需要的保证，而不是按最熟悉的格式</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>需求</th><th>优先选择</th><th>必须自行补齐</th></tr></thead>
+    <tbody>
+      <tr><td>随产品发布的完整 Web UI</td><td>Browser ApiProxy + Remote</td><td>真实身份认证、跨版本部署纪律、reconnect 后 snapshot resync</td></tr>
+      <tr><td>本地脚本、CI、批量自动化</td><td>TypeScript/Python SDK</td><td>同版本 runtime pin、进程关闭、超时后是否终止整个 runtime 的策略</td></tr>
+      <tr><td>接入通用 agent client</td><td>ACP</td><td>只依赖 advertised capability；接受 fresh-only、committed-only 与 connection-owned lifetime</td></tr>
+      <tr><td>进程外 child Agent</td><td>ACP child backend</td><td>明确 cwd、显式凭据、permission policy、始终 dispose</td></tr>
+      <tr><td>独立发布的 rich client</td><td>当前没有等价的统一 DeepSeek protocol</td><td>版本协商、认证、resume、schema generation、overload/replay contract</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">核心取舍</div><p>最小协议降低实现与 token 表面成本，却把状态归属、升级和恢复责任推给客户端；丰富协议提供更强的独立客户端生命周期，但必须承担 capability negotiation、鉴权、backpressure、replay 与更大的兼容测试矩阵。</p></div>
+</section>
+
+<section>
+  <h2>22. 验证范围与可复现结果</h2>
+  <p>本章以提交 <code>47f943859bef60e4160492346772ded9b24f765a</code> 为固定基线。focused Vitest 覆盖 SDK transport/server/client、ACP bridge/codec/permission/multi-session/disposal、ACP child backend、Typert Gateway、Remote identity resolver，以及 browser trust/HTTP bridge/WebSocket/reconnect。SDK transport suite 固定 framing 与错误语义。<evidence id="TEST-SDK-PROTOCOL"></evidence> ACP bridge suite 固定版本、auth、fresh session 与输入边界。<evidence id="TEST-ACP"></evidence></p>
+  <p>Connection suite 固定双流 generation 与 reconnect。<evidence id="TEST-CONNECTION"></evidence> Remote client suite 固定 strict mount、withdraw cancellation、scope 与错误折叠。<evidence id="TEST-REMOTE"></evidence></p>
+  <pre><code>pnpm exec vitest run \
+  packages/sdk/protocol/tests/transport.spec.ts \
+  packages/sdk/server/tests/{server,plugin-apply,plugin-shape}.spec.ts \
+  packages/sdk/client/tests/{sdk-client,dispose}.spec.ts \
+  packages/acp/acp/tests/{approval,bridge,codec,dispose,edges,multi-session,turns}.spec.ts \
+  packages/subagent/subagent-acp/tests/subagent-acp.spec.ts \
+  packages/api/gateway/tests/{gateway.client,gateway.host}.spec.ts \
+  packages/api/remotes/tests/agent-lookup.spec.ts \
+  packages/client/connection/tests/{api-request-trust.host,http-bridge.host,websocket-downlink.host,connection.client}.spec.ts \
+  --reporter=verbose
+
+结果：21 个 test files 全部通过，313/313 tests 通过。
+耗时：21.01s（Vitest 报告）。</code></pre>
+  <aside class="caveat"><strong>未验证：</strong>本轮没有构建发布 artifact，也没有运行需要独立打包 binary 的 E2E。Python test runner 未安装（环境中没有 <code>uv</code> 或 <code>pytest</code>），因此 Python 结论来自固定源码与已有测试代码的控制流复核，不伪装成一次新的 Python test pass。</aside>
+</section>

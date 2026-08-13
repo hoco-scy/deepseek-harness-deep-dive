@@ -35,7 +35,7 @@
 
     {"id":"27","slug":"failure-recovery","part":"可靠性与产品面","title":"重试、错误、取消与恢复","subtitle":"失败发生在不同边界时，哪一层拥有决定权","status":"verified","scope":"分析 provider retry、request-error recovery、tool timeout、abort、cleanup、misconfiguration 和 crash-safe persistence。"},
     {"id":"28","slug":"observability","part":"可靠性与产品面","title":"可观测、Telemetry 与轨迹","subtitle":"事件日志、投影、脱敏、OTel 和 UI trajectory 的分工","status":"verified","scope":"分析 session telemetry capture/redaction/handoff、OTel logs、stats、trace query、raw events 与运行日志。"},
-    {"id":"29","slug":"api-sdk-acp","part":"可靠性与产品面","title":"API、SDK、JSON-RPC 与 ACP","subtitle":"同一个 Agent runtime 如何被浏览器、自动化和外部客户端驱动","status":"queued","scope":"分析 Host remotes、Typert、WebSocket、stdio SDK、ACP 映射、事件订阅和协议边界验证。"},
+    {"id":"29","slug":"api-sdk-acp","part":"可靠性与产品面","title":"API、SDK、JSON-RPC 与 ACP","subtitle":"同一个 Agent runtime 如何被浏览器、自动化和外部客户端驱动","status":"verified","scope":"分析 Host remotes、Typert、WebSocket、stdio SDK、ACP 映射、事件订阅和协议边界验证。"},
     {"id":"30","slug":"web-ui","part":"可靠性与产品面","title":"Web UI 插件架构","subtitle":"客户端 Cordis、Slot、SessionRuntime 与会话投影","status":"queued","scope":"分析宿主/浏览器双面插件、模块装载、slots、conversation nodes、工具展示、重连与状态所有权。"},
     {"id":"31","slug":"security-trust","part":"可靠性与产品面","title":"安全模型与信任边界","subtitle":"本地 Agent 产品怎样将自由执行收敛为显式策略","status":"queued","scope":"建立 threat model，覆盖配置信任、模型输入、工具 JSON、审批、沙箱、路径、凭据、远端与自修改。"},
     {"id":"32","slug":"testing-invariants","part":"可靠性与产品面","title":"测试、快照与运行时不变量","subtitle":"它怎样证明插件组合之后仍然满足系统语义","status":"queued","scope":"分析 100% per-file gate、keyless snapshot、invariant registry、生成文档校验、配置闭包与平台矩阵。"},
