@@ -6,13 +6,13 @@
 <body data-page="design-philosophy" data-baseline="47f943859bef60e4160492346772ded9b24f765a" data-lang="en">
   <header class="topbar"><button class="icon-button nav-toggle" type="button" data-nav-toggle aria-label="Open chapter directory" aria-expanded="false">☰</button>
     <a class="brand" href="../index.html"><span class="brand-mark">DS</span><span>Harness Systems Dissection</span></a>
-    <span class="topbar-meta">Pinned baseline 47f943859b · 4 verified / 3 in progress / 36 chapters</span>
+    <span class="topbar-meta">Pinned baseline 47f943859b · 5 verified / 2 in progress / 36 chapters</span>
     <div class="topbar-actions"><a class="language-switch" href="../zh/pages/design-philosophy.html" lang="zh-CN" aria-label="Read this chapter in Chinese">中文</a><button class="icon-button" type="button" data-theme-toggle aria-label="Toggle light or dark theme">◐</button></div></header>
   <div class="layout"><aside class="sidebar" data-sidebar aria-label="Chapter directory"><input class="filter" data-chapter-filter type="search" placeholder="Filter chapters…" aria-label="Filter chapters"><section class="nav-part" data-part><h2 class="part-title">Introduction</h2>
     <a class="chapter-link" data-chapter-item href="../pages/reading-guide.html">
       <span class="chapter-number">00</span><span>Reading Guide and Research Map</span><span class="status-dot drafting" title="In progress"></span></a><a class="chapter-link" data-chapter-item href="../pages/methodology.html">
       <span class="chapter-number">01</span><span>Baseline, Method, and Evidence Rules</span><span class="status-dot verified" title="Verified"></span></a><a class="chapter-link current" data-chapter-item href="../pages/design-philosophy.html">
-      <span class="chapter-number">02</span><span>Design Philosophy</span><span class="status-dot drafting" title="In progress"></span></a><a class="chapter-link" data-chapter-item href="../pages/module-atlas.html">
+      <span class="chapter-number">02</span><span>Design Philosophy</span><span class="status-dot verified" title="Verified"></span></a><a class="chapter-link" data-chapter-item href="../pages/module-atlas.html">
       <span class="chapter-number">03</span><span>An Atlas of 219 Packages</span><span class="status-dot drafting" title="In progress"></span></a></section><section class="nav-part" data-part><h2 class="part-title">Core Runtime</h2>
     <a class="chapter-link" data-chapter-item href="../pages/boot-profiles-bundles.html">
       <span class="chapter-number">04</span><span>Boot, Profiles, Bundles, and Configuration Layers</span><span class="status-dot verified" title="Verified"></span></a><a class="chapter-link" data-chapter-item href="../pages/agent-object-lifecycle.html">
@@ -56,65 +56,157 @@
       <span class="chapter-number">34</span><span>Gaps, Limitations, and Open Questions</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/glossary-evidence.html">
       <span class="chapter-number">35</span><span>Glossary, Evidence Catalog, and Source Index</span><span class="status-dot queued" title="Queued"></span></a></section></aside>
     <main class="main"><div class="page-shell"><article class="article" data-article><header><div class="page-kicker"><span>Introduction</span><span>·</span><span>Chapter 02</span></div>
-      <h1>Design Philosophy</h1><p class="subtitle">The runtime worldview behind “everything is a plugin”</p><div class="page-meta"><span class="status drafting">In progress</span><span>Upstream 47f943859b</span><span>Scope: Analyze the replaceable core, reversible effects, composition-first design, explicit boundaries, and event sourcing.</span></div></header>
+      <h1>Design Philosophy</h1><p class="subtitle">The runtime worldview behind “everything is a plugin”</p><div class="page-meta"><span class="status verified">Verified</span><span>Upstream 47f943859b</span><span>Scope: Analyze the replaceable core, reversible effects, composition-first design, explicit boundaries, and event sourcing.</span></div></header>
       <section>
-  <h2>One-sentence conclusion</h2>
-  <div class="thesis"><p>The central philosophy of DeepSeek Harness is not to give the Agent more built-in powers, but to decompose the product into a network of capabilities that are <strong>composition-configurable, scope-isolated, reversibly mounted, and event-traceable</strong>. Complex features should remain plugins outside the loop and participate through stable service and event seams.</p></div>
-  <p>That sentence mixes facts with synthesis. This chapter separates them.</p>
+  <h2>Conclusion: replaceability is achieved by making interactions stricter</h2>
+  <div class="thesis"><p>“Everything is a plugin” does not mean that any component may behave arbitrarily. DeepSeek Harness makes implementations replaceable by concentrating obligations into a small set of protocols: named services, typed event modes, effect ownership, scope routing, append-only facts, explicit commit points, and package-owned runtime invariants.</p></div>
+  <p>The architecture moves the fixed center away from concrete classes and toward interaction rules. That is the central design choice behind boot composition, Agent lifecycle, the Turn / Step Loop, tools, prompt contributors, providers, persistence, and UI projections.</p>
 </section>
 
 <section>
-  <h2>Principle 1: no privileged core, but an architectural constitution</h2>
-  <div class="claim fact"><div class="claim-label">Source fact</div><p>A Cordis context accepts services, typed events, and reversible effects. Model adapters, tool registries, session logs, and even the agent loop are assembled as plugins; extensions mount peer plugins instead of patching a privileged core. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/docs/architecture.md#L9-L13" title="Cordis and the unprivileged core: Every product component is a plugin composed through services, typed events, and reversible effects on a shared context." aria-label="Evidence ARCH-PLUGIN-CORE">ARCH-PLUGIN-CORE</a></p></div>
-  <div class="claim inference"><div class="claim-label">Mechanism-level deduction</div><p>“No privileged core” does not mean “no core.” What cannot be casually replaced is the composition protocol: context scopes, event order, effect disposal, waterfall delegation, session-event compatibility, and the definition/provider/consumer relationship. Replacement implementations must still obey this protocol.</p></div>
-  <div class="claim assessment"><div class="claim-label">Design assessment</div><p>The benefit is that features need not continuously inject branches into one giant loop, and profiles or per-Agent presets can compose plugins. The cost is that correctness moves from local class logic into the global properties of a plugin graph, event ordering, and configuration layers.</p></div>
+  <h2>1. “No privileged core” does not mean “no architectural spine”</h2>
+  <div class="claim fact"><div class="claim-label">Official architecture</div><p>The model adapter, tool registry, session log, and Agent Loop are all mounted as Cordis plugins. A neighboring plugin may contribute or replace behavior without patching a privileged application object, and its registrations unwind when that plugin unloads. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/docs/architecture.md#L9-L13" title="Cordis and the unprivileged core: Every product component is a plugin composed through services, typed events, and reversible effects on a shared context." aria-label="Evidence ARCH-PLUGIN-CORE">ARCH-PLUGIN-CORE</a></p></div>
+  <p>There is nevertheless a spine. It consists of public service keys, interfaces, event names and modes, session-event vocabulary, scope rules, and configuration entry identities. Replacing a provider leaves those obligations in place.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Replaceable implementation</th><th>Protocol that remains</th><th>Why the distinction matters</th></tr></thead>
+    <tbody>
+      <tr><td>LLM provider</td><td>Adapter registration, request/stream vocabulary, normalized errors and usage</td><td>The Loop must consume every provider through one stable seam</td></tr>
+      <tr><td>Tool</td><td>Definition, schema, guarded execution, durable call/result events</td><td>Policy and replay cannot depend on a tool's private body</td></tr>
+      <tr><td>Agent driver</td><td><code>Agent</code> interface, registry lifecycle, inbox and session facts</td><td>Surfaces can drive an Agent without importing the default Loop</td></tr>
+      <tr><td>Persistence backend</td><td>Session header and event-log semantics</td><td>Reloaded history must mean the same thing as live history</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">Design assessment</div><p>The phrase “unprivileged core” describes implementation authority, not the absence of a constitution. The protocols are the real core. A plugin can be swapped only if the replacement preserves the obligations its consumers rely on.</p></div>
 </section>
 
 <section>
-  <h2>Principle 2: registration is a reversible lifecycle effect</h2>
-  <div class="claim fact"><div class="claim-label">Repository policy</div><p>Contributions must register through <code>ctx.effect()</code> or <code>ctx.on()</code>, registry <code>register()</code> calls return disposers, and a waterfall listener must explicitly call <code>next()</code> to yield control downstream. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/AGENTS.md#L91-L100" title="Registration as effects and waterfall semantics: Contributions register through effect/on and are disposable; waterfall listeners must call next." aria-label="Evidence ROOT-EFFECTS">ROOT-EFFECTS</a></p></div>
-  <div class="claim inference"><div class="claim-label">Mechanism-level deduction</div><p>A plugin's presence is not a permanent process fact; it is a lease bound to a Cordis scope. Disposing that scope must retract services, tools, listeners, and providers. This enables per-session and per-Agent composition plus runtime self-modification, while making every side-channel registration an architectural violation.</p></div>
+  <h2>2. Five composition primitives replace a central application class</h2>
+  <div class="claim fact"><div class="claim-label">Framework semantics</div><p>Cordis supplies five recurring mechanisms: plugins implement a Service lifecycle; contexts expose services by stable key; <code>inject</code> declares availability dependencies; typed events choose observation or interception semantics; and <code>effect</code>/<code>on</code> bind contributions to teardown. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/docs/cordis-primer.md#L7-L44" title="Cordis service, event, waterfall, and effect semantics: Plugins decouple implementations through service keys, wait through declarative injection, coordinate through typed events, and bind registration to teardown with reversible effects." aria-label="Evidence DESIGN-CORDIS-SEMANTICS">DESIGN-CORDIS-SEMANTICS</a></p></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Primitive</th><th>Architectural job</th><th>Failure if misused</th></tr></thead>
+    <tbody>
+      <tr><td>Service key</td><td>Separates a capability definition from its provider</td><td>A consumer imports a concrete provider and makes configuration replacement cosmetic</td></tr>
+      <tr><td><code>inject</code></td><td>Expresses required topology without depending on YAML row order</td><td>A plugin observes a missing service or invents a silent fallback</td></tr>
+      <tr><td>Typed event</td><td>Lets policy, adapters, and observers attach without importing the orchestrator</td><td>The event mode and the caller's expectation diverge</td></tr>
+      <tr><td>Waterfall</td><td>Forms around-middleware with deliberate delegation through <code>next()</code></td><td>An observer accidentally short-circuits a decision chain</td></tr>
+      <tr><td>Effect</td><td>Makes registration and retraction one owned lifecycle</td><td>HMR or session disposal leaks stale providers, tools, or listeners</td></tr>
+    </tbody>
+  </table></div>
+  <p><code>emit</code>, <code>parallel</code>, <code>serial</code>, and <code>waterfall</code> are not stylistic variants. Awaiting, ordering, return-value, and short-circuit semantics differ; choosing a mode defines who may influence the operation.</p>
 </section>
 
 <section>
-  <h2>Principle 3: composition over hidden defaults</h2>
-  <div class="claim fact"><div class="claim-label">Source fact</div><p>A running dsh tree begins as an empty entry list and applies bundles, the profile patch, the home-level patch, and command-line overlays in order. Patches address rows by ID and replace the row's entire config or insert a new row. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/docs/architecture.md#L15-L37" title="Profile, bundle, and patch layers: The runtime plugin tree is composed in bundle, profile patch, home patch, and CLI overlay order." aria-label="Evidence ARCH-LAYERS">ARCH-LAYERS</a></p></div>
-  <div class="claim fact"><div class="claim-label">Repository policy</div><p>Cross-package defaults must be resolved explicitly by the implementation that owns the semantics. Deployment tunables become validated configuration, and invalid configuration should fail at the earliest decidable point. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/AGENTS.md#L107-L116" title="Explicit boundaries and fail-fast behavior: Cross-package defaults resolve explicitly, deployment parameters are configurable, invalid configuration fails early, and external IDs use branded types." aria-label="Evidence ROOT-BOUNDARIES">ROOT-BOUNDARIES</a></p></div>
-  <div class="claim assessment"><div class="claim-label">Design assessment</div><p>Explicit layers make the effective runtime tree printable, overridable, and auditable. Yet wholesale config replacement is not deep merge: an upper patch must understand the complete lower configuration shape or risk dropping fields while changing only one value. Predictability is purchased with author discipline.</p></div>
+  <h2>3. Registration is an owned resource, not a global mutation</h2>
+  <div class="claim fact"><div class="claim-label">Repository rule</div><p>Prompt sections, tool definitions, adapters, providers, and event listeners register as reversible effects. Registry <code>register()</code> methods return exact disposers, and HMR-safety tests must prove removal after the owning fiber is disposed. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/AGENTS.md#L91-L100" title="Registration as effects and waterfall semantics: Contributions register through effect/on and are disposable; waterfall listeners must call next." aria-label="Evidence ROOT-EFFECTS">ROOT-EFFECTS</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/AGENTS.md#L5-L18" title="Package lifecycle and invariant rules: Constraints for plugin exports, composition tests, ownership, commit points, disposal, and per-package invariants." aria-label="Evidence PKG-INVARIANTS">PKG-INVARIANTS</a></p></div>
+  <div class="claim fact"><div class="claim-label">Production implementation</div><p><code>ScopedLayers</code> makes the registration context carry two meanings at once: which scope can see a contribution and which effect owns its lifetime. Global entries are overlaid by ancestor scopes and finally by the nearest scope; undo removes only the exact registration and reclaims an empty layer. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/scope/src/store.ts#L153-L266" title="Unified scope visibility and effect ownership: ScopedLayers overlays global and scope-chain contributions with the nearest scope winning; the registration context determines both visibility and effect ownership, and undo reclaims empty layers." aria-label="Evidence DESIGN-SCOPED-LAYERS">DESIGN-SCOPED-LAYERS</a></p></div>
+  <div class="claim fact"><div class="claim-label">Behavioral tests</div><p>Scope tests verify synchronous usability, shared quiescence across repeated disposal, reverse cleanup order, key-routed event visibility, and one-way inheritance: a descendant dispatch reaches ancestor-scoped listeners, while an ancestor dispatch does not leak down to descendants. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/scope/tests/scope.spec.ts#L24-L220" title="Scope inheritance, isolation, and reverse-teardown tests: Tests verify nearest tags, synchronous registration, shared quiescence, reverse teardown, key-based routing, and events flowing to ancestor scopes without leaking down to descendants." aria-label="Evidence DESIGN-SCOPE-TEST">DESIGN-SCOPE-TEST</a></p></div>
+  <div class="claim inference"><div class="claim-label">Mechanism-level deduction</div><p>This is dependency injection plus a resource ledger. The context through which a plugin contributes something records both reachability and responsibility for removing it. That coupling is what makes live configuration and per-Agent composition feasible without a separate global cleanup registry.</p></div>
 </section>
 
 <section>
-  <h2>Principle 4: what the model sees must become a durable fact</h2>
-  <div class="claim fact"><div class="claim-label">Source fact</div><p>The session log is the source of truth for model history, and <code>deriveMessages()</code> projects model messages from events. Raw <code>assistant/chunk</code> events remain available for replay and UI fidelity. Any newly model-visible input requires a session event and is checked by runtime invariants. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/docs/architecture.md#L92-L102" title="Session log and capability seams: The log is the source of truth for model context; model-visible data must be reconstructable, and a seam includes definition, provider, and consumer." aria-label="Evidence ARCH-LOG">ARCH-LOG</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/AGENTS.md#L99-L104" title="Model-visible means logged: Every input entering a model request requires a session event and must be reconstructable from the log." aria-label="Evidence ROOT-MODEL-LOGGED">ROOT-MODEL-LOGGED</a></p></div>
-  <div class="claim inference"><div class="claim-label">Mechanism-level deduction</div><p>This rule turns prompt engineering into event modeling. A plugin cannot secretly concatenate a string immediately before dispatch; if content affects model behavior, the log must reconstruct it. Resume, fork, telemetry, snapshots, and UI state no longer need independent stories for “what the model saw.”</p></div>
-  <div class="claim assessment"><div class="claim-label">Design assessment</div><p>This is one of the most valuable and expensive constraints in the design. It greatly improves audit and replay, but every dynamic context source needs event semantics, compatible readers, and derivation rules instead of one-off middleware state.</p></div>
+  <h2>4. Durable facts and live decisions occupy different planes</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Plane</th><th>Examples</th><th>Lifetime</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td>Durable session events</td><td><code>turn/start</code>, messages, request headers, chunks, tool calls/results, <code>turn/end</code></td><td>Survives reload and persistence</td><td>Conversation truth, reconstruction, replay, projections</td></tr>
+      <tr><td>Live Agent events</td><td><code>agent/pre-step</code>, <code>agent/request</code>, request-error recovery, stopping</td><td>One active process and scoped runtime</td><td>Interception, policy, routing, control</td></tr>
+      <tr><td>Capability events</td><td>Tool, filesystem, telemetry, and provider hooks</td><td>Provider/plugin lifecycle</td><td>Attach policy without coupling to the Loop</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Source-of-truth rule</div><p>The session log is the source of model history. Anything entering a model request must be reconstructable from that log; model-visible input therefore requires a session event instead of an ephemeral callback-only mutation. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/docs/architecture.md#L92-L102" title="Session log and capability seams: The log is the source of truth for model context; model-visible data must be reconstructable, and a seam includes definition, provider, and consumer." aria-label="Evidence ARCH-LOG">ARCH-LOG</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/AGENTS.md#L99-L104" title="Model-visible means logged: Every input entering a model request requires a session event and must be reconstructable from the log." aria-label="Evidence ROOT-MODEL-LOGGED">ROOT-MODEL-LOGGED</a></p></div>
+  <div class="claim fact"><div class="claim-label">Executable check</div><p>The default Loop marks its requests and installs an invariant that independently derives messages and folds the request header from the session log, then compares both with the request about to be dispatched. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/invariant.ts#L18-L55" title="Log-reconstruction invariant for LLM requests: For loop-marked requests, verifies freezing, a live session, step/header presence, and independently compares deriveMessages and the folded header." aria-label="Evidence LOOP-REQUEST-INVARIANT">LOOP-REQUEST-INVARIANT</a></p></div>
+  <div class="claim assessment"><div class="claim-label">Design assessment</div><p>Event sourcing is used selectively. The durable stream records semantic conversation facts; not every live callback, registry mutation, or process detail becomes an event. This avoids treating the log as a dump of the whole runtime while preserving the one projection that must be reproducible: what the model saw.</p></div>
 </section>
 
 <section>
-  <h2>Principle 5: a capability is a closed three-role seam, not merely an interface</h2>
-  <div class="claim fact"><div class="claim-label">Source fact</div><p>The repository describes a replaceable capability through three roles: a Service Definition declares the contract, a Service Provider implements it, and a Consumer uses it—often through a model-visible tool. A single role does not form a complete seam. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/docs/architecture.md#L92-L102" title="Session log and capability seams: The log is the source of truth for model context; model-visible data must be reconstructable, and a seam includes definition, provider, and consumer." aria-label="Evidence ARCH-LOG">ARCH-LOG</a></p></div>
-  <p>This prevents the presence of an interface from being mistaken for replaceable architecture. Filesystem capability requires not only <code>ctx.fs</code>, but also local/sandbox/E2B providers, model-facing consumers, observation policy, an error vocabulary, and consistency with the process execution world.</p>
-</section>
-
-<section>
-  <h2>Principle 6: simplify inside trusted static boundaries; validate real trust boundaries</h2>
-  <div class="claim fact"><div class="claim-label">Repository policy</div><p>Same-process values already constrained by static types are not repeatedly subjected to hostile runtime checks. Parsed configuration, queued data, model/tool JSON, persisted files, workers, processes, and wire protocols must be validated. Cross-boundary IDs use branded types rather than plain strings. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/AGENTS.md#L115-L117" title="Validation at static and runtime boundaries: Same-process statically typed values trust TypeScript, while parsing, model JSON, persistence, processes, workers, and wire boundaries receive runtime validation." aria-label="Evidence ROOT-TYPED-TRUST">ROOT-TYPED-TRUST</a></p></div>
-  <div class="claim assessment"><div class="claim-label">Design assessment</div><p>The principle is not “more validation is always safer,” but “spend validation effort where a value may be forged, drifted, or distorted.” Internal code stays readable; the risk is that misclassifying external data as a trusted typed value removes a defense entirely.</p></div>
-</section>
-
-<section>
-  <h2>Working model of the philosophy</h2>
-  <div class="principle-grid">
-    <div><strong>Composition unit</strong><span>Plugin</span></div>
-    <div><strong>Capability boundary</strong><span>Service seam</span></div>
-    <div><strong>Coordination</strong><span>Typed events / waterfall</span></div>
-    <div><strong>Lifecycle</strong><span>Scope + reversible effects</span></div>
-    <div><strong>Source of truth</strong><span>Append-only session log</span></div>
-    <div><strong>Product assembly</strong><span>Profile + bundle + patch layers</span></div>
-    <div><strong>Safety posture</strong><span>Boundary validation + fail loud</span></div>
-    <div><strong>Extension strategy</strong><span>Plugins, not loop changes</span></div>
+  <h2>5. Commit points separate preparation from publication</h2>
+  <div class="claim fact"><div class="claim-label">Package-wide discipline</div><p>Repository rules require one owner for one asynchronous operation, forbid publishing derived state before success, require limits to apply where a complete value is known, and assign every runtime invariant to the package that owns the relationship. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/AGENTS.md#L8-L18" title="Ownership, commit-point, boundary, and package-invariant rules: Asynchronous work needs one lifecycle owner; capability contracts serve all consumers; state publishes only at commit; bounds apply to complete results; and each package owns its runtime invariants." aria-label="Evidence DESIGN-PACKAGE-RULES">DESIGN-PACKAGE-RULES</a></p></div>
+  <p>The verified runtime chapters show the same idea at different scales:</p>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>Boot</h3><p>Compose and prepare a candidate tree; return it only after Loader settlement and activation audit.</p></div>
+    <div><span>2</span><h3>Agent creation</h3><p>Build Session, Agent, and scoped world while unpublished; synchronously commit setup; then enter and announce registries in a fixed order.</p></div>
+    <div><span>3</span><h3>Inbox mutation</h3><p>Append the durable splice before mutating the live queue projection.</p></div>
+    <div><span>4</span><h3>Turn execution</h3><p>Append boundaries and request inputs before dispatch; commit assistant and tool outcomes before the next derived request.</p></div>
   </div>
-  <aside class="caveat"><strong>Not final:</strong> this is the first synthesis from architecture documents and repository policy. Later chapters test whether these principles remain consistent in prompts, tool parallelism, compaction, checkpoints, multi-Agent orchestration, workflows, and the UI. Counterexamples will revise this model rather than be hidden to preserve theoretical neatness.</aside>
+  <div class="claim inference"><div class="claim-label">Mechanism-level deduction</div><p>The recurring state machine is <em>prepare → validate → commit → publish → dispose</em>. The exact commit artifact changes—a Loader tree, a registry entry, a session event—but downstream consumers are intentionally prevented from seeing a candidate state that can still fail.</p></div>
+</section>
+
+<section>
+  <h2>6. A capability is a three-role seam</h2>
+  <div class="claim fact"><div class="claim-label">Official architecture</div><p>A complete capability seam consists of a Service Definition, at least one Service Provider, and a Consumer. A provider alone is not a product capability; a tool or UI consumer alone is not a replaceable abstraction. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/docs/architecture.md#L92-L102" title="Session log and capability seams: The log is the source of truth for model context; model-visible data must be reconstructable, and a seam includes definition, provider, and consumer." aria-label="Evidence ARCH-LOG">ARCH-LOG</a></p></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Role</th><th>Should know</th><th>Should not own</th></tr></thead>
+    <tbody>
+      <tr><td>Definition</td><td>The shared operations and obligations required by all current consumers</td><td>One provider's deployment details or one UI's vocabulary</td></tr>
+      <tr><td>Provider</td><td>External API/process/storage details and provider-local configuration</td><td>Model-facing product policy that must survive provider replacement</td></tr>
+      <tr><td>Consumer</td><td>How the capability appears to a model, user, API, or orchestrator</td><td>Hidden assumptions about a single provider implementation</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">Design assessment</div><p>This separation prevents the most common false modularity: defining an interface whose fields merely mirror the first backend. The cost is more packages and explicit wiring, but provider replacement becomes a real configuration operation rather than a rewrite of every caller.</p></div>
+</section>
+
+<section>
+  <h2>7. Behavior belongs beside the Loop, not inside it</h2>
+  <div class="claim fact"><div class="claim-label">Control-flow fact</div><p>The default Loop owns the minimum orchestration skeleton: open a Turn, claim input, assemble a step, derive a request, stream the model, execute tools, and decide whether another step is owed. Prompt contributors, request rewriting, retry decisions, tool policy, context injection, and stopping behavior attach through services and events. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/docs/architecture.md#L63-L90" title="Turn and step flow: The relationship among turns, steps, prompts, LLM calls, tools, and live waterfalls." aria-label="Evidence ARCH-TURN">ARCH-TURN</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/agent.ts#L245-L330" title="Turn state machine and end reasons: Covers turn/start before claims, reject, empty initial steps, the step loop, turn-stopping, error normalization, turn/end, and consecutive queued turns." aria-label="Evidence LOOP-TURN-STATE">LOOP-TURN-STATE</a></p></div>
+  <div class="claim inference"><div class="claim-label">Mechanism-level deduction</div><p>A small Loop is not pursued for line count. It is kept stable so independently owned behaviors can change without creating a second orchestration path. The price is semantic distribution: understanding one request requires following registrations across several plugins, not reading a single large function.</p></div>
+</section>
+
+<section>
+  <h2>8. Explicit boundaries determine where trust stops</h2>
+  <div class="claim fact"><div class="claim-label">Repository policy</div><p>Same-process values already guaranteed by static TypeScript interfaces are trusted. Runtime validation is required at parsing/configuration, model/tool JSON, durable storage, worker, process, and wire boundaries. Deployment-varying values belong in validated configuration; missing referents fail at the earliest resolvable point; cross-boundary identities use branded types. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/AGENTS.md#L107-L116" title="Explicit boundaries and fail-fast behavior: Cross-package defaults resolve explicitly, deployment parameters are configurable, invalid configuration fails early, and external IDs use branded types." aria-label="Evidence ROOT-BOUNDARIES">ROOT-BOUNDARIES</a></p></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Boundary</th><th>Preferred treatment</th><th>Rejected pattern</th></tr></thead>
+    <tbody>
+      <tr><td>Typed call within one process</td><td>Trust the interface and keep the path direct</td><td>Duplicate defensive parsing and silent fallbacks</td></tr>
+      <tr><td>Config/parser/wire</td><td>Validate the complete incoming value and fail with ownership context</td><td>Partially accept malformed values</td></tr>
+      <tr><td>Model/tool JSON</td><td>Parse, normalize, snapshot, and preserve a machine-routable failure</td><td>Treat probabilistic output as statically trustworthy</td></tr>
+      <tr><td>Persistence/replay</td><td>Validate format, identity, continuity, and JSON losslessness</td><td>Load a history that live code could never have produced</td></tr>
+      <tr><td>Policy decision</td><td>Enforce where execution occurs</td><td>Assume schema omission or UI filtering is authorization</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>9. Invariants turn local ownership into runtime evidence</h2>
+  <div class="claim fact"><div class="claim-label">Production implementation</div><p>The invariant registry reserves one registration per package, applies allow/block selection, installs enabled checks in a service-owned child fiber, and wraps violations in an <code>INVARIANT</code>-coded error attributed to that package. Failed setup and disposal both release the reservation. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/runtime-diagnostics/invariants/src/index.ts#L93-L197" title="Package-owned runtime invariant registry: Invariants are selected and uniquely registered per package, run in service-owned child fibers, attribute failures to their package, and release registrations on failed setup or disposal." aria-label="Evidence DESIGN-INVARIANT-REGISTRY">DESIGN-INVARIANT-REGISTRY</a></p></div>
+  <p>An invariant is expected to check a relationship the package owns—such as request reconstruction, scope routing, or event pairing—not merely prove that a method exists. This matters in a plugin system because type correctness cannot establish that the assembled runtime still respects cross-plugin order and identity.</p>
+  <div class="claim assessment"><div class="claim-label">Design assessment</div><p>The invariant system acknowledges a hard truth of configuration-driven architecture: many failures appear only after a valid set of packages has been composed in an invalid relationship. Package attribution improves diagnosis, while selectable checks keep the mechanism operational rather than test-only.</p></div>
+</section>
+
+<section>
+  <h2>10. Developer Preview changes the compatibility bargain</h2>
+  <div class="claim fact"><div class="claim-label">Repository status</div><p>At the pinned baseline the project explicitly prioritizes foundational corrections over compatibility shims before its first tag. SQLite schema versions move monotonically, while the session format remains version <code>0</code> with no compatibility promise; old on-disk formats may be rejected. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/AGENTS.md#L5-L8" title="Developer Preview compatibility posture: Before the first tag, sound foundations take precedence over compatibility shims, and on-disk formats carry no compatibility promise." aria-label="Evidence ROOT-PREVIEW">ROOT-PREVIEW</a></p></div>
+  <div class="claim assessment"><div class="claim-label">Interpretation constraint</div><p>Current elegance must not be mistaken for a stable public contract. The architecture clearly invests in explicit protocols, yet names, package boundaries, configuration rows, and persisted formats can still change rapidly. This study therefore pins every claim to one commit and treats later upstream changes as a new baseline, not as corrections silently folded into history.</p></div>
+</section>
+
+<section>
+  <h2>11. What this philosophy buys—and what it makes harder</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Choice</th><th>Benefit</th><th>Structural cost</th></tr></thead>
+    <tbody>
+      <tr><td>Everything mounts as a plugin</td><td>Product surfaces and providers are configuration-composable</td><td>The effective runtime cannot be understood from imports alone</td></tr>
+      <tr><td>Registrations are effects</td><td>HMR and scoped teardown retract contributions predictably</td><td>Every contribution needs correct ownership and quiescence</td></tr>
+      <tr><td>Events are extension points</td><td>Policy attaches without Loop imports</td><td>Mode, order, short-circuit, and scope become public semantics</td></tr>
+      <tr><td>Model-visible means logged</td><td>Requests, replay, and projections can agree</td><td>Even transient context needs a durable representation and retention semantics</td></tr>
+      <tr><td>Explicit commit points</td><td>Observers see committed state rather than candidates</td><td>Preparation and rollback paths become more elaborate</td></tr>
+      <tr><td>Definition/provider/consumer seams</td><td>Provider replacement is genuine</td><td>Package count and composition surface grow</td></tr>
+      <tr><td>Package-owned invariants</td><td>Cross-plugin mistakes fail near their semantic owner</td><td>Invariant coverage must evolve with every protocol extension</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">Chapter assessment</div><p>The architecture does not remove a core; it relocates the core into protocols and lifecycle rules. That is a strong fit for an Agent harness whose providers, tools, policies, and product surfaces must vary independently. Its success depends on disciplined ownership, generated maps, runtime invariants, and reconstructable logs. Without those safeguards, the same indirection would become a distributed, configuration-sensitive control flow that is harder—not easier—to reason about.</p></div>
+</section>
+
+<section>
+  <h2>Chapter verification checklist</h2>
+  <ul class="audit-list">
+    <li>Separated replaceable implementations from the protocols that remain mandatory.</li>
+    <li>Verified Cordis service, injection, event-mode, waterfall, and effect semantics.</li>
+    <li>Traced scope visibility and effect ownership into production storage and behavioral tests.</li>
+    <li>Connected the model-visible/logged policy to the Loop's executable reconstruction invariant.</li>
+    <li>Checked commit-point and ownership rules against Boot, Agent, Inbox, and Turn mechanisms.</li>
+    <li>Verified package-attributed invariant installation and teardown.</li>
+    <li>Preserved the Developer Preview compatibility caveat in every design assessment.</li>
+  </ul>
 </section>
 <section class="learning-notes" aria-labelledby="learning-notes-title"><h2 id="learning-notes-title">My Learning Notes</h2>
     <p class="privacy">Autosaved only in this browser. Nothing is uploaded or committed. Export Markdown whenever you want to keep a copy.</p><textarea data-learning-notes aria-label="My Learning Notes" placeholder="Record your understanding, questions, counterexamples, and transferable principles…"></textarea>
