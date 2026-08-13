@@ -1,0 +1,177 @@
+<section>
+  <h2>Conclusion: capability policy, not a hostile-tenant sandbox</h2>
+  <div class="thesis"><p>DeepSeek Harness treats ordinary model output as untrusted data, then turns selected requests into real authority through a capability graph chosen by the local operator. Its strongest controls are explicit composition, runtime schema checks, per-session permission facts, one-shot escalation, file-effect confinement, path containment, and carrier-specific request fences. It is not designed to isolate the Host from a malicious local plugin, a hostile same-user process, a trusted remote client, or model-written code after the operator has deliberately exposed bash-equivalent execution.</p></div>
+  <p>The decisive security question is therefore not “is the Agent sandboxed?” but “which principal selected this capability, which boundary validates its input, which mechanism actually enforces it, and what trust assumption remains after that enforcement?” The implementation answers those questions unevenly: several boundaries fail closed, while others intentionally rely on local ownership, process isolation, third-party infrastructure, or a package supply chain.</p>
+</section>
+
+<section>
+  <h2>1. Threat model: five authorities and three different meanings of “trusted”</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Principal or input</th><th>Default posture</th><th>Controls that apply</th><th>What is still trusted</th></tr></thead>
+    <tbody>
+      <tr><td>Model text and tool-call JSON</td><td>Untrusted data</td><td>Parsing, schema checks, visibility restrictions, policy hooks, guards, result normalization</td><td>The selected tool body and every capability it can reach</td></tr>
+      <tr><td>Local operator, inherited environment, profile and patch files</td><td>Administrative authority</td><td>Layer precedence, bootstrap-variable rejection in discovered <code>.env</code> files, load-time validation, transactional startup</td><td>Everything intentionally inserted into the in-process plugin tree</td></tr>
+      <tr><td>Workspace files, skills, MCP metadata and provider responses</td><td>Content with provenance-dependent trust</td><td>Format validation, invocation flags, JSON projection, timeouts</td><td>Instruction meaning, external server behavior, and any explicitly granted credential</td></tr>
+      <tr><td>Browser, Remote, SDK and ACP clients</td><td>Carrier-specific controller</td><td>Host/Origin fences or private stdio, typed methods, ownership checks</td><td>Reachability or process ownership; no common user-authentication layer</td></tr>
+      <tr><td>OS sandbox runner, filesystem and E2B service</td><td>Enforcement substrate</td><td>Kernel/ACL profiles, canonical paths, atomic operations, remote lifecycle</td><td>The OS, configured runner, remote service, and deployment composition</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">Security property</div><p>The intended property is capability confinement: an untrusted model call should not exceed the capabilities and policies selected by the operator. It is not a multi-tenant noninterference claim against principals that already control configuration, plugins, the process environment, or a trusted transport endpoint.</p></div>
+</section>
+
+<section>
+  <h2>2. Boot configuration is an administrative boundary, not passive data</h2>
+  <p>The CLI snapshots three environment layers in fixed order: inherited process environment, invoking-directory <code>.env</code>, then Harness-home <code>.env</code>. Inherited values win. Both discovered files are parsed before either is materialized, and a denylist blocks variables that can redirect process startup, module loading, VCS behavior, proxies, certificates, provider endpoints, or any <code>DSH_</code>/<code>XDG_</code>/<code>DYLD_</code> prefix. Accepted values are then copied into <code>process.env</code> without replacing inherited values.<evidence id="SEC-ENV-LAYERS"></evidence></p>
+  <p>User patch and overlay files are more powerful than <code>.env</code>: they may replace configuration, insert Loader rows, and contain <code>!!js</code> expressions. A present but unreadable, unparsable, or wrong-shaped layer fails boot instead of being skipped.<evidence id="SEC-PATCH-LAYERS"></evidence> The root include resolves relative plugins beside the configuration and bare plugins through the configured module base, then asks the Loader to create the resulting tree.<evidence id="SEC-LOADER-IMPORT"></evidence></p>
+  <p>Startup is transactional in the lifecycle sense: prepare, mount, settle, and activation audit run in order; any failure disposes the partial root and preserves the deepest error stack.<evidence id="SEC-BOOT-TRANSACTION"></evidence> That protects availability and cleanup. It does not make a configured plugin safe: a successfully imported plugin executes inside the Host process with whatever Services its composition exposes.</p>
+  <aside class="caveat"><strong>Trust assumption:</strong> launching in a checkout means accepting its non-bootstrap <code>.env</code> values wherever the shipped or user configuration consumes them. The denylist narrows bootstrap redirection; it does not turn the project layer into untrusted data.</aside>
+</section>
+
+<section>
+  <h2>3. Profiles and plugin installation make the local package chain executable policy</h2>
+  <p>The effective profile is composed as bundle patches, profile patches, home patches, command-line overlays, then launcher-owned overlays. Later administrative layers can therefore alter or insert the rows that define the runtime capability graph.<evidence id="SEC-PROFILE-ORDER"></evidence></p>
+  <p><code>dsh plugin</code> is intentionally a thin <code>pnpm</code> forwarder. It runs the requested package-manager command in the profile directory and, after success, automatically adds every installed dependency declaring a bundle patch to the profile’s active layer list. Relative package specs are anchored to the directory from which the operator invoked the command; git-package build policy is delegated to pnpm.<evidence id="SEC-PLUGIN-PNPM"></evidence></p>
+  <div class="claim fact"><div class="claim-label">Control</div><p>Load failures are loud, profile reconciliation follows installed state, and failed package-manager commands do not activate a new bundle.</p></div>
+  <div class="claim assessment"><div class="claim-label">Assumption</div><p>Package provenance, install scripts, transitive code, and an authored bundle patch are trusted as local administrator code. There is no additional product sandbox between successful installation and in-process activation.</p></div>
+</section>
+
+<section>
+  <h2>4. Model tool JSON crosses several validators, but validation ownership is not uniform</h2>
+  <p>The Agent loop converts each model tool block into an execution request. Valid JSON is parsed, an empty argument string becomes <code>{}</code>, and invalid JSON is deliberately preserved as a raw string so the eventual tool can return a useful validation error rather than losing the authored input.<evidence id="SEC-MODEL-PARSE"></evidence></p>
+  <p>First-party tools built with <code>defineTool()</code> compile their parameter and output schemas. Immediately before the user body, the wrapper validates arguments and raises <code>ToolArgsError</code>; replay presenters validate softly, because historical arguments may follow an older schema.<evidence id="SEC-TOOL-DEFINE"></evidence> The lower-level registry contract is different: <code>register()</code> validates the output contract, timeout and reserved name, but it does not inject generic input validation around an arbitrary <code>ToolDefinition.execute</code>.<evidence id="SEC-RAW-TOOL-REGISTER"></evidence></p>
+  <p>Before policy runs, the registry snapshots arguments as lossless JSON and deep-freezes the detached value. Invalid or getter-hostile values materialize as an error result; a caller cannot mutate the object after policy inspected it.<evidence id="SEC-TOOL-ARG-SNAPSHOT"></evidence></p>
+  <aside class="caveat"><strong>Known seam gap:</strong> schema advertisement is not proof that every third-party raw tool validates its inputs. First-party <code>defineTool</code> users do; raw registrants and bridges must own equivalent validation themselves.</aside>
+</section>
+
+<section>
+  <h2>5. Authorization is an ordered pipeline, not a universal confirmation dialog</h2>
+  <p>For a ready call, ToolRuntime runs the scoped <code>tools/pre-execute</code> waterfall with a default <code>allow</code>. Only an <code>ask</code> decision invokes the approval service. A resulting allow is then subjected to monotonic guards; any denial materializes before dispatch, and cancellation is checked again before the body starts.<evidence id="SEC-TOOL-GATE"></evidence></p>
+  <p>The approval service requires an open turn, appends an <code>approval/asked</code> event, resolves policy and answerers, then appends <code>approval/decided</code>. <code>never</code> rejects before answerer dispatch; missing, throwing, or vocabulary-violating answerers become <code>unavailable</code>; cancellation discards a late answer. <code>allowed-once</code> is the only grant.<evidence id="SEC-APPROVAL-CLOSED"></evidence></p>
+  <div class="claim fact"><div class="claim-label">Control</div><p>Approval questions fail closed and are auditable, while guards cannot force-allow a call denied elsewhere.</p></div>
+  <div class="claim assessment"><div class="claim-label">Boundary</div><p>Approval is consumer-triggered policy, not a mandatory gate around every tool. An ordinary action already allowed by the standing sandbox and tool policy executes without prompting. Adding an answerer does not convert the runtime into default-deny authorization.</p></div>
+</section>
+
+<section>
+  <h2>6. Permission presets pin standing authority; escalation is a separate one-call grant</h2>
+  <p>The preset service requires a shell that advertises the <code>sandboxMode</code> policy capability and an approval service. Its built-in table maps <code>workspace-write</code> to <code>ask</code> and <code>danger-full-access</code> to <code>never</code>; it validates the configured default before publishing settings.<evidence id="SEC-PRESETS-VALIDATE"></evidence> New sessions receive durable preset, sandbox-mode and approval-policy facts, while seeded or partially initialized sessions preserve existing facts and gain only missing ones.<evidence id="SEC-PRESETS-PIN"></evidence></p>
+  <p>The shipped base composition adds a third <code>read-only + ask</code> choice and starts fresh sessions at <code>workspace-write + ask</code> unless the inherited <code>DSH_PERMISSION_MODE</code> selects another mode. <code>danger-full-access</code> is paired with <code>never</code> because it is already a standing file-access grant, not because <code>never</code> approves anything.<evidence id="SEC-SHIPPED-PERMISSION"></evidence></p>
+  <p>Shell and filesystem escalation share one stricter choreography: the requested mode must be wider than the call’s current mode, an approval service and Agent must exist, the reason and exact call identity are audited, and only <code>allowed-once</code> stamps the wider mode onto that call. Every other outcome runs nothing.<evidence id="SEC-ESCALATION"></evidence></p>
+  <aside class="caveat"><strong>Composition gap:</strong> preset startup proves that the shell advertises the sandbox-mode/policy interface; the current mode may still be <code>danger-full-access</code>. It does not prove that every other mounted capability—an alternate filesystem, MCP server, custom tool, or dynamic Service—obeys the same policy.</aside>
+</section>
+
+<section>
+  <h2>7. “Sandbox” means process file-effect policy, and nothing broader</h2>
+  <p>The sandbox seam defines only three file-effect modes. A provider must return a wrapped argv plus an enforcement level and diagnostic dialect, or fail closed when no backend is usable. The contract explicitly leaves network access and process visibility outside its vocabulary.<evidence id="SEC-SANDBOX-SEAM"></evidence></p>
+  <p>The official limits are broader still: there is no syscall, device, or credential restriction; confinement is same-world; denial classification relies on stderr; and runner diagnostics are in-band, so a child can imitate a failure signature and confuse diagnosis without escaping confinement.<evidence id="SEC-SANDBOX-SCOPE"></evidence></p>
+  <p>The local provider chooses Linux bubblewrap then Landlock, macOS Seatbelt, or the Windows ACL runner. Bubblewrap and Seatbelt advertise full file-effect enforcement; a probed Landlock launcher reports full or partial according to ABI support, while Windows advertises partial because ACL and hard-link semantics cannot satisfy the absolute promise.<evidence id="SEC-LOCAL-RUNNERS"></evidence><evidence id="SEC-LANDLOCK-PROBE"></evidence> A configured custom runner bypasses platform selection and is treated as the operator’s assertion of full enforcement after only shape validation of its command and failure signatures.<evidence id="SEC-CUSTOM-RUNNER"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Known gap</div><p>A command confined to workspace writes can still read host files, use the network, enumerate visible processes, access surviving ambient variables, and invoke reachable services. “Workspace-write” must never be described as general-purpose isolation.</p></div>
+</section>
+
+<section>
+  <h2>8. Filesystem policy contains mutations, while reads and several races remain outside it</h2>
+  <p>The sandboxed filesystem inherits local reads unchanged and fences only <code>writeText</code> and <code>editText</code>. <code>read-only</code> denies mutation; <code>workspace-write</code> re-resolves the target immediately before the operation and checks the fresh canonical path against workspace and temporary roots; <code>danger-full-access</code> delegates unfenced. The source explicitly accepts the residual ancestor-symlink race between the final check and syscall.<evidence id="SEC-FS-FENCE"></evidence></p>
+  <p>The local filesystem’s <code>cwd</code> is merely a resolution default: absolute paths and <code>..</code> escape it. Mutation locks are process-local, guarded replacement can race another process, version tokens depend on filesystem metadata, and failed post-commit cleanup may leave private staging residue.<evidence id="SEC-FS-LOCAL-LIMITS"></evidence></p>
+  <p>The observation policy adds a valuable stale/unseen-write gate, but it is freshness rather than authorization. Its state does not survive resume, direct <code>ctx.fs</code> reads are not observations, and any windowed read authorizes a full overwrite while the version remains unchanged.<evidence id="SEC-OBSERVATION-LIMITS"></evidence></p>
+  <div class="claim fact"><div class="claim-label">Control</div><p>Canonicalization, separator-aware containment, atomic publication, version checks and observation policy materially reduce accidental path escape and lost updates.</p></div>
+  <div class="claim assessment"><div class="claim-label">Gap</div><p>They do not defend file confidentiality, a hostile same-user process changing path topology, or every cross-process replacement race. Stronger adversarial containment would require descriptor-based traversal or an OS boundary, not another lexical check.</p></div>
+</section>
+
+<section>
+  <h2>9. Credentials are references at configuration surfaces, but secrets remain process authority</h2>
+  <p>The credential seam makes configuration carry environment-variable-shaped references rather than values. Consumers resolve on each operation; <code>describe</code> exposes only configured/source/writable facts, while <code>set</code> and <code>unset</code> own durable changes.<evidence id="SEC-CREDENTIAL-SEAM"></evidence></p>
+  <p>The local provider defines explicit precedence: inherited environment, managed <code>$DSH_HOME/.credentials.yaml</code>, project <code>.env</code>, then home <code>.env</code>. The managed document is not materialized into <code>process.env</code>; nevertheless, the project is intentionally trusted to supply a fallback credential.<evidence id="SEC-CREDENTIAL-LAYERS"></evidence> On POSIX, an existing credentials file with any group/other permission bit is rejected before reading, and parse errors avoid quoting the secret-bearing source line. Windows skips the POSIX-mode check because ACLs are not represented here.<evidence id="SEC-CREDENTIAL-FILE"></evidence></p>
+  <p>Resolution makes inherited environment read-only and dominant, then consults the managed snapshot and dotenv fallbacks. The UI cannot appear to overwrite an inherited secret: <code>describe</code> reports it unwritable and <code>set</code>/<code>unset</code> reject a shadowed write.<evidence id="SEC-CREDENTIAL-RESOLVE"></evidence></p>
+  <aside class="caveat"><strong>Trust assumption:</strong> value-free browser responses reduce accidental disclosure; they do not protect a secret from trusted in-process plugins that can obtain the credential Service, from the provider endpoint that receives it, or from commands to which an operator explicitly forwards it.</aside>
+</section>
+
+<section>
+  <h2>10. Child environments reduce ambient leakage; provider egress is still an explicit trust decision</h2>
+  <p>The shared subprocess baseline removes every environment name matching <code>KEY|PASSWORD|SECRET|TOKEN</code> and every <code>DSH_*</code> name, case-insensitively. It retains values such as <code>PATH</code>, <code>HOME</code>, locale and proxy settings, and a later explicit environment overlay may restore any removed value.<evidence id="SEC-CHILD-ENV"></evidence></p>
+  <p>The DeepSeek adapter validates bounded request and model settings, snapshots the configured endpoint, pairs that endpoint generation with a credential resolved for the same request, and retains the last good live configuration after an invalid settings update. The endpoint field itself is a configured string, not an HTTPS, host-allowlist, or SSRF policy.<evidence id="SEC-PROVIDER-CONFIG"></evidence> It then serializes the model request and sends it with the bearer key, attribution, anonymous user identity, optional Session identity and compaction marker to the configured <code>/chat/completions</code> endpoint.<evidence id="SEC-PROVIDER-TRANSPORT"></evidence></p>
+  <div class="claim fact"><div class="claim-label">Control</div><p>Endpoint and key cannot accidentally come from different settings generations, and credentials are not copied wholesale into ordinary child environments.</p></div>
+  <div class="claim assessment"><div class="claim-label">Known gap</div><p>Name-based scrubbing is a heuristic, not data-flow tracking: secrets named <code>COOKIE</code>, <code>AUTH</code>, or another unmatched label survive, while explicit overlays deliberately bypass the scrub. A configured model endpoint is trusted with the credential and all serialized prompt content.</p></div>
+</section>
+
+<section>
+  <h2>11. MCP is an external capability provider, not an extension of the local shell sandbox</h2>
+  <p>An MCP stdio transport spawns the configured command through the upstream SDK with the scrubbed parent environment plus explicit overrides. The HTTP transport connects to the configured URL and sends configured headers. Neither path goes through the model-facing shell executor or its sandbox escalation flow.<evidence id="SEC-MCP-TRANSPORT"></evidence></p>
+  <p>Discovery drains the external server’s tool list and builds the complete server-qualified candidate map before touching the registry. It then disposes the previous generation and registers the next one sequentially: duplicate tool names in that server list fail before the swap, while a registry conflict disposes the partial new generation and leaves zero tools from that server rather than restoring the previous set.<evidence id="SEC-MCP-SYNC"></evidence> Execution does not locally validate arguments against the advertised input schema: null and primitive values become <code>{}</code>, while arrays and objects pass to the server. The executor checks or normalizes the top-level result shape; Native rendering defensively extracts text and non-text summaries, while canonical JSON content remains intact for Code Mode. An MCP <code>isError</code> becomes a tool failure.<evidence id="SEC-MCP-EXEC"></evidence></p>
+  <aside class="caveat"><strong>Trust boundary:</strong> server-provided descriptions and schemas enter the model request, server text returns to model context, and the server performs the actual side effect with its own authority. Local ToolRuntime result checks and timeouts constrain shape and liveness; they do not confine the MCP server’s process, account, or network permissions.</aside>
+</section>
+
+<section>
+  <h2>12. Browser reachability is fenced, but reachability is not user authentication</h2>
+  <p>Every Browser API request must carry a loopback or configured Host authority. Explicit cross-site Fetch Metadata is rejected, and an attached Origin must match the Host authority. The code states directly that binding and network reachability are separate and that this fence is not an authentication layer.<evidence id="SEC-BROWSER-FENCE"></evidence></p>
+  <p>Configuration, credentials, native Host actions, preset document/copy/remove actions and model discovery are pinned to loopback even when <code>trustedHosts</code> admits a LAN authority. The same source also explains why ordinary Agent methods are not treated as a lesser privilege: a client able to create a Session can already select a preset and, under the shipped capability graph, run commands as the Host process. The fence therefore prevents DNS rebinding and cross-site browser abuse but does not identify a human user.<evidence id="SEC-BROWSER-PRIVILEGED"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Known gap</div><p>A declared non-loopback authority is an administrative reachability grant to the non-pinned API surface. It should not be exposed to an untrusted network until a real authentication and authorization layer exists.</p></div>
+</section>
+
+<section>
+  <h2>13. Generated Remote narrows capabilities and shapes, then inherits the Browser carrier’s trust</h2>
+  <p>The Client assembly mounts a fixed list of generated Remote contributions and unwinds them in reverse order if activation fails or the assembly disposes. Capability availability is therefore explicit at build/composition time rather than discovered from every live Host Service.<evidence id="SEC-REMOTE-MOUNT"></evidence> The Client gateway requires a strict codec for every parameter, result and contextual identity; its boundary parser rejects either a missing strict codec or a schema parse failure.<evidence id="SEC-REMOTE-CODECS"></evidence> Invocation obtains the active Connection and sends the generated endpoint through its <code>/api</code> RPC path, so Remote adds no separate carrier identity.<evidence id="SEC-REMOTE-CARRIER"></evidence></p>
+  <p>Forwarded Host events are controlled by one explicit allowlist. The original event name and JSON argument list cross verbatim, with no projection, redaction or renaming; adding one list entry expands the observable surface.<evidence id="SEC-REMOTE-EVENTS"></evidence></p>
+  <div class="claim fact"><div class="claim-label">Control</div><p>Generated codecs, strict descriptors, explicit mounts and a closed event list reduce accidental API exposure and malformed payloads.</p></div>
+  <div class="claim assessment"><div class="claim-label">Assumption</div><p>Remote supplies no independent identity boundary. Calls and events ride the same Connection authority as the Browser API, so type safety proves payload shape—not who is entitled to invoke the capability or see an allowlisted verbatim event.</p></div>
+</section>
+
+<section>
+  <h2>14. SDK trust rests on ownership of a local runtime process and its complete event stream</h2>
+  <p>The TypeScript SDK client directly spawns the configured runtime outside any Harness Context. Unless an explicit complete environment is supplied, the child inherits <code>process.env</code>; requests and notifications then cross private JSONL stdio. A request timeout abandons only the client-side pending entry: it does not cancel server work, which may continue or complete while a late response is ignored; closing the owned runtime is the controller's forcible termination path.<evidence id="SEC-SDK-CLIENT"></evidence></p>
+  <p>The SDK server subscribes to every Session event and Agent status in its Context, reports local child lifecycle, and lets the caller choose cwd, provider and model at initialization.<evidence id="SEC-SDK-SERVER"></evidence> Filtering a subscription to one Session tree is a client-side convenience, not server-side authorization.<evidence id="SEC-SDK-FILTER"></evidence> The Python client likewise copies the entire parent environment, merges optional overrides, and spawns the selected runtime over stdio.<evidence id="SEC-SDK-PYTHON"></evidence></p>
+  <aside class="caveat"><strong>Trust assumption:</strong> one SDK controller is trusted with the child process, its environment, prompts and the Context-wide event stream. The private wire is not a multi-client or multi-tenant security boundary.</aside>
+</section>
+
+<section>
+  <h2>15. ACP is a trusted automation bridge with narrow one-shot approval semantics</h2>
+  <p>The ACP module describes itself as an automation-only JSON-RPC stdio server for trusted programmatic clients. It creates and owns fresh Agents and Sessions, carrying prompt text, committed assistant text, cancellation and permission decisions while leaving presentation features outside the bridge.<evidence id="SEC-ACP-TRUST"></evidence></p>
+  <p>For approval, the bridge answers only requests belonging to an Agent it owns and carrying a call ID. It offers only allow-once and reject-once, maps an unknown non-allow response to rejection, advertises no authentication methods, implements <code>authenticate</code> as a no-op, and accepts the client-supplied absolute cwd when creating a Session.<evidence id="SEC-ACP-BRIDGE"></evidence><evidence id="SEC-ACP-CWD"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Boundary</div><p>Exact ownership and one-shot choices prevent a stale or foreign ACP answer from becoming a durable grant. They do not authenticate the stdio peer; security rests on which process launched or connected the bridge and controls its pipes.</p></div>
+</section>
+
+<section>
+  <h2>16. Remote execution changes the execution world; it does not remove composition trust</h2>
+  <p>The E2B owner creates one shared sandbox handle per Context, validates its API key, absolute Linux cwd and lifetime, asks the service for a <code>secure</code> sandbox, prepares an owner-only runtime directory, and randomizes the SDK login-shell <code>HOME</code>. It attempts a rollback kill after setup failure and also asks the service to kill the sandbox on timeout or disposal; those best-effort cleanup calls do not prove that the remote resource was destroyed. Its API key is explicitly not forwarded into the remote sandbox.<evidence id="SEC-E2B-OWNER"></evidence></p>
+  <p>The remote filesystem has no automatic Host synchronization. Mutation coordination remains local to the Host process, other connections or remote commands can race replacements, and opening a canonical path still has a remote reopen race.<evidence id="SEC-E2B-LIMITS"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Assumption</div><p>Filesystem, subprocess, shell, terminal and search capabilities must all refer to the same remote world and root. Sessions sharing that Context also share the E2B owner; isolation between those Sessions is not established by creating one remote sandbox for the Context.</p></div>
+</section>
+
+<section>
+  <h2>17. Code Mode and dynamic plugins are containment for cooperative code, not malicious-code isolation</h2>
+  <p>The worker-thread CodeRuntime says this explicitly: a fresh worker, empty environment, heap limit, busy/wall timers and forced termination are containment, while model code retains bash-equivalent trust.<evidence id="SEC-WORKER-TRUST"></evidence></p>
+  <p>Dynamic Host code runs in a fresh <code>node:vm</code> realm with traps steering common operations to Services, but Host-realm helpers remain an escape route; the module states that the VM is not containment for malicious code.<evidence id="SEC-DYNAMIC-VM"></evidence> More importantly, a Host-only dynamic Package activates immediately. Only a Package with Client code enters the approval request state, and a plugin-wide grant may cover future Client versions.<evidence id="SEC-DYNAMIC-RUN"></evidence></p>
+  <p>The Host façade is still useful defense in depth: property-style Service access requires a declared injection and therefore participates in Cordis lifecycle parking, but optional <code>ctx.get(name)</code> is not declaration-gated and can retrieve any live Service. Retrieved Services are wrapped to reject a direct Context return—not to deep-sanitize arbitrary object graphs—while the special tools façade exposes metadata and guarded registration without a live <code>execute</code> function.<evidence id="SEC-DYNAMIC-GUARD"></evidence> The browser half is evaluated with <code>new Function</code> in the page realm. Selected bare names are shadowed and <code>process</code>/<code>Buffer</code> are passed as undefined, but ambient <code>window</code>, <code>document</code>, <code>globalThis</code> and other page capabilities remain reachable; injected React, console, styles and Host calls are also real capabilities.<evidence id="SEC-DYNAMIC-CLIENT"></evidence></p>
+  <p>The self-modification toolchain is not in the base capability set: the advanced headless example explicitly inserts CodeRuntime, the Host runner and <code>tool-cordis</code>.<evidence id="SEC-SELF-MOD-OPTIN"></evidence></p>
+  <aside class="caveat"><strong>Known gap:</strong> enabling model-driven Host extension is a standing decision to run model-authored code without a human approval step for Host-only Packages. Control and registry ownership are tied to the defining Session, but active effects mount under a root-Context group and can affect other Sessions in the same process.<evidence id="SEC-DYNAMIC-ROOT-SCOPE"></evidence> The façades reduce accidental misuse and improve lifecycle cleanup, but their own sources reject the claim that they are malicious-code boundaries.</aside>
+</section>
+
+<section>
+  <h2>18. Supply-chain closure: plugins, skills, MCP servers and endpoints all become authority</h2>
+  <p>Skills illustrate the difference between syntax safety and semantic trust. The model tool checks model-invocable after both lookup and load, explicit user invocation injects only user-invocable skills, and the model catalog retains only model-invocable entries.<evidence id="SEC-SKILL-INVOCATION-GATES"></evidence> The wrapper's name attribute is escaped, but the instruction body is embedded verbatim because the implementation classifies skills as trusted local content.<evidence id="SEC-SKILL-TRUST"></evidence></p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Extension source</th><th>Control</th><th>Residual assumption or gap</th></tr></thead>
+    <tbody>
+      <tr><td>Profile plugin / bundle</td><td>Package-manager success, Loader validation, transactional activation</td><td>Executes in process; package and patch author are administrators</td></tr>
+      <tr><td>Skill</td><td>Discovery parsing and invocation policy</td><td>Body is trusted model instruction, not sanitized meaning</td></tr>
+      <tr><td>MCP server</td><td>Namespace, discovery/result-shape checks, timeout, cancellation</td><td>External executable or endpoint owns the real side effect</td></tr>
+      <tr><td>Model provider</td><td>Bounded request/model settings, per-request key resolution, transport errors</td><td>Configured endpoint string receives prompts, identifiers and bearer credential</td></tr>
+      <tr><td>Dynamic Plugin</td><td>Opt-in toolset, ownership IDs, façades, lifecycle disposal</td><td>Host VM is escapable; Host-only code needs no approval</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">Rule of thumb</div><p>Anything that can add a plugin, skill, MCP endpoint, model endpoint, approval answerer, sandbox runner or dynamic Host Package belongs in the administrative trust domain, even if its configuration is expressed as YAML or JSON.</p></div>
+</section>
+
+<section>
+  <h2>19. Control / assumption / gap ledger and hardening priorities</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Area</th><th>Existing control</th><th>Deployment assumption</th><th>Known gap / priority</th></tr></thead>
+    <tbody>
+      <tr><td>Remote access</td><td>Host, Fetch Metadata, Origin and loopback pinning</td><td>Accepted authorities are trusted controllers</td><td>Add real authentication and per-capability authorization before untrusted-network exposure</td></tr>
+      <tr><td>Execution</td><td>Tool schemas, ordered policy, monotonic guards, one-shot escalation</td><td>Registered tool bodies are trusted</td><td>Require an explicit validation wrapper for raw definitions; make high-impact dynamic Host execution separately consentable</td></tr>
+      <tr><td>Sandbox</td><td>Fail-closed file-effect runners and filesystem containment</td><td>OS or custom runner and same-world composition are correct</td><td>Network, credential, process and device policy are absent; Windows is partial</td></tr>
+      <tr><td>Secrets</td><td>Reference-based configuration, owner-only POSIX store, value-free descriptions, child scrub</td><td>Host process and configured endpoint are trusted</td><td>Prefer explicit environment allowlists or secret handles over name heuristics; add a Windows ACL assurance story</td></tr>
+      <tr><td>Supply chain</td><td>Loud load failures, explicit mounts and package-manager policy</td><td>Local packages, skills and server definitions are administrator-authored</td><td>Add provenance/pinning policy if unreviewed sources enter profiles</td></tr>
+      <tr><td>Paths and concurrency</td><td>Canonical identities, containment, atomic publication, version guards</td><td>No hostile same-user topology manipulator</td><td>Descriptor-relative operations and stronger cross-process coordination remain future work</td></tr>
+    </tbody>
+  </table></div>
+  <p>This chapter is a static control-flow audit of commit <code>47f943859bef60e4160492346772ded9b24f765a</code>. It distinguishes implementation controls from deployment assumptions and source-declared limitations; it does not claim exploit testing, kernel conformance testing, package provenance verification, or a formal noninterference proof. The safest operational reading is narrow: keep the Host local unless authenticated, review every administrative extension as code, expose only the capabilities required for the task, and treat each configured external endpoint as a data-and-authority recipient.</p>
+</section>
