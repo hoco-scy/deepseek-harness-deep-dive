@@ -1,0 +1,239 @@
+<section>
+  <h2>Conclusion: Authorization Is Layered, and Only the Final Vetoes Are Monotonic</h2>
+  <div class="thesis"><p>DeepSeek Harness does not have one central “risk engine.” At the pinned baseline, risk is proposed in two places: an extensible <code>tools/pre-execute</code> listener may return <code>ask</code>, and a sandbox-aware shell (Bash/PowerShell) or filesystem call may request a strictly wider mode in its own frozen arguments. A durable permission preset supplies standing sandbox and prompt policy; an approval answer grants at most one call; and synchronous guards retain a final, irreversible veto. These are intentionally different powers.</p></div>
+  <div class="claim fact"><div class="claim-label">Core security property</div><p>The registry detaches, snapshots, and deep-freezes parsed arguments before policy. Pre, guards, and the tool body share that immutable graph, while approval correlates through <code>callId</code> to an earlier durable call record: Native <code>tool/call</code> keeps the model's raw JSON, while Code Mode <code>tool/code-dispatch-start</code> keeps normalized JSON. A pre decision can allow, deny, or ask but cannot rewrite arguments. Approval never bypasses guards: runtime checks global and scoped layers in order until the first denial or universal abstention, and guards have no allow result. Policy judgment and execution therefore retain argument identity, while listener ordering cannot undo an owner's veto. <evidence id="APPROVAL-EXEC-SNAPSHOT"></evidence><evidence id="APPROVAL-PRE-DECISION"></evidence><evidence id="APPROVAL-PREPARE-ORDER"></evidence><evidence id="APPROVAL-GUARD-CONTRACT"></evidence></p></div>
+  <aside class="caveat"><strong>Boundary:</strong> this chapter analyzes the repository's static composition and production control flow at commit <code>47f943859bef60e4160492346772ded9b24f765a</code>. It does not treat a UI confirmation dialog, a visible tool list, or an HTTP reachability fence as an independent authorization boundary.</aside>
+</section>
+
+<section>
+  <h2>1. Six Concepts That Similar Product Labels Tend to Collapse</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Concept</th><th>Lifetime</th><th>Authority</th><th>Durable?</th></tr></thead>
+    <tbody>
+      <tr><td>Tool visibility restriction</td><td>Live scope composition</td><td>Removes inherited schemas; it is capability presentation, not execution authorization</td><td>No</td></tr>
+      <tr><td>Sandbox mode</td><td>Deployment default or one Session override</td><td>Constrains file effects through an enforcing backend</td><td>Session override: yes</td></tr>
+      <tr><td>Approval policy</td><td>Deployment default or one Session override</td><td><code>ask</code> routes to answerers; <code>never</code> rejects every ask</td><td>Session override: yes</td></tr>
+      <tr><td>Permission preset</td><td>Standing Session selection</td><td>Bundles sandbox mode and approval policy</td><td>Yes</td></tr>
+      <tr><td>Approval outcome</td><td>One request</td><td>Only <code>allowed-once</code> grants; it does not alter standing policy</td><td>Audit pair: yes</td></tr>
+      <tr><td>Monotonic guard</td><td>Live registration, evaluated per call</td><td>Final synchronous deny-only veto</td><td>No; the resulting tool error is logged by the caller</td></tr>
+    </tbody>
+  </table></div>
+  <p>The most counterintuitive row is <code>approval/policy = never</code>: it means “never prompt; reject actions that require approval,” not “approve without asking.” A full-access preset works without prompts because the sandbox is already open, not because <code>never</code> is a grant.</p>
+</section>
+
+<section>
+  <h2>2. The End-to-End Decision Graph Has Two Approval Entrances</h2>
+  <pre><code>model tool call
+  → durable tool/call already exists
+  → detach + freeze arguments
+  → tools/pre-execute waterfall ── deny ──────────────→ error result
+              │
+              ├─ ask → ApprovalService → allowed-once / deny
+              │
+              └─ allow
+                   ↓
+             global + scoped monotonic guards ───────→ error result
+                   ↓
+             around wrappers → tool body
+                                  │
+                                  └─ shell (bash/pwsh) or fs sandbox_permissions
+                                     → strict-wider check
+                                     → ApprovalService
+                                     → stamp wider mode on this call only
+                                  ↓
+                           effectful backend execution
+                                  ↓
+                         post-policy → durable result</code></pre>
+  <p>The generic entrance asks before guards and before the body. The sandbox entrance lives inside a shell (bash/pwsh) or fs body, but still before a process starts or a mutation executes. Consequently, a generic pre listener and a tool-specific escalation request can both ask about one call; composition should avoid redundant policy. Conversely, guards can reject the frozen escalation arguments before the tool-specific prompt is reached.</p>
+</section>
+
+<section>
+  <h2>3. Risk Is Proposed, Not Centrally Scored</h2>
+  <p><code>PreToolDecision</code> contains only <code>allow</code>, <code>deny(reason)</code>, and <code>ask(reason?)</code>. There is no built-in severity scale, numerical risk score, command classifier, or privileged “approve” token. The default end of the waterfall is allow, so deployments that want broad risk classification must compose a listener; the built-in sandbox-aware tools instead use an explicit argument pair: <code>sandbox_permissions</code> plus a nonblank <code>justification</code>.</p>
+  <div class="claim assessment"><div class="claim-label">What the model may propose</div><p>The bash guidance constrains escalation to one exact retry after a real sandbox denial, asks for the narrowest wider mode, and says not to retry after rejection. Those instructions improve behavior, but the enforcement boundary is stricter: argument pairing, the runtime wider-mode table, approval outcome, and the sandbox backend. Prompt text is not counted as authority.</p></div>
+</section>
+
+<section>
+  <h2>4. Why <code>tools/pre-execute</code> Is Extensible Policy, Not a Non-bypassable Gate</h2>
+  <p>The pre stage is an asynchronous, scope-routed waterfall. A listener can delegate to <code>next</code>, replace the downstream decision, or short-circuit it. Registration order and <code>prepend</code> therefore matter. That is useful for hooks, deployment policy, and machine reviewers, but it also means a listener-shaped “absolute deny” can be bypassed by an earlier listener that returns allow without delegating.</p>
+  <div class="claim fact"><div class="claim-label">The separate guard registry closes that hole</div><p><code>ctx.tools.guard()</code> registers synchronous deny-only checks. The runtime evaluates the global layer first and then every applicable Agent-scope layer from farthest to nearest; the first reason wins. No guard can return allow, and no pre listener runs after guards. <evidence id="APPROVAL-GUARD-REGISTRY"></evidence></p></div>
+  <aside class="caveat"><strong>Design rule:</strong> use the waterfall for negotiable or replaceable policy. Put ownership, tenancy, delegation ceilings, and other invariants that must survive extension ordering in a monotonic guard or inside the owning service itself.</aside>
+</section>
+
+<section>
+  <h2>5. The Approval Service Is a Closed, Fail-closed Question Boundary</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Outcome</th><th>Meaning</th><th>Tool consequence</th></tr></thead>
+    <tbody>
+      <tr><td><code>allowed-once</code></td><td>One answerer grants this request</td><td>The generic gate becomes allow, or the requested wider mode is stamped onto this call</td></tr>
+      <tr><td><code>rejected</code></td><td>Explicit refusal, or deterministic <code>never</code> policy</td><td>Deny</td></tr>
+      <tr><td><code>cancelled</code></td><td>The request was withdrawn</td><td>Deny/abort; a late answer is discarded</td></tr>
+      <tr><td><code>unavailable</code></td><td>No answerer, a throwing answerer, or an invalid answer</td><td>Deny</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Absence never elevates</div><p>The vocabulary is a closed union. Before dispatch, <code>never</code> returns rejected inside the service itself, so even a prepended answerer cannot override it. Under <code>ask</code>, the answerer waterfall defaults to unavailable; synchronous throws, asynchronous rejection, and rogue return values normalize to unavailable. <evidence id="APPROVAL-OUTCOMES"></evidence><evidence id="APPROVAL-DECIDE-WATERFALL"></evidence></p></div>
+  <p>At the ToolRuntime seam, a missing ApprovalService and an Agent-less call also deny because there is no auditable Session and no routing identity. Only the exact <code>allowed-once</code> branch proceeds; rejected, cancelled, and unavailable preserve distinct messages for diagnosis. <evidence id="APPROVAL-ASK-MAPPING"></evidence></p>
+</section>
+
+<section>
+  <h2>6. The Audit Pair Is Durable, but the Live Wait Is Not</h2>
+  <pre><code>open turn
+  → append approval/asked { fresh id, toolName, callId?, reason? }
+  → await answerer waterfall
+  → append approval/decided { same id, closed outcome }
+  → return outcome</code></pre>
+  <p>An approval request is accepted only inside an open turn, because the turn is the Session log's commit/replay boundary. The request deliberately omits arguments: <code>callId</code> links it to the already-recorded and already-presented tool call, avoiding two copies that could drift. Both audit events are log-only rather than model transcript blocks. The model learns standing policy from runtime context and receives the final tool result. <evidence id="APPROVAL-AUDIT-EVENTS"></evidence><evidence id="APPROVAL-REQUEST-SHAPE"></evidence><evidence id="APPROVAL-AUDIT-REQUEST"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Replay boundary</div><p>Replaying the log reconstructs past asks, outcomes, and the latest standing policy. It does not resurrect an in-flight JavaScript Promise after a host-process restart. The invariant permits an unmatched <code>approval/asked</code> crash tail, while rejecting an orphan decision, duplicate open id, out-of-turn event, or unknown vocabulary. Browser reconnect recovery is a separate, same-process pending registry described below. <evidence id="APPROVAL-INVARIANT"></evidence></p></div>
+</section>
+
+<section>
+  <h2>7. Cancellation Has Explicit Race Semantics</h2>
+  <p>If the request signal is already aborted, approval resolves cancelled before answerer dispatch. Otherwise the service races the answerer against the signal; cancellation settles immediately and any later answer becomes a no-op. The answerer computation is contained, not forcibly killed.</p>
+  <p>Tool preparation checks caller cancellation before policy, after approval, and again before dispatch. If cancellation is what cancelled the approval, the result is <code>ABORTED_BEFORE_DISPATCH</code>; a completed policy denial may remain the more informative result. Once a same-process tool body starts, ToolRuntime waits for it to reach quiescence and then converts an otherwise successful outcome to aborted. Tool authors must propagate the signal to subprocesses or providers. <evidence id="APPROVAL-CANCEL-DISPATCH"></evidence></p>
+  <aside class="caveat"><strong>No abandoned work claim:</strong> “the caller stopped waiting” and “the effect stopped” are different facts. The registry deliberately does not abandon a started Promise.</aside>
+</section>
+
+<section>
+  <h2>8. Presets Are Durable Standing Intent Over Two Independent Knobs</h2>
+  <p>A preset table entry contains a machine key, sandbox mode, approval policy, and optional presentation text. <code>custom</code> is reserved for the derived state in which the two effective knobs match no entry; it cannot be configured or selected. The service fails at load when the shell does not advertise confinement, the default does not resolve, or the composed defaults match no preset without an explicit default. <evidence id="APPROVAL-PRESET-CONFIG"></evidence></p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Event</th><th>Role</th><th>Controls execution directly?</th></tr></thead>
+    <tbody>
+      <tr><td><code>permission/preset</code></td><td>Records selected user intent and disambiguates equal bundles</td><td>No</td></tr>
+      <tr><td><code>sandbox/mode</code></td><td>Standing sandbox override</td><td>Yes, folded for each confined call</td></tr>
+      <tr><td><code>approval/policy</code></td><td>Standing prompt behavior</td><td>Yes, checked for each ask</td></tr>
+    </tbody>
+  </table></div>
+  <p>Current value is derived from actual knob state. A still-matching recorded selection wins when two names share a bundle; otherwise the first matching table row wins, then <code>custom</code>. Selecting a preset appends intent first and only writes knobs whose effective values change. <evidence id="APPROVAL-PRESET-DERIVE"></evidence><evidence id="APPROVAL-PRESET-WRITE"></evidence></p>
+</section>
+
+<section>
+  <h2>9. “Default for Future Sessions” and “Current Session” Are Separate Mutations</h2>
+  <p>A genuinely fresh Session reads the latest user setting and pins all three permission facts during synchronous <code>session/created</code> publication. This occurs before creation returns, Agent publication, and the first prompt, but not before SessionStore insertion. A seeded, resumed, or partially initialized Session preserves its effective permission and receives only missing facts. Later settings changes therefore affect future Sessions, not existing ones. <evidence id="APPROVAL-PRESET-PIN"></evidence></p>
+  <p>The optional <code>permissions</code> projection exposes table options plus the effective current value; absence of the projection key means the capability was not composed, so clients hide the control. The bare <code>/permission</code> command reports current and available values; <code>/permission &lt;key&gt;</code> validates the key and uses the same service write path as the UI. <evidence id="APPROVAL-PRESET-PROJECTION"></evidence></p>
+  <div class="claim fact"><div class="claim-label">Shipped composition, not library default</div><p>The base bundle ships three rows: <code>read-only + ask</code>, <code>workspace-write + ask</code>, and <code>danger-full-access + never</code>. Its environment-derived default is normally workspace-write + ask. The permission service's standalone schema default has only the latter two rows; those two facts should not be conflated. <evidence id="APPROVAL-SHIPPED-PRESETS"></evidence></p></div>
+</section>
+
+<section>
+  <h2>10. A Per-call Sandbox Grant Is Strictly Wider, Explicit, and Ephemeral</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Effective mode</th><th>Legal one-call targets</th></tr></thead>
+    <tbody>
+      <tr><td><code>read-only</code></td><td><code>workspace-write</code>, <code>danger-full-access</code></td></tr>
+      <tr><td><code>workspace-write</code></td><td><code>danger-full-access</code></td></tr>
+      <tr><td><code>danger-full-access</code></td><td>None</td></tr>
+    </tbody>
+  </table></div>
+  <p>The schema advertises the closed target vocabulary, but runtime checks strict widening against this call's effective standing mode. Both escalation fields must occur together and the justification must be nonblank. A same-level or narrowing request fails before prompting. <evidence id="APPROVAL-ESCALATION-LADDER"></evidence></p>
+  <p>The resolver then requires an ApprovalService and Agent, records the target and justification in the reason, and accepts only <code>allowed-once</code>. The returned mode is a local value for one call; it never appends <code>sandbox/mode</code> or changes the preset. <evidence id="APPROVAL-ESCALATION-FLOW"></evidence></p>
+  <div class="claim fact"><div class="claim-label">Precedence</div><p>At execution, an approved explicit mode outranks the Session's last <code>sandbox/mode</code>, which outranks the deployment default. The Session cwd supplies the workspace root. <evidence id="APPROVAL-SANDBOX-PRECEDENCE"></evidence></p></div>
+</section>
+
+<section>
+  <h2>11. Shell and Filesystem Share Choreography, Then Enforce Through Different Backends</h2>
+  <p>Bash and PowerShell both validate arguments, resolve standing policy, await escalation approval when requested, stamp the returned mode onto the request, and only then start a foreground process or commit a background-job starter. Unadvertised escalation keys are still rejected when the mounted executor cannot sandbox, because the object schema is open and presentation alone is not enforcement. <evidence id="APPROVAL-BASH-EXECUTION"></evidence><evidence id="APPROVAL-PWSH-EXECUTION"></evidence></p>
+  <p>Filesystem mutation tools use a shared controller that performs the same pairing, standing-policy resolution, approval, and one-call stamp. A provider sandbox denial is converted to a structured error marker plus an exact-retry hint; other provider errors pass through. <evidence id="APPROVAL-FS-ESCALATION"></evidence></p>
+  <aside class="caveat"><strong>Technical boundary:</strong> the approval service decides whether a wider request is permitted; it does not itself confine files. Actual containment depends on the selected shell/filesystem backend. Chapter 20 audits those mechanisms.</aside>
+</section>
+
+<section>
+  <h2>12. Delegated Children Do Not Inherit a Parent's One-shot Grant</h2>
+  <p>At child creation, the runtime synchronously captures only the parent's explicit Session sandbox override—never the deployment default and never a per-call grant—and pins the child's approval policy to <code>never</code> whenever approval exists. Those delegation-sourced events are appended after any fork seed, so stale seed state cannot reopen the child. The child also receives model-facing text saying that approval-requiring operations are rejected. <evidence id="APPROVAL-CHILD-PIN"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Authority consequence</div><p>A parent can delegate work within the child's fixed sandbox scope, but the child model cannot widen itself by asking. A later trusted runtime/user switch can append newer policy events; this is not a cryptographic forever-lock. The boundary prevents model-originated escalation through the normal approval path, not all higher-authority administration.</p></div>
+</section>
+
+<section>
+  <h2>13. Web Approval Is a Stable Server Request, Not a New Unary RPC</h2>
+  <p>The host emits <code>approval/requested</code> with a stable <code>rpcId</code>, Session id, approval id, tool name, optional call id, and reason. A client response echoes the same <code>rpcId</code> and may supply only <code>allowed-once</code> or <code>rejected</code>; cancellation and unavailability remain host-owned outcomes. <evidence id="APPROVAL-WIRE-CONTRACT"></evidence></p>
+  <p>The proxy answerer claims the newest matching, undecided, unclaimed <code>approval/asked</code> event. If it cannot find that audit fact, it delegates instead of inventing an answerable request. Pending entries survive browser disconnects; opening a new mux replays them with the same id. Abort and proxy teardown settle them cancelled. <evidence id="APPROVAL-WEB-REGISTRY"></evidence><evidence id="APPROVAL-WEB-REPLAY"></evidence></p>
+  <p>Responses are routed by <code>rpcId</code>, parsed, and required to echo the exact Session and approval ids. The first valid response removes the pending entry; malformed, foreign, stale, and late responses are rejected. <evidence id="APPROVAL-WEB-RESPOND"></evidence></p>
+</section>
+
+<section>
+  <h2>14. The Approval Panel Is One-shot, but Its Evidence Is Not Self-contained</h2>
+  <p>While a request is pending, the conversation UI replaces the composer with a scrollable card containing the reason, optional command, Refuse, and Allow once. Buttons latch after the first click, re-arm on transport failure, and disappear when the resolved frame arrives. The command is parsed only for a root running tool call whose JSON arguments contain a string <code>command</code>; malformed, nested, unpaired, and non-shell calls show no command line. <evidence id="APPROVAL-UI-PANEL"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Consent tradeoff</div><p>Not duplicating arguments in <code>ApprovalRequest</code> prevents audit drift, but it makes the existing tool-call presentation part of informed consent. The panel itself may show only a free-text reason and tool name for filesystem or other generic asks. A stronger product surface could render a typed, immutable summary from the already-recorded call without making a second authoritative copy.</p></div>
+</section>
+
+<section>
+  <h2>15. Permission Selectors Are Convenience and Acknowledgement, Not the Enforcement Boundary</h2>
+  <p>The current-Session selector filters out <code>custom</code> and submits <code>/permission &lt;key&gt;</code>. The optional command popup does the same. The Settings row writes <code>defaultPreset</code> with an expected revision for future Sessions. <evidence id="APPROVAL-PERMISSION-SETTINGS-WRITE"></evidence> All three consume server-advertised options, but their risk dialog is triggered by one hard-coded machine key: <code>danger-full-access</code>. <evidence id="APPROVAL-PERMISSION-COMPOSER"></evidence><evidence id="APPROVAL-PERMISSION-DECORATION"></evidence><evidence id="APPROVAL-PERMISSION-SETTINGS"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Confirmed static mismatch</div><p>The server allows arbitrary preset names and arbitrary sandbox/approval bundles. Therefore a differently named preset that maps to <code>danger-full-access + never</code> does not trigger this confirmation, while a harmless bundle named <code>danger-full-access</code> does. A direct command or Settings API mutation also has no checkbox. The dialog is a useful UX warning for the shipped table, but it is not a generic authorization check. Hardening should derive risk from the advertised bundle or a server-owned risk field, and server policy—not a key name—must remain authoritative. <evidence id="APPROVAL-PRESET-CONFIG"></evidence></p></div>
+</section>
+
+<section>
+  <h2>16. Browser Request Trust Defends Origin Confusion; It Is Explicitly Not Authentication</h2>
+  <p>Every <code>/api</code> request must pass Host validation, explicit cross-site Fetch Metadata rejection, and same-authority Origin validation when Origin exists. This blocks DNS rebinding and ordinary malicious-page cross-site requests. The source explicitly leaves network reachability and authentication out of scope. <evidence id="APPROVAL-WEB-TRUST"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Deployment boundary</div><p>Any client that can legitimately reach the local API through an accepted authority can observe the mux and race to answer a pending approval; the first exact valid response wins. That matches the documented single-user local-service assumption. A carrier exposed to mutually untrusted users would need authenticated principal-to-Session authorization in addition to the Host/Origin fence.</p></div>
+</section>
+
+<section>
+  <h2>17. ACP Is a Machine Answerer with Exact Ownership and One-shot Choices</h2>
+  <p>The ACP bridge claims an approval only when it owns the exact Agent and the request has a call id. It presents two choices—allow once and reject once—and maps cancellation explicitly; every unknown non-allow option becomes rejection. It never converts a response into a durable grant. <evidence id="APPROVAL-ACP-ANSWERER"></evidence></p>
+  <p>This illustrates the intended answerer architecture: web UI, ACP, or another provider can occupy the same waterfall seam, while the ApprovalService owns vocabulary, durable audit, cancellation, and the unbypassable <code>never</code> policy.</p>
+</section>
+
+<section>
+  <h2>18. Tests Encode the Negative Paths, Not Just the Happy Prompt</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Suite</th><th>What it proves at the pinned baseline</th></tr></thead>
+    <tbody>
+      <tr><td>ToolRuntime policy</td><td>deny/ask mapping, missing service, Agent-less call, rogue outcomes, cancellation ordering, and guards after pre-policy</td></tr>
+      <tr><td>Approval service</td><td>open-turn requirement, audit pair, first answerer, throws/rogue values, cancellation, fresh ids, <code>never</code> before prepended listeners, and policy context</td></tr>
+      <tr><td>Permission presets</td><td>folds, shared-bundle identity, <code>custom</code>, no-op writes, load-time failures, fresh pinning, seed/resume preservation, and HMR catch-up</td></tr>
+      <tr><td>Sandbox escalation</td><td>strict ladder, paired fields, one-shot grant, non-widening rejection, missing/Agent-less channel, and every outcome</td></tr>
+      <tr><td>Web proxy</td><td>round trip, reconnect replay, malformed/foreign/stale responses, abort, teardown, parallel pairing, and call-id-less isolation</td></tr>
+    </tbody>
+  </table></div>
+  <p><evidence id="APPROVAL-TOOLS-TESTS"></evidence><evidence id="APPROVAL-GUARD-TESTS"></evidence><evidence id="APPROVAL-SERVICE-TESTS"></evidence><evidence id="APPROVAL-PRESET-TESTS"></evidence><evidence id="APPROVAL-ESCALATION-TESTS"></evidence><evidence id="APPROVAL-WEB-TESTS"></evidence></p>
+  <aside class="caveat"><strong>Evidence level:</strong> these are production tests inspected as executable specifications. This chapter does not claim that the upstream test suite was run in the research checkout.</aside>
+</section>
+
+<section>
+  <h2>19. Two README Statements Have Drifted Behind Production Source</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Documented statement</th><th>Pinned source truth</th><th>Impact</th></tr></thead>
+    <tbody>
+      <tr><td>Permission README names <code>permissionPresets/preset</code> and <code>/permissionPresets</code></td><td>Runtime uses <code>permission/preset</code> and <code>/permission</code></td><td>Operators or extension authors can search for or integrate the wrong identifiers</td></tr>
+      <tr><td>API proxy README says the pending table handles questions only and has no approvals</td><td>The proxy has a complete approval registry, reconnect replay, response validation, abort, and teardown</td><td>The stated wire capability and recovery model are stale</td></tr>
+    </tbody>
+  </table></div>
+  <p><evidence id="APPROVAL-DOC-PRESET-DRIFT"></evidence><evidence id="APPROVAL-DOC-API-DRIFT"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Why this matters</div><p>Permission code is unusually sensitive to naming and lifecycle misunderstandings. The source and tests are internally coherent; the public package READMEs should be corrected so security review begins from the actual event and command paths.</p></div>
+</section>
+
+<section>
+  <h2>20. Narrow Comparison with Codex: Similar Separation, Different Policy Richness</h2>
+  <p>This comparison uses only OpenAI's public <a href="https://learn.chatgpt.com/docs/agent-approvals-security.md">Agent approvals &amp; security</a> and <a href="https://learn.chatgpt.com/docs/agent-configuration/subagents.md">Subagents</a> documentation, retrieved on 2026-08-13. The DeepSeek side is source-level at the pinned commit; the Codex side is documentation-level and current to that retrieval date. No claim is made about private services or undocumented implementation.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Dimension</th><th>DeepSeek Harness at pinned source</th><th>Codex public documentation</th></tr></thead>
+    <tbody>
+      <tr><td>Core separation</td><td>Sandbox mode and approval policy are independent durable knobs bundled by presets</td><td>Sandbox mode and approval policy are explicitly separate controls</td></tr>
+      <tr><td>Typical balanced mode</td><td>Shipped <code>workspace-write + ask</code></td><td>Auto is documented as <code>workspace-write + on-request</code></td></tr>
+      <tr><td>Approval policy vocabulary</td><td><code>ask</code> or <code>never</code></td><td>Documents <code>untrusted</code>, <code>on-request</code>, <code>never</code>, and granular categories</td></tr>
+      <tr><td>Reviewer</td><td>Composable answerer waterfall; shipped web and ACP answerers; no central automatic risk reviewer found</td><td>Documents user review and eligible <code>auto_review</code> through a separate reviewer</td></tr>
+      <tr><td>Side-effect domains</td><td>Generic pre-policy plus explicit bash/fs escalation</td><td>Documents shell/sandbox requests plus side-effecting app and MCP tool approvals</td></tr>
+      <tr><td>Fail-closed behavior</td><td>Missing/throwing/rogue answerer, no Agent, and <code>never</code> all reject</td><td>Documents failure to obtain required approval as a blocked action; automatic review does not expand the sandbox</td></tr>
+      <tr><td>Delegation</td><td>Child approval is pinned to <code>never</code>; one-shot parent grants do not transfer</td><td>Public docs say subagents inherit current sandbox policy and actions needing fresh approval fail when approval cannot be surfaced</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">Transferable lesson</div><p>Both systems treat containment and human/machine consent as separate layers. DeepSeek Harness's particularly reusable idea is the explicit deny-only guard after extensible policy; Codex's documented advantage is a richer approval-policy vocabulary and an explicit automatic-review role. The comparison is architectural, not a feature score: source evidence and product documentation have different confidence levels.</p></div>
+</section>
+
+<section>
+  <h2>21. Design Assessment, Hardening Priorities, and Verification Status</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Finding</th><th>Assessment</th><th>Priority</th></tr></thead>
+    <tbody>
+      <tr><td>Frozen arguments + no pre rewrite</td><td>Strong audit/execution identity</td><td>Preserve</td></tr>
+      <tr><td>Guard after extensible approval</td><td>Strong monotonic veto that survives listener order</td><td>Use for every owner invariant</td></tr>
+      <tr><td>Closed outcomes and fail-closed absence</td><td>Good degradation semantics with diagnosable reasons</td><td>Preserve</td></tr>
+      <tr><td>Preset vs one-call grant separation</td><td>Clear temporal authority; children do not inherit ephemeral elevation</td><td>Preserve and document</td></tr>
+      <tr><td>Risk dialog keyed by preset name</td><td>Confirmed static UX/policy mismatch under configurable tables</td><td>High-priority hardening</td></tr>
+      <tr><td>Approval panel not self-contained for non-shell calls</td><td>Consent quality depends on surrounding call presentation</td><td>Improve typed summaries</td></tr>
+      <tr><td>Reachability without authentication</td><td>Acceptable only under the stated local single-user trust model</td><td>Revisit before multi-user exposure</td></tr>
+      <tr><td>README identifier/recovery drift</td><td>Implementation is stronger than documentation suggests</td><td>Correct promptly</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Verification scope</div><p>This chapter traced ToolRuntime preparation and cancellation; approval types, service, events, and invariant; permission configuration, projection, command, settings, and shipped bundle; shared sandbox escalation and shell/fs consumers; child delegation; web wire/registry/UI; ACP; and the focused production tests. This delivery also ran 15 targeted Vitest files spanning approval, presets, escalation, filesystem, process, Job, and Terminal behavior: 508 tests passed and one was skipped. Static findings remain labeled as such; passing tests do not constitute runtime penetration testing, OS-sandbox validation, authenticated multi-user validation, or knowledge of undocumented Codex internals.</p></div>
+</section>

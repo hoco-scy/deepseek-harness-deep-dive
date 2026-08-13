@@ -1,0 +1,216 @@
+<section>
+  <h2>结论：调度器控制的 dispatch/body 可以重叠；Native 权威提交保持有序</h2>
+  <div class="thesis"><p>DeepSeek Harness 的并行工具调用不是把模型给出的数组直接交给 <code>Promise.all</code>。每个调用先由可见工具定义做 fail-closed 分类；Agent Loop 再按模型顺序建立有界滚动窗口，把独占调用变成屏障。pre-policy、审批与 guard 有序运行；around-dispatch/body 可以重叠；Native 顶层的 post/finalize、<code>tool/result</code> 与 additional context 按模型顺序提交。异步 <code>tools/result</code> observer 的续体与 Code Mode nested dispatch-log side work 不在这条提交保证内。默认窗口是 10，设为 1 可恢复 scheduler-controlled dispatch 的全串行。</p></div>
+  <div class="claim fact"><div class="claim-label">一句话状态机</div><p><code>classify → ordered prepare → concurrent dispatch → model-order finalize → durable result → next-step context</code>。Assistant message 必须先完整落盘，Loop 才抽取其中全部 tool-call blocks 并进入这一状态机。<evidence id="PARALLEL-LOOP-ENTRY"></evidence><evidence id="PARALLEL-GROUPING"></evidence></p></div>
+  <p>这套设计优先保护 replay、policy 顺序和父 Session 状态，而不是追求最大吞吐。代价也清楚：快结果会被慢的早序 sibling 阻塞；分类器无法表达“两个不同路径的写可以并发”；每 Agent/每 Step 的上限也不是进程级资源预算。</p>
+</section>
+
+<section>
+  <h2>1. 先分清四种顺序</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>顺序</th><th>保证</th><th>可以乱序的部分</th></tr></thead>
+    <tbody>
+      <tr><td>模型顺序</td><td>Assistant content 中 tool-call block 的顺序，是所有索引与提交的基准</td><td>无</td></tr>
+      <tr><td>启动顺序</td><td>调用按模型顺序进入 prepare/dispatch；后序不会抢先启动</td><td>body 完成顺序</td></tr>
+      <tr><td>完成顺序</td><td>并行 body 可任意完成</td><td>这是实际并发所在</td></tr>
+      <tr><td>提交顺序</td><td>post-policy、<code>tool/result</code>、contexts 与 concludes-turn 按模型顺序</td><td>异步只读 observer 自己的完成时间不在该保证内</td></tr>
+    </tbody>
+  </table></div>
+  <p>源码把完成的 dispatch 放入按模型索引编号的 slots；<code>committed</code> 游标只能跨过连续 ready slots。因此后序调用即使先返回，也不能先进入 post、Session history 或下一步上下文。<evidence id="PARALLEL-ROLLING-POOL"></evidence></p>
+</section>
+
+<section>
+  <h2>2. <code>executionMode()</code> 是严格 opt-in、按调用参数求值的分类器</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>输入状态</th><th>分类</th><th>原因</th></tr></thead>
+    <tbody>
+      <tr><td>可见定义的 <code>isConcurrencySafe(args)</code> 恰好返回 <code>true</code></td><td><code>parallel</code></td><td>唯一 opt-in 路径</td></tr>
+      <tr><td>无 classifier、返回 false 或 truthy 非 boolean</td><td><code>exclusive</code></td><td>默认拒绝重叠</td></tr>
+      <tr><td>未知、被 scope 隐藏、code-only direct collapse</td><td><code>exclusive</code></td><td>解析不到可执行定义</td></tr>
+      <tr><td>Classifier 抛出</td><td><code>exclusive</code></td><td>分类失败不升级权限</td></tr>
+      <tr><td><code>defineTool</code> 参数无效</td><td><code>exclusive</code></td><td>helper 在调用 typed classifier 前 soft-validate</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">不进入模型 contract</div><p><code>ToolExecutionMode</code> 只有 <code>parallel</code>/<code>exclusive</code> 两个 tagged arms；<code>isConcurrencySafe</code> 是 host metadata，schema projection 只发送 name、description 与 parameters。<evidence id="PARALLEL-MODE-CONTRACT"></evidence><evidence id="PARALLEL-CLASSIFIER"></evidence><evidence id="PARALLEL-TYPED-CLASSIFIER"></evidence></p></div>
+</section>
+
+<section>
+  <h2>3. 这是 unary promise，不是资源冲突图</h2>
+  <p>Classifier contract 只给函数当前调用的 parsed arguments，并要求它作为同步 unary judgment 使用；它没有 siblings 或当前 pool 参数。JavaScript 并不从运行时阻止 closure 访问其他状态或触发 I/O，但那会违反该分类合同并引入调度器无法观察的依赖。返回 true 的含义非常强：该调用承诺可与任何另一个也返回 true 的 sibling 重叠。它可以表达“同一个工具的 read mode 可并行、write mode 独占”，却不能表达“只有两个写目标不同时才安全”。</p>
+  <div class="claim assessment"><div class="claim-label">作者责任</div><p>并行 body 不得修改 parent-owned state；共享 recorder/provider/cache 的竞态必须可交换、内部串行化或 fail closed。Scheduler 不验证这一承诺。声明过宽会把潜在竞态直接提升为生产行为；声明过窄只损失延迟。上游设计说明也明确选择了这一保守权衡。<evidence id="PARALLEL-SAFETY-NOTE"></evidence></p></div>
+</section>
+
+<section>
+  <h2>4. Group 不是预先切好的数组，而是逐步发现的屏障序列</h2>
+  <pre><code>model calls: P1  P2  X3  P4
+
+classify P1 → open a candidate parallel suffix
+start P1, reclassify/start P2
+reclassify X3 → stop replenishing, drain P1/P2
+run X3 alone through post/commit
+classify/start P4</code></pre>
+  <p>外层 loop 每轮只分类当前 first：如果它独占，就把 singleton group 完整 await；如果它并行，就把剩余 suffix 交给 <code>runGroup</code>，由 pool 在每个后序调用真正开始前再次分类。遇到 exclusive 时，当前 group 返回实际 <code>consumed</code> 数，屏障留给下一轮。<evidence id="PARALLEL-GROUPING"></evidence></p>
+  <div class="claim fact"><div class="claim-label">屏障覆盖完整提交</div><p>独占不只是“body 同时只能有一个”。整个 singleton group 要完成 prepare、body、post、finalizer、result append 与 context acceptance，下一组才会开始。测试覆盖 parallel → exclusive → parallel 三组与 registry replacement 后的重分类。<evidence id="PARALLEL-GROUP-TESTS"></evidence></p></div>
+</section>
+
+<section>
+  <h2>5. Rolling pool 如何保持上限又避免固定窗口空转</h2>
+  <p><code>inFlight</code> 保存已经启动、尚未被 driver reap 的 dispatch Promise；Promise settle 到 driver 删除之间，已完成项可能短暂仍在 Map 中。Pool 先按序填到 <code>maxParallelToolCalls</code>；任意 Promise settle 后由 <code>Promise.race</code> 唤醒 driver，移除该 slot、尝试提交连续 ready results，再补一个新调用。它不会等待整批窗口都完成，因此一个慢调用旁边的空位仍能持续处理后序安全调用。</p>
+  <pre><code>cap = 2
+start C1, C2
+C2 settles first  → slot[1] ready, cannot commit, one capacity opens
+start C3
+C1 settles        → commit C1, C2; continue rolling
+C3 settles        → commit C3</code></pre>
+  <div class="claim fact"><div class="claim-label">上限语义</div><p>Cap 限制的是同一 Agent Step 中同时未 settle 的 parallel dispatches，不限制已经完成但等待前序提交的 slots，也不限制别的 Agent。测试证明 cap=2 的补位顺序以及 cap=1 的全串行行为。<evidence id="PARALLEL-ROLLING-POOL"></evidence><evidence id="PARALLEL-CAP-TESTS"></evidence></p></div>
+</section>
+
+<section>
+  <h2>6. 为什么只把 pipeline 中段并发化</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>阶段</th><th>并发性</th><th>理由</th></tr></thead>
+    <tbody>
+      <tr><td>append <code>tool/call</code></td><td>有序</td><td>先建立 durable identity 与原始参数事实</td></tr>
+      <tr><td>create execution、pre-execute、approval、guards</td><td>有序</td><td>Policy 可能维护顺序敏感状态</td></tr>
+      <tr><td><code>tools/execute</code> wrappers + body</td><td>允许重叠</td><td>真正的外部 I/O/计算延迟所在；wrapper 必须 reentrant</td></tr>
+      <tr><td>post-execute、render/finalizer、result notification</td><td>有序调用</td><td>observer 返回的 Promise 不会被 await，其异步续体可重叠</td></tr>
+      <tr><td>append <code>tool/result</code>、accept context</td><td>有序</td><td>模型历史与下一 Step 的权威顺序</td></tr>
+    </tbody>
+  </table></div>
+  <p>ToolRuntime 暴露给 scheduler 的 symbol-keyed 私有视图把同一条执行管线拆为 <code>prepare</code>、<code>dispatch</code>、<code>finalize</code>/<code>finish</code>。普通调用仍可用完整的 <code>execute()</code>。<evidence id="PARALLEL-PIPELINE-SPLIT"></evidence><evidence id="PARALLEL-PREPARE"></evidence><evidence id="PARALLEL-DISPATCH"></evidence><evidence id="PARALLEL-FINALIZE"></evidence></p>
+</section>
+
+<section>
+  <h2>7. “结果有序”具体是怎样落进 Session 的</h2>
+  <p>每个 started call 先 append <code>tool/call</code>，保存 provider 给出的原始 argument string，并记住 seq。提交时 Loop 用最终 content/isError/error info/meta 创建 <code>tool/result</code>，通过 <code>sourceEventSeqs:[callSeq]</code> 精确指回该 call。随后才逐条接受该结果的 <code>additionalContexts</code>。<evidence id="PARALLEL-DURABLE-PAIRING"></evidence></p>
+  <aside class="caveat"><strong>不是 call/result 紧邻：</strong>滚动窗口允许日志出现 <code>call C1, call C2, result C1, call C3, result C2...</code>。真正不变的是 call 的模型顺序、result 的模型顺序和显式 seq 关联，而不是邻接。</aside>
+  <p>生产测试让 C2 先 settle，并确认在 C1 释放前没有任何 result；最终 <code>deriveMessages()</code> 仍得到 C1、C2 顺序。<evidence id="PARALLEL-ORDER-TESTS"></evidence></p>
+</section>
+
+<section>
+  <h2>8. Head-of-line blocking 是有意购买的一致性</h2>
+  <div class="claim assessment"><div class="claim-label">收益</div><p>Provider 看见的下一请求、Session replay、post hooks 和 next-step contexts 都与模型原始调用顺序一致，不需要让每个 adapter 理解完成时序。后序结果不会因为网络更快而改变策略状态。</p></div>
+  <div class="claim assessment"><div class="claim-label">成本</div><p>一个慢的早序调用会阻挡所有已完成后序结果的 post/finalization 和模型可见性；其 slots 仍驻留内存。Rolling pool 可继续启动安全后序调用，但无法让模型提前消费它们。这是延迟与确定性之间的明确取舍，而不是 scheduler 漏掉一次唤醒。</p></div>
+</section>
+
+<section>
+  <h2>9. Live reclassification 关闭了大部分排队期漂移，但不是 definition snapshot</h2>
+  <p>Scheduler 在 barrier 后重新分类 first，并在 parallel pool 每次补位前重新读取后序调用的当前可见定义。同步的 result observer 若替换一个工具，尚未开始的调用会看到新 classifier；测试证明当前 pool 会先排空，再把新 exclusive 定义作为屏障运行。<evidence id="PARALLEL-RECLASS-TESTS"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">静态发现：classify-to-body-resolution 窗口</div><p>分类并没有把 ToolDefinition 固定进 execution。<code>startCall</code> 在分类后 await 有序 <code>prepare</code>，dispatch 还会 await <code>tools/execute</code> waterfall，真正 body 最后才按名称解析 live definition。期间若定义从 parallel 替换成 mutating exclusive，新 body 仍可能占用旧 parallel slot；execution 甚至已捕获旧 definition 的 finalizer，形成“旧 finalizer + 新 body”。完整修复需要把同一 ToolDefinition snapshot/bind 到分类与执行，或用 registry generation 在实际 body resolution 点做原子校验与调度；prepare 后重分类只缩窄其中一个窗口。<evidence id="PARALLEL-GROUPING"></evidence><evidence id="PARALLEL-PREPARE"></evidence><evidence id="PARALLEL-DISPATCH"></evidence></p></div>
+</section>
+
+<section>
+  <h2>10. Result observer 被有序调用，但不是可 await 的调度门</h2>
+  <p><code>finishScheduledExecution</code> 同步发布 frozen result；<code>notifyResult</code> 依次调用 callbacks，但把 callback 返回的 Promise 交给独立 catch，不等待它们完成。因此 observer 在第一个 <code>await</code> 之前的 registry change 能影响下一次分类，await 之后的 change 则可能晚于补位。</p>
+  <div class="claim assessment"><div class="claim-label">扩展边界</div><p>需要阻挡后序调用的策略必须放在 awaited pre/post waterfall 或同步完成；异步 <code>tools/result</code> 适合 telemetry，不是 barrier。现有“result observer makes next call exclusive”测试使用同步 callback，只证明同步 mutation。<evidence id="PARALLEL-RESULT-OBSERVER"></evidence><evidence id="PARALLEL-RECLASS-TESTS"></evidence></p></div>
+</section>
+
+<section>
+  <h2>11. 取消：停止补位、排空已启动调用、为未启动调用补合成结果</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>取消落点</th><th>Body</th><th>耐久结果</th><th>后序行为</th></tr></thead>
+    <tbody>
+      <tr><td>Group 开始前</td><td>全部不启动</td><td>每个模型调用写 synthetic call/result，码为 <code>ABORTED_BEFORE_DISPATCH</code></td><td>不发下一次 LLM 请求</td></tr>
+      <tr><td>pre/approval 中</td><td>当前 body 不启动；不再准备 siblings</td><td>当前与未启动 siblings 获得 before-dispatch error</td><td>结束本 Step</td></tr>
+      <tr><td>parallel body 运行中</td><td>signal 传播；Scheduler 等所有 started Promise 静止</td><td>成功通常转成 <code>ABORTED</code>；tool-owned error 可保留；全部按模型顺序提交</td><td>不补位、不跨过后续 exclusive barrier</td></tr>
+      <tr><td>result/post commit 中</td><td>已启动工作仍被排空</td><td>最终取消检查可替换尚为 success 的结果</td><td>contexts 保留到 inbox</td></tr>
+    </tbody>
+  </table></div>
+  <p>Loop 的 synthetic pair 保证这条 Assistant message 中每个 tool-call 都能在 replay 中闭合；这正是当前实现相对早期设计说明的重要变化。<evidence id="PARALLEL-ABORT"></evidence><evidence id="PARALLEL-ABORT-RESULT"></evidence><evidence id="PARALLEL-ABORT-TESTS"></evidence></p>
+</section>
+
+<section>
+  <h2>12. 取消不会丢掉已接受的 additional context</h2>
+  <p>Started calls 的 post-policy 仍按序运行；其 <code>additionalContexts</code> 在对应 result 提交后送入 Agent 的 next-step inbox。若 Turn 因取消结束，这些消息暂不写为 <code>user/message</code>，而是在下一次 wake 时进入新 Step。测试明确验证 contexts 的 C1、C2 顺序以及取消后 inbox 停驻。<evidence id="PARALLEL-CONTEXT-TEST"></evidence></p>
+  <p><code>concludesTurn</code> 同样只在成功结果按序提交时聚合。它不会取消同一 Assistant message 已提交的 siblings；Scheduler 完成整个批次后，Agent 才把该 Step 判为 completed。<evidence id="PARALLEL-AGENT-STEP"></evidence></p>
+</section>
+
+<section>
+  <h2>13. 普通工具失败与 scheduler invariant failure 走不同通道</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>失败类型</th><th>承载形式</th><th>是否继续本组</th></tr></thead>
+    <tbody>
+      <tr><td>参数、policy denial、approval、guard、body、output、post/finalizer 失败</td><td>ToolRuntime 规范化为 <code>ToolExecutionResult.isError</code></td><td>是；仍按模型顺序提交，模型可在下一 Step 自修正</td></tr>
+      <tr><td>内部 staged scheduler Promise 意外 reject</td><td>抛到 Agent Turn error boundary</td><td>停止新 dispatch，<code>allSettled</code> 排空已启动工作</td></tr>
+    </tbody>
+  </table></div>
+  <p>第二类不是正常 extension result。Native scheduler 保留已经写下的 <code>tool/call</code>，不伪造它无法归因的 tool results，因此失败 Step 可能留下无结果 call；Turn 最终以 error reason 关闭。<evidence id="PARALLEL-SCHEDULER-FAILURE"></evidence><evidence id="PARALLEL-FAILURE-TEST"></evidence></p>
+</section>
+
+<section>
+  <h2>14. 两个独立的“10”：Native Step 与 Code Mode run 各有自己的池</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>配置</th><th>默认</th><th>作用域</th><th>动态性</th></tr></thead>
+    <tbody>
+      <tr><td><code>agent-loop.maxParallelToolCalls</code></td><td>10</td><td>每个 Agent 的每个顶层 Step</td><td>Settings 可更新；每个 group 开始读取一次，不扰动 in-flight group</td></tr>
+      <tr><td><code>tools.maxParallelSubCalls</code></td><td>10</td><td>每次 <code>run_code</code> 的 nested binding pool</td><td>ToolRuntime 构造时固定</td></tr>
+    </tbody>
+  </table></div>
+  <p>两者都要求正整数，1 表示串行；它们不是同一个共享 semaphore。多个 Agent、多个并发 run 或 provider 自身的并发仍可相乘，外部 API quota、process pool 和连接池必须在各自 provider 层继续限流。<evidence id="PARALLEL-CAP-CONFIG"></evidence><evidence id="PARALLEL-CODE-DRIVER"></evidence></p>
+</section>
+
+<section>
+  <h2>15. Code Mode 复制同一原则，但不是复用同一个 loop</h2>
+  <p><code>run_code</code> 对模型是一个顶层 exclusive tool；程序内部每次 <code>tools.name(args)</code> 进入另一个 per-run driver。该 driver 有 pending queue、in-flight set、commit queue 和 <code>exclusiveActive</code>，用单一 ordered lane 执行 start/prepare 与 commit/finalize，仅让 nested dispatch body 重叠。</p>
+  <pre><code>program submissions
+→ normalize lossless JSON + assign &lt;outer&gt;:code:N
+→ pendingQueue (submission order)
+→ classify at start
+→ bounded inFlight bodies / exclusive barrier
+→ commitQueue head cursor
+→ program promise value or ToolCallError
+→ defer contexts onto outer run_code result</code></pre>
+  <div class="claim fact"><div class="claim-label">两层历史</div><p>Nested call 不生成顶层 <code>tool/call/result</code>；它写 <code>tool/code-dispatch-start</code> 与 <code>tool/code-dispatch</code> 供 UI/trajectory 重建。只有 outer <code>run_code</code> 的 curated logs/result 进入模型历史。<evidence id="PARALLEL-CODE-DRIVER"></evidence><evidence id="PARALLEL-CODE-BINDING"></evidence></p></div>
+</section>
+
+<section>
+  <h2>16. Code Mode 的 barrier、context 与 settlement</h2>
+  <p>Driver 总是先尝试提交 ready 的 <code>commitQueue[0]</code>，再考虑启动 pending head。Exclusive 必须等 <code>inFlight.size===0</code>，并保持 <code>exclusiveActive</code> 直到自己的 post/commit 完成。已经启动的 binding 只在有序 commit 的 <code>settle()</code> 中按 tool outcome resolve/reject，因此程序观察到的是 policy 后 canonical value 或一条 ToolCallError message，而不是 body 的裸完成时刻；尚未启动就被取消的 queued binding 则由 <code>abandon()</code> reject。</p>
+  <p>Nested contexts 在 commit 时依次 <code>exec.deferContext</code> 到 outer execution；即使程序之后失败，它们仍可随 outer error result 返回。外层 run 一旦 settle，run-scoped controller 会取消 in-flight calls、拒绝 queued-unstarted calls，并在 outer tool 返回前 drain driver 与 durable log work。<evidence id="PARALLEL-CODE-BINDING"></evidence><evidence id="PARALLEL-CODE-DRAIN"></evidence><evidence id="PARALLEL-CODE-TESTS"></evidence></p>
+</section>
+
+<section>
+  <h2>17. Code Mode 的 durable nested event 顺序比 binding 顺序更弱</h2>
+  <div class="claim assessment"><div class="claim-label">静态发现：日志 side work 可重排</div><p><code>settle()</code> 在 ordered commit lane 中先把结果交给程序，再异步启动 <code>shapeDispatchLog → session.append(tool/code-dispatch)</code>；这项 log work 不阻塞 binding，最终只在 run 结束时整体 drain。若前一个 log-content listener 比后一个慢，settle event 的 append 顺序可以与 submission 顺序不同。Start events 仍有序，UI 也按 <code>subCallId</code> 关联，所以这不是 call pairing 错误，但 event seq/time 不应被解释为 canonical completion order。<evidence id="PARALLEL-CODE-BINDING"></evidence><evidence id="PARALLEL-CODE-DRAIN"></evidence></p></div>
+  <p>现有并发测试只比较 settle id 的集合；没有对异步 log shaping 下的 settle event 顺序作断言。这与 Native 顶层 <code>tool/result</code> 的严格 append 顺序必须分开陈述。<evidence id="PARALLEL-CODE-TESTS"></evidence></p>
+</section>
+
+<section>
+  <h2>18. 测试覆盖很强，但仍有几类精确时序缺口</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>已证明</th><th>证据</th></tr></thead>
+    <tbody>
+      <tr><td>Native parallel overlap、三组 barrier、动态 replacement、rolling cap、cap=1</td><td>确定性 gated tools</td></tr>
+      <tr><td>Native body 乱序但 result/history/context 有序</td><td>先释放 C2、确认结果为空，再释放 C1</td></tr>
+      <tr><td>取消前、pre 中、body 中、barrier 前的 synthetic pairing 与 quiescence</td><td>Session event 与 inbox assertions</td></tr>
+      <tr><td>Native internal scheduler failure 排空且 Turn error</td><td>私有 scheduler rejection 注入</td></tr>
+      <tr><td>Code Mode overlap、cap、exclusive barrier through post、run settlement drain</td><td>per-run gated tools</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">覆盖缺口 1</div><p>Code Mode 名为“out-of-order completion”的 post/context test 实际使用 FIFO <code>release()</code>，源码注释也承认不能反向释放；它随后 <code>releaseAll()</code>，没有制造 B 先于 A 完成。Commit cursor 本身清晰，但这个测试名声称的 interleave 尚未被该 fixture 证明。<evidence id="PARALLEL-CODE-ORDER-TEST"></evidence></p></div>
+  <div class="claim assessment"><div class="claim-label">其余覆盖缺口</div><p>Native 与 Code Mode 都没有直接测试“classifier 返回 parallel 后、实际 body resolution 前替换同名 definition”的窗口；也没有异步 result observer 或异步 dispatch-log 重排的 characterization test。它们是彼此独立的 case，不应压成一个固定测试数量。</p></div>
+</section>
+
+<section>
+  <h2>19. 文档审计：两个 README 当前一致，所链接的 implemented note 已过时</h2>
+  <p><code>packages/core/agent-loop/README</code> 与 <code>packages/core/tools/README</code> 已准确描述 rolling pool、exclusive barrier、ordered policy/results/context、默认 cap 10，以及 Code Mode 的独立并行 bridge。<evidence id="PARALLEL-AGENT-README"></evidence><evidence id="PARALLEL-README"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">明确漂移</div><p>它们链接的 2026-07-10 implemented Agent Note 仍说：取消时未启动调用“没有 audit event”；Code Mode 内部队列“保持串行且不在 scheduler 内”；验证仍只覆盖 Code Mode serial boundary。当前源码与测试已经分别改为 synthetic call/result 和 parallel per-run pool。该 note 不应继续被当作“完整安全约定”的现行真相，应更新或标记被后续实现取代。<evidence id="PARALLEL-NOTE-DRIFT"></evidence></p></div>
+</section>
+
+<section>
+  <h2>20. 静态 findings 与最终评价</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Finding</th><th>分类</th><th>影响 / 建议</th></tr></thead>
+    <tbody>
+      <tr><td>分类后、实际 body resolution 前可替换 live definition</td><td>条件性并发安全风险</td><td>补测试；绑定 definition 或在 body resolution 点校验 registry generation</td></tr>
+      <tr><td>Async result observer 不被 scheduler await</td><td>扩展时序边界</td><td>需要 gate 的逻辑放 awaited waterfall</td></tr>
+      <tr><td>Code nested settle append 可受异步 log shaping 重排</td><td>可观测性边界</td><td>按 subCallId 配对，不以 event seq 推断 body 完成顺序</td></tr>
+      <tr><td>Code “out-of-order” test 没有实际反转完成顺序</td><td>回归覆盖缺口</td><td>使用 per-id gates 明确先释放第二个</td></tr>
+      <tr><td>Implemented design note 与现行取消/Code scheduler 冲突</td><td>文档漂移</td><td>更新 note 与 verification 声明</td></tr>
+      <tr><td>两个 cap 都是局部窗口，不是全局 admission control</td><td>运维容量边界</td><td>Provider/host 继续实施全局 quota</td></tr>
+      <tr><td>Unary classifier 看不到资源关系</td><td>刻意保守</td><td>关系型安全一律 exclusive</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">总体判断</div><p>核心算法小而严谨：scheduler-controlled 并发集中在 dispatch/body，中间结果用 slot 保存，Native 顶层 post/result/context 回到单 lane；取消和正常工具错误也有明确收敛路径。异步 observer 与 Code nested-log 是显式例外。最需要优先修复的不是算法重写，而是关闭 live-definition 的 classify/body-resolution TOCTOU，分别补上 definition replacement、observer continuation、nested-log reorder 与真正反序完成的测试，并让设计文档重新追上代码。</p></div>
+  <div class="claim fact"><div class="claim-label">验证状态</div><p>本章在固定 commit 上逐行追踪 ToolRuntime classifier/staged pipeline、Agent Loop scheduler/Session append、Code Mode bridge、配置、README、implemented note 与对应单元测试；并执行 targeted Vitest：3 个文件、120 项测试全部通过。运行结果证明现有测试保持绿色；上表标出的未覆盖时序仍是静态 findings，不冒充已有回归证明。</p></div>
+</section>

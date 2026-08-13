@@ -1,0 +1,216 @@
+<section>
+  <h2>Conclusion: Scheduler-Controlled Dispatch and Bodies May Overlap; Native Authoritative Commit Stays Ordered</h2>
+  <div class="thesis"><p>Parallel tool calling in DeepSeek Harness does not hand the model's array directly to <code>Promise.all</code>. The visible definition first classifies each call through a fail-closed contract. The Agent Loop then builds a bounded rolling window in model order and turns every exclusive call into a barrier. Pre-policy, approval, and guards run in order; around-dispatch and bodies may overlap; Native top-level post/finalize, <code>tool/result</code>, and additional context commit in model order. Asynchronous <code>tools/result</code> observer continuations and Code Mode nested dispatch-log side work sit outside that commit guarantee. The default window is 10, and 1 restores serial scheduler-controlled dispatch.</p></div>
+  <div class="claim fact"><div class="claim-label">The state machine in one line</div><p><code>classify → ordered prepare → concurrent dispatch → model-order finalize → durable result → next-step context</code>. The complete Assistant message is persisted before the Loop extracts all tool-call blocks and enters this machine. <evidence id="PARALLEL-LOOP-ENTRY"></evidence><evidence id="PARALLEL-GROUPING"></evidence></p></div>
+  <p>The design protects replay, policy order, and parent Session state ahead of maximum throughput. Its costs are equally explicit: a fast result can wait behind a slow earlier sibling, the classifier cannot say that writes to two different paths are compatible, and a per-Agent, per-Step cap is not a process-wide resource budget.</p>
+</section>
+
+<section>
+  <h2>1. Four Different Orders Must Be Kept Separate</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Order</th><th>Guarantee</th><th>What may be out of order</th></tr></thead>
+    <tbody>
+      <tr><td>Model order</td><td>The order of tool-call blocks in Assistant content is the index and commit baseline</td><td>Nothing</td></tr>
+      <tr><td>Start order</td><td>Calls enter prepare and dispatch in model order; a later call does not start first</td><td>Body completion</td></tr>
+      <tr><td>Completion order</td><td>Parallel bodies may complete in any order</td><td>This is where concurrency actually exists</td></tr>
+      <tr><td>Commit order</td><td>Post-policy, <code>tool/result</code>, contexts, and concludes-turn follow model order</td><td>Completion of asynchronous read-only observers is outside this guarantee</td></tr>
+    </tbody>
+  </table></div>
+  <p>The implementation places completed dispatches into slots indexed by model order. The <code>committed</code> cursor can advance only across a contiguous ready prefix. A later call that returns first therefore cannot enter post, Session history, or next-step context first. <evidence id="PARALLEL-ROLLING-POOL"></evidence></p>
+</section>
+
+<section>
+  <h2>2. <code>executionMode()</code> Is Strict Opt-In and Evaluated Per Call</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Input state</th><th>Classification</th><th>Reason</th></tr></thead>
+    <tbody>
+      <tr><td>The visible definition's <code>isConcurrencySafe(args)</code> returns exactly <code>true</code></td><td><code>parallel</code></td><td>The only opt-in path</td></tr>
+      <tr><td>No classifier, false, or a truthy non-boolean</td><td><code>exclusive</code></td><td>Overlap is denied by default</td></tr>
+      <tr><td>Unknown, hidden by scope, or collapsed as a direct code-only call</td><td><code>exclusive</code></td><td>No executable definition resolves</td></tr>
+      <tr><td>The classifier throws</td><td><code>exclusive</code></td><td>A classification failure cannot elevate authority</td></tr>
+      <tr><td>Arguments to a <code>defineTool</code> definition are invalid</td><td><code>exclusive</code></td><td>The helper soft-validates before calling the typed classifier</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Outside the model contract</div><p><code>ToolExecutionMode</code> has only the tagged <code>parallel</code> and <code>exclusive</code> arms. <code>isConcurrencySafe</code> is host metadata; schema projection sends only name, description, and parameters. <evidence id="PARALLEL-MODE-CONTRACT"></evidence><evidence id="PARALLEL-CLASSIFIER"></evidence><evidence id="PARALLEL-TYPED-CLASSIFIER"></evidence></p></div>
+</section>
+
+<section>
+  <h2>3. This Is a Unary Promise, Not a Resource-Conflict Graph</h2>
+  <p>The classifier contract supplies only the current call's parsed arguments and expects a synchronous unary judgment; it receives neither siblings nor the current pool. JavaScript does not technically prevent a closure from touching other state or initiating I/O, but doing so violates the classification contract and introduces dependencies the scheduler cannot see. Returning true is a strong promise: this call may overlap with any sibling that also returns true. It can express “read mode is parallel, write mode is exclusive” for one tool, but not “these two writes are safe only when their targets differ.”</p>
+  <div class="claim assessment"><div class="claim-label">Author responsibility</div><p>A parallel body must not mutate parent-owned state. Races in a shared recorder, provider, or cache must commute, serialize internally, or fail closed. The scheduler does not verify that promise. An overly broad declaration turns a latent race into production behavior; an overly narrow one only costs latency. The upstream design note explicitly chooses this conservative tradeoff. <evidence id="PARALLEL-SAFETY-NOTE"></evidence></p></div>
+</section>
+
+<section>
+  <h2>4. Groups Are Discovered Incrementally, Not Pre-Sliced Once</h2>
+  <pre><code>model calls: P1  P2  X3  P4
+
+classify P1 → open a candidate parallel suffix
+start P1, reclassify/start P2
+reclassify X3 → stop replenishing, drain P1/P2
+run X3 alone through post/commit
+classify/start P4</code></pre>
+  <p>The outer loop classifies only the current first call. An exclusive first call becomes a singleton group that is fully awaited. A parallel first call passes the remaining suffix to <code>runGroup</code>, whose pool classifies each later call again immediately before it starts. When one becomes exclusive, the current group returns its actual <code>consumed</code> count and leaves the barrier for the next outer iteration. <evidence id="PARALLEL-GROUPING"></evidence></p>
+  <div class="claim fact"><div class="claim-label">The barrier covers full commit</div><p>Exclusive does not merely mean “one body at a time.” The whole singleton group completes prepare, body, post, finalization, result append, and context acceptance before the next group starts. Tests cover parallel → exclusive → parallel grouping and reclassification after registry replacement. <evidence id="PARALLEL-GROUP-TESTS"></evidence></p></div>
+</section>
+
+<section>
+  <h2>5. The Rolling Pool Keeps Its Cap Without Fixed-Window Idling</h2>
+  <p><code>inFlight</code> holds dispatch Promises that have launched but have not yet been reaped by the driver; a settled Promise may remain briefly between settlement and deletion. The pool fills in order up to <code>maxParallelToolCalls</code>. Any settlement wakes the driver through <code>Promise.race</code>; the driver removes that slot, commits the contiguous ready prefix if possible, and then admits another call. It does not wait for an entire fixed window, so capacity beside one slow call remains useful.</p>
+  <pre><code>cap = 2
+start C1, C2
+C2 settles first  → slot[1] ready, cannot commit, one capacity opens
+start C3
+C1 settles        → commit C1, C2; continue rolling
+C3 settles        → commit C3</code></pre>
+  <div class="claim fact"><div class="claim-label">Cap semantics</div><p>The cap limits concurrently unsettled parallel dispatches in one Agent Step. It does not count settled slots waiting for an earlier commit and does not constrain another Agent. Tests prove cap-2 replenishment and fully serial behavior at cap 1. <evidence id="PARALLEL-ROLLING-POOL"></evidence><evidence id="PARALLEL-CAP-TESTS"></evidence></p></div>
+</section>
+
+<section>
+  <h2>6. Why Only the Middle of the Pipeline Is Concurrent</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Stage</th><th>Concurrency</th><th>Reason</th></tr></thead>
+    <tbody>
+      <tr><td>Append <code>tool/call</code></td><td>Ordered</td><td>Establish durable identity and the original argument fact first</td></tr>
+      <tr><td>Create execution, pre-execute, approval, guards</td><td>Ordered</td><td>Policy may carry order-sensitive state</td></tr>
+      <tr><td><code>tools/execute</code> wrappers and body</td><td>May overlap</td><td>This is where external I/O and compute latency live; wrappers must be reentrant</td></tr>
+      <tr><td>Post-execute, rendering/finalization, result notification</td><td>Invoked in order</td><td>Promises returned by observers are not awaited, so their continuations may overlap</td></tr>
+      <tr><td>Append <code>tool/result</code>, accept context</td><td>Ordered</td><td>Authoritative model-history and next-Step order</td></tr>
+    </tbody>
+  </table></div>
+  <p>ToolRuntime's symbol-keyed private scheduler view splits the same execution pipeline into <code>prepare</code>, <code>dispatch</code>, and <code>finalize</code>/<code>finish</code>. Ordinary callers still use the complete <code>execute()</code>. <evidence id="PARALLEL-PIPELINE-SPLIT"></evidence><evidence id="PARALLEL-PREPARE"></evidence><evidence id="PARALLEL-DISPATCH"></evidence><evidence id="PARALLEL-FINALIZE"></evidence></p>
+</section>
+
+<section>
+  <h2>7. What “Ordered Results” Means in the Session Log</h2>
+  <p>Every started call first appends <code>tool/call</code> with the provider's raw argument string and retains its seq. At commit, the Loop creates <code>tool/result</code> from final content, isError, error information, and metadata, then points <code>sourceEventSeqs:[callSeq]</code> back to the exact call. Only then does it accept each <code>additionalContexts</code> item from that result. <evidence id="PARALLEL-DURABLE-PAIRING"></evidence></p>
+  <aside class="caveat"><strong>Call and result are not adjacent:</strong> a rolling window can produce <code>call C1, call C2, result C1, call C3, result C2...</code>. The invariants are model-ordered calls, model-ordered results, and explicit seq correlation—not adjacency.</aside>
+  <p>The production test settles C2 first and confirms that no result exists before C1 is released. The final <code>deriveMessages()</code> output still contains C1 then C2. <evidence id="PARALLEL-ORDER-TESTS"></evidence></p>
+</section>
+
+<section>
+  <h2>8. Head-of-Line Blocking Deliberately Buys Consistency</h2>
+  <div class="claim assessment"><div class="claim-label">Benefit</div><p>The next provider request, Session replay, post hooks, and next-step contexts all agree with the model's original call order. A later network response cannot reorder policy state merely because it was faster.</p></div>
+  <div class="claim assessment"><div class="claim-label">Cost</div><p>One slow early call blocks post/finalization and model visibility for every completed later result, whose slots remain in memory. The rolling pool may continue starting safe later work, but the model cannot consume it early. This is an explicit latency-versus-determinism tradeoff, not a missed scheduler wakeup.</p></div>
+</section>
+
+<section>
+  <h2>9. Live Reclassification Closes Most Queue Drift but Does Not Snapshot a Definition</h2>
+  <p>The scheduler reclassifies the first call after every barrier and rereads the current visible definition before each parallel-pool replenishment. If a synchronous result observer replaces a tool, an unstarted call sees the new classifier. A test proves the current pool drains before the replacement's new exclusive definition starts. <evidence id="PARALLEL-RECLASS-TESTS"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Static finding: classify-to-body-resolution window</div><p>Classification does not pin ToolDefinition into the execution. After classification, <code>startCall</code> awaits ordered <code>prepare</code>; dispatch then awaits the <code>tools/execute</code> waterfall; only the body finally resolves the live definition again by name. A replacement from parallel to mutating exclusive anywhere in that interval can occupy the old parallel slot. The execution has also captured the old definition's finalizer, potentially producing “old finalizer + new body.” A complete repair must snapshot/bind one definition across classification and execution, or atomically validate a registry generation and schedule at actual body resolution. Reclassifying after prepare closes only one example window. <evidence id="PARALLEL-GROUPING"></evidence><evidence id="PARALLEL-PREPARE"></evidence><evidence id="PARALLEL-DISPATCH"></evidence></p></div>
+</section>
+
+<section>
+  <h2>10. Result Observers Are Invoked in Order but Are Not Awaitable Scheduler Gates</h2>
+  <p><code>finishScheduledExecution</code> synchronously publishes the frozen result. <code>notifyResult</code> invokes callbacks in sequence but sends each returned Promise to an independent rejection handler instead of awaiting it. A registry change made before an observer's first <code>await</code> can therefore affect the next classification; a change made afterward may lose that race.</p>
+  <div class="claim assessment"><div class="claim-label">Extension boundary</div><p>Policy that must block later calls belongs in an awaited pre/post waterfall or must finish synchronously. Asynchronous <code>tools/result</code> work is appropriate for telemetry, not barriers. The current “result observer makes next call exclusive” test uses a synchronous callback and proves only synchronous mutation. <evidence id="PARALLEL-RESULT-OBSERVER"></evidence><evidence id="PARALLEL-RECLASS-TESTS"></evidence></p></div>
+</section>
+
+<section>
+  <h2>11. Cancellation Stops Replenishment, Drains Started Calls, and Synthesizes Results for Skipped Calls</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Cancellation point</th><th>Body</th><th>Durable result</th><th>Later behavior</th></tr></thead>
+    <tbody>
+      <tr><td>Before a group</td><td>No body starts</td><td>Every model call gets a synthetic call/result with <code>ABORTED_BEFORE_DISPATCH</code></td><td>No next LLM request</td></tr>
+      <tr><td>During pre/approval</td><td>The current body does not start; siblings are no longer prepared</td><td>The current and unstarted siblings receive before-dispatch errors</td><td>The Step ends</td></tr>
+      <tr><td>During parallel bodies</td><td>The signal propagates; the scheduler waits for all started Promises to quiesce</td><td>A success normally becomes <code>ABORTED</code>; a tool-owned error may survive; all commit in model order</td><td>No replenishment and no later exclusive barrier runs</td></tr>
+      <tr><td>During result/post commit</td><td>Started work is still drained</td><td>A final cancellation check may replace an outcome that remains successful</td><td>Contexts remain in the inbox</td></tr>
+    </tbody>
+  </table></div>
+  <p>The Loop's synthetic pairs ensure every tool-call in this Assistant message is closed for replay. This is an important change from the earlier design note. <evidence id="PARALLEL-ABORT"></evidence><evidence id="PARALLEL-ABORT-RESULT"></evidence><evidence id="PARALLEL-ABORT-TESTS"></evidence></p>
+</section>
+
+<section>
+  <h2>12. Cancellation Does Not Discard Accepted Additional Context</h2>
+  <p>Post-policy still runs in order for started calls, and their <code>additionalContexts</code> enter the Agent's next-step inbox after the corresponding results commit. If cancellation ends the Turn, those items are not yet appended as <code>user/message</code>; they enter a new Step on the next wake. Tests pin C1, C2 context order and their parked inbox state after cancellation. <evidence id="PARALLEL-CONTEXT-TEST"></evidence></p>
+  <p><code>concludesTurn</code> is likewise aggregated only when a successful result commits in order. It does not cancel siblings already submitted in the same Assistant message. The Agent treats the Step as completed only after the scheduler finishes the batch. <evidence id="PARALLEL-AGENT-STEP"></evidence></p>
+</section>
+
+<section>
+  <h2>13. Ordinary Tool Failures and Scheduler-Invariant Failures Use Different Channels</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Failure class</th><th>Carrier</th><th>Does the group continue?</th></tr></thead>
+    <tbody>
+      <tr><td>Arguments, policy denial, approval, guard, body, output, post, or finalizer failure</td><td>ToolRuntime normalizes a <code>ToolExecutionResult.isError</code></td><td>Yes; it commits in model order and the model may self-correct next Step</td></tr>
+      <tr><td>An internal staged scheduler Promise unexpectedly rejects</td><td>Thrown to the Agent Turn error boundary</td><td>New dispatch stops and <code>allSettled</code> drains started work</td></tr>
+    </tbody>
+  </table></div>
+  <p>The second class is not an ordinary extension result. The Native scheduler keeps already appended <code>tool/call</code> events and does not fabricate outcomes it cannot attribute, so the failed Step may contain calls without results. The Turn ultimately closes with an error reason. <evidence id="PARALLEL-SCHEDULER-FAILURE"></evidence><evidence id="PARALLEL-FAILURE-TEST"></evidence></p>
+</section>
+
+<section>
+  <h2>14. Two Independent Tens: Native Steps and Code Runs Have Separate Pools</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Configuration</th><th>Default</th><th>Scope</th><th>Dynamism</th></tr></thead>
+    <tbody>
+      <tr><td><code>agent-loop.maxParallelToolCalls</code></td><td>10</td><td>Each top-level Step of each Agent</td><td>Settings may update it; each group reads once, without disturbing an in-flight group</td></tr>
+      <tr><td><code>tools.maxParallelSubCalls</code></td><td>10</td><td>The nested binding pool of each <code>run_code</code></td><td>Fixed when ToolRuntime is constructed</td></tr>
+    </tbody>
+  </table></div>
+  <p>Both require a positive integer, and 1 means serial. They are not one shared semaphore. Multiple Agents, concurrent runs, and provider concurrency may multiply, so API quota, process pools, and connection pools still require provider-level admission control. <evidence id="PARALLEL-CAP-CONFIG"></evidence><evidence id="PARALLEL-CODE-DRIVER"></evidence></p>
+</section>
+
+<section>
+  <h2>15. Code Mode Repeats the Principle Without Reusing the Same Loop</h2>
+  <p><code>run_code</code> is one top-level exclusive tool from the model's perspective. Inside the program, every <code>tools.name(args)</code> call enters a separate per-run driver. That driver owns a pending queue, in-flight set, commit queue, and <code>exclusiveActive</code>. One ordered lane performs start/prepare and commit/finalize, while only nested dispatch bodies overlap.</p>
+  <pre><code>program submissions
+→ normalize lossless JSON + assign &lt;outer&gt;:code:N
+→ pendingQueue (submission order)
+→ classify at start
+→ bounded inFlight bodies / exclusive barrier
+→ commitQueue head cursor
+→ program promise value or ToolCallError
+→ defer contexts onto outer run_code result</code></pre>
+  <div class="claim fact"><div class="claim-label">Two history layers</div><p>A nested call does not create top-level <code>tool/call/result</code>. It writes <code>tool/code-dispatch-start</code> and <code>tool/code-dispatch</code> for UI and trajectory reconstruction. Only the outer <code>run_code</code> call's curated logs and result enter model history. <evidence id="PARALLEL-CODE-DRIVER"></evidence><evidence id="PARALLEL-CODE-BINDING"></evidence></p></div>
+</section>
+
+<section>
+  <h2>16. Code Mode Barriers, Context, and Settlement</h2>
+  <p>The driver always tries to commit a ready <code>commitQueue[0]</code> before starting the pending head. Exclusive waits for <code>inFlight.size===0</code> and holds <code>exclusiveActive</code> until its own post/commit completes. A started binding resolves or rejects from its tool outcome only in ordered-commit <code>settle()</code>, so the program observes the policy-final canonical value or one ToolCallError message rather than raw body completion. A queued binding cancelled before start is the exception: <code>abandon()</code> rejects it.</p>
+  <p>Nested contexts are passed to <code>exec.deferContext</code> in commit order on the outer execution. They can survive even if the program later fails. Once the outer run settles, its run-scoped controller cancels in-flight calls, rejects queued-unstarted calls, and drains both the driver and durable log work before the outer tool returns. <evidence id="PARALLEL-CODE-BINDING"></evidence><evidence id="PARALLEL-CODE-DRAIN"></evidence><evidence id="PARALLEL-CODE-TESTS"></evidence></p>
+</section>
+
+<section>
+  <h2>17. Durable Nested-Event Order Is Weaker Than Binding Order in Code Mode</h2>
+  <div class="claim assessment"><div class="claim-label">Static finding: log side work may reorder</div><p>Within the ordered commit lane, <code>settle()</code> first returns the result to the program and then launches asynchronous <code>shapeDispatchLog → session.append(tool/code-dispatch)</code> work. That work does not block the binding and is only drained collectively when the run ends. If an earlier log-content listener is slower than a later one, settlement events may append out of submission order. Start events remain ordered and the UI correlates by <code>subCallId</code>, so pairing is intact, but event seq/time must not be treated as canonical body-completion order. <evidence id="PARALLEL-CODE-BINDING"></evidence><evidence id="PARALLEL-CODE-DRAIN"></evidence></p></div>
+  <p>The current concurrency test compares the set of settlement ids rather than their order. There is no assertion for settlement-event order under asynchronous log shaping. This must remain distinct from strict append order for Native top-level <code>tool/result</code>. <evidence id="PARALLEL-CODE-TESTS"></evidence></p>
+</section>
+
+<section>
+  <h2>18. Test Coverage Is Strong but Several Precise Timing Cases Remain</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Proven behavior</th><th>Evidence style</th></tr></thead>
+    <tbody>
+      <tr><td>Native parallel overlap, three-group barriers, dynamic replacement, rolling cap, and cap 1</td><td>Deterministic gated tools</td></tr>
+      <tr><td>Native out-of-order body completion with ordered result, history, and context</td><td>Release C2, assert no result, then release C1</td></tr>
+      <tr><td>Synthetic pairing and quiescence when cancelled before, during pre, during bodies, or before a barrier</td><td>Session-event and inbox assertions</td></tr>
+      <tr><td>Native internal scheduler failure drains and closes the Turn as error</td><td>Injected private-scheduler rejection</td></tr>
+      <tr><td>Code Mode overlap, cap, exclusive barrier through post, and run-settlement drain</td><td>Per-run gated tools</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">Coverage gap 1</div><p>The Code Mode test named “out-of-order completion” actually uses FIFO <code>release()</code>; its own comment acknowledges that reverse release is impossible, after which it calls <code>releaseAll()</code>. It does not make B complete before A. The commit cursor is clear in source, but the interleave claimed by the test name is not proven by that fixture. <evidence id="PARALLEL-CODE-ORDER-TEST"></evidence></p></div>
+  <div class="claim assessment"><div class="claim-label">Other coverage gaps</div><p>Neither Native nor Code Mode directly tests replacement of a same-name definition after a parallel classification but before actual body resolution. There is also no characterization test for asynchronous result-observer continuations or asynchronous dispatch-log reordering. These are independent cases, not one fixed test count.</p></div>
+</section>
+
+<section>
+  <h2>19. Documentation Audit: Both READMEs Are Current; Their Linked Implemented Note Is Not</h2>
+  <p><code>packages/core/agent-loop/README</code> and <code>packages/core/tools/README</code> accurately describe the rolling pool, exclusive barriers, ordered policy/results/context, default cap 10, and Code Mode's separate parallel bridge. <evidence id="PARALLEL-AGENT-README"></evidence><evidence id="PARALLEL-README"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Confirmed drift</div><p>The linked 2026-07-10 implemented Agent Note still says that unstarted calls have “no audit event” on cancellation, that Code Mode's internal queue remains serial and outside this scheduler, and that verification covers only a serial Code Mode boundary. Current source and tests use synthetic call/result pairs and a parallel per-run pool. The note should no longer be treated as the current “full safety contract”; it needs an update or an explicit supersession marker. <evidence id="PARALLEL-NOTE-DRIFT"></evidence></p></div>
+</section>
+
+<section>
+  <h2>20. Static Findings and Final Assessment</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Finding</th><th>Classification</th><th>Impact / recommendation</th></tr></thead>
+    <tbody>
+      <tr><td>A live definition can change after classification but before actual body resolution</td><td>Conditional concurrency-safety risk</td><td>Add tests; bind the definition or validate a registry generation at body resolution</td></tr>
+      <tr><td>Async result observers are not awaited by the scheduler</td><td>Extension timing boundary</td><td>Put gating work in an awaited waterfall</td></tr>
+      <tr><td>Code nested settlement appends may reorder under asynchronous log shaping</td><td>Observability boundary</td><td>Pair by subCallId; do not infer body completion order from event seq</td></tr>
+      <tr><td>The Code “out-of-order” test never reverses completion</td><td>Regression-coverage gap</td><td>Use per-id gates and release the second call first</td></tr>
+      <tr><td>The implemented design note conflicts with current cancellation and Code scheduling</td><td>Documentation drift</td><td>Update its decisions and verification claims</td></tr>
+      <tr><td>Both caps are local windows, not global admission control</td><td>Operational capacity boundary</td><td>Keep global quota in providers and hosts</td></tr>
+      <tr><td>The unary classifier cannot see resource relationships</td><td>Deliberately conservative</td><td>Keep relationally safe operations exclusive</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">Overall judgment</div><p>The core algorithm is compact and disciplined: scheduler-controlled concurrency is concentrated in dispatch/bodies, intermediate results live in slots, and Native top-level post/result/context returns to one lane; cancellation and ordinary tool errors have explicit convergence paths. Async observers and Code nested logs are explicit exceptions. The highest-value next work is not a scheduler rewrite; it is closing the live-definition classify/body-resolution TOCTOU, separately covering definition replacement, observer continuations, nested-log reordering, and genuine reverse completion, and bringing the design note back in line with source.</p></div>
+  <div class="claim fact"><div class="claim-label">Verification status</div><p>This chapter traced the ToolRuntime classifier and staged pipeline, Agent Loop scheduler and Session appends, Code Mode bridge, configuration, READMEs, implemented note, and corresponding unit tests line by line at the pinned commit. Targeted Vitest then passed all 120 tests across three files. That run proves the existing suite is green; the uncovered timing cases listed above remain static findings, not claimed regression proof.</p></div>
+</section>

@@ -6,7 +6,7 @@
 <body data-page="permission-approval" data-baseline="47f943859bef60e4160492346772ded9b24f765a" data-lang="zh">
   <header class="topbar"><button class="icon-button nav-toggle" type="button" data-nav-toggle aria-label="打开章节目录" aria-expanded="false">☰</button>
     <a class="brand" href="../index.html"><span class="brand-mark">DS</span><span>Harness 系统拆解</span></a>
-    <span class="topbar-meta">固定基线 47f943859b · 17 已复核 / 1 撰写中 / 36 章</span>
+    <span class="topbar-meta">固定基线 47f943859b · 21 已复核 / 1 撰写中 / 36 章</span>
     <div class="topbar-actions"><a class="language-switch" href="../../pages/permission-approval.html" lang="en" aria-label="阅读本章英文版">English</a><button class="icon-button" type="button" data-theme-toggle aria-label="切换明暗主题">◐</button></div></header>
   <div class="layout"><aside class="sidebar" data-sidebar aria-label="章节目录"><input class="filter" data-chapter-filter type="search" placeholder="筛选章节……" aria-label="筛选章节"><section class="nav-part" data-part><h2 class="part-title">导论</h2>
     <a class="chapter-link" data-chapter-item href="../pages/reading-guide.html">
@@ -33,11 +33,11 @@
     <a class="chapter-link" data-chapter-item href="../pages/tool-primitives.html">
       <span class="chapter-number">16</span><span>工具定义原语与执行管线</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link" data-chapter-item href="../pages/tool-catalog.html">
       <span class="chapter-number">17</span><span>工具全集与能力分类</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link" data-chapter-item href="../pages/tool-parallelism.html">
-      <span class="chapter-number">18</span><span>工具并行器与结果顺序</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link current" data-chapter-item href="../pages/permission-approval.html">
-      <span class="chapter-number">19</span><span>权限分析、审批与单调 Guard</span><span class="status-dot queued" title="待研究"></span></a></section><section class="nav-part" data-part><h2 class="part-title">执行环境</h2>
+      <span class="chapter-number">18</span><span>工具并行器与结果顺序</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link current" data-chapter-item href="../pages/permission-approval.html">
+      <span class="chapter-number">19</span><span>权限分析、审批与单调 Guard</span><span class="status-dot verified" title="已复核"></span></a></section><section class="nav-part" data-part><h2 class="part-title">执行环境</h2>
     <a class="chapter-link" data-chapter-item href="../pages/sandbox-filesystem.html">
-      <span class="chapter-number">20</span><span>Sandbox、Filesystem 与观察策略</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/shell-terminal-jobs.html">
-      <span class="chapter-number">21</span><span>Shell、PTY、Terminal 与后台作业</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/web-lsp-mcp-skill.html">
+      <span class="chapter-number">20</span><span>Sandbox、Filesystem 与观察策略</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link" data-chapter-item href="../pages/shell-terminal-jobs.html">
+      <span class="chapter-number">21</span><span>Shell、PTY、Terminal 与后台作业</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link" data-chapter-item href="../pages/web-lsp-mcp-skill.html">
       <span class="chapter-number">22</span><span>Web、LSP、MCP 与 Skill</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/code-mode-self-modification.html">
       <span class="chapter-number">23</span><span>Code Mode、自修改与动态插件</span><span class="status-dot queued" title="待研究"></span></a></section><section class="nav-part" data-part><h2 class="part-title">编排</h2>
     <a class="chapter-link" data-chapter-item href="../pages/multi-agent.html">
@@ -56,10 +56,247 @@
       <span class="chapter-number">34</span><span>缺口、限制与待验证问题</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/glossary-evidence.html">
       <span class="chapter-number">35</span><span>术语、证据目录与源码索引</span><span class="status-dot queued" title="待研究"></span></a></section></aside>
     <main class="main"><div class="page-shell"><article class="article" data-article><header><div class="page-kicker"><span>工具系统</span><span>·</span><span>第 19 章</span></div>
-      <h1>权限分析、审批与单调 Guard</h1><p class="subtitle">谁提出风险、谁能放行、谁只能拒绝</p><div class="page-meta"><span class="status queued">待研究</span><span>上游 47f943859b</span><span>范围: 分析 pre-execute policy、approval waterfall、absence fail-closed、monotonic guards、preset 与每次调用授权。</span></div></header>
-      <section class="placeholder"><p class="eyebrow">研究队列</p><h2>本章尚未进入结论状态</h2>
-    <p><strong>当前范围:</strong> 分析 pre-execute policy、approval waterfall、absence fail-closed、monotonic guards、preset 与每次调用授权。</p><p>页面已经纳入全量研究地图，但尚未完成源码控制流复核。以下是升级为“已复核”之前必须覆盖的检查面：</p>
-    <ul class="placeholder-checks"><li>实际 bundle / profile 装配入口</li><li>公开类型、事件与配置 schema</li><li>正常控制流与状态突变时机</li><li>并发、scope、所有权与 cleanup</li><li>错误、取消、重试和降级分支</li><li>持久化、projection 与 replay 语义</li><li>生产路径测试与运行时不变量</li><li>优势、代价、限制与待验证问题</li></ul></section><section class="learning-notes" aria-labelledby="learning-notes-title"><h2 id="learning-notes-title">我的学习体会</h2>
+      <h1>权限分析、审批与单调 Guard</h1><p class="subtitle">谁提出风险、谁能放行、谁只能拒绝</p><div class="page-meta"><span class="status verified">已复核</span><span>上游 47f943859b</span><span>范围: 分析 pre-execute policy、approval waterfall、absence fail-closed、monotonic guards、preset 与每次调用授权。</span></div></header>
+      <section>
+  <h2>结论：授权是分层的，只有最终否决具有单调性</h2>
+  <div class="thesis"><p>DeepSeek Harness 并不存在一个中心化的“风险引擎”。在固定基线中，风险提议有两个入口：可扩展的 <code>tools/pre-execute</code> 监听器可以返回 <code>ask</code>；支持沙箱的 shell（Bash/PowerShell）或文件系统调用，也可以在自身已冻结的参数中请求严格更宽的模式。持久权限预设提供常驻的沙箱与询问策略；一次审批最多放行一次调用；同步 guard 则保留最终且不可逆的否决权。这些能力被有意设计成不同层次。</p></div>
+  <div class="claim fact"><div class="claim-label">核心安全属性</div><p>注册表会在策略判断前对解析后的参数做脱离快照并深度冻结；pre、guard 与工具体共享这份不可变 graph，而审批通过 <code>callId</code> 关联更早的耐久 call record：Native <code>tool/call</code> 保留模型的 raw JSON，Code Mode <code>tool/code-dispatch-start</code> 保留 normalized JSON。pre 决策可以允许、拒绝或询问，却不能重写参数。询问获批不会绕过 guard：运行时按全局到 scope 链顺序检查，直到第一条拒绝或全部不表态；guard 没有允许结果。因此，策略判断与实际执行保持参数同一性，owner 的否决也不会被监听器顺序推翻。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L1364-L1423" title="执行身份与冻结参数: ToolRuntime 在策略前生成 token、解析 rootCallId，并对可无损 JSON 化的参数做脱离快照与深冻结。" aria-label="证据 APPROVAL-EXEC-SNAPSHOT">APPROVAL-EXEC-SNAPSHOT</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L582-L592" title="Pre 决策的封闭权限: pre-execute 只能允许、拒绝或询问；参数重写被明确排除。" aria-label="证据 APPROVAL-PRE-DECISION">APPROVAL-PRE-DECISION</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L1453-L1506" title="审批与 guard 的实际顺序: 准备阶段依次检查取消、运行 pre waterfall、解析 ask、运行单调 guard，并在最终取消检查后才分派。" aria-label="证据 APPROVAL-PREPARE-ORDER">APPROVAL-PREPARE-ORDER</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L703-L753" title="单调 guard 合同: guard 只能返回拒绝原因或不表态，没有允许结果；运行时遇到第一条拒绝即短路。" aria-label="证据 APPROVAL-GUARD-CONTRACT">APPROVAL-GUARD-CONTRACT</a></p></div>
+  <aside class="caveat"><strong>边界：</strong>本章分析仓库在 commit <code>47f943859bef60e4160492346772ded9b24f765a</code> 的静态组合与生产控制流。它不会把 UI 确认弹窗、可见工具列表或 HTTP 可达性围栏当成独立授权边界。</aside>
+</section>
+
+<section>
+  <h2>1. 六个容易被相似产品文案混为一谈的概念</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>概念</th><th>生命周期</th><th>权限</th><th>是否持久</th></tr></thead>
+    <tbody>
+      <tr><td>工具可见性限制</td><td>scope 在线组合期间</td><td>移除继承 schema；它是能力呈现，不是执行授权</td><td>否</td></tr>
+      <tr><td>沙箱模式</td><td>部署默认值或单个 Session 覆盖值</td><td>通过真正执行约束的后端限制文件效果</td><td>Session 覆盖：是</td></tr>
+      <tr><td>审批策略</td><td>部署默认值或单个 Session 覆盖值</td><td><code>ask</code> 路由到回答器；<code>never</code> 拒绝所有询问</td><td>Session 覆盖：是</td></tr>
+      <tr><td>权限预设</td><td>Session 常驻选择</td><td>把沙箱模式与审批策略打包</td><td>是</td></tr>
+      <tr><td>审批结果</td><td>单次请求</td><td>只有 <code>allowed-once</code> 放行；不会改变常驻策略</td><td>审计事件对：是</td></tr>
+      <tr><td>单调 guard</td><td>在线注册、逐调用判断</td><td>最终同步、只拒绝的否决权</td><td>否；产生的工具错误由调用方记录</td></tr>
+    </tbody>
+  </table></div>
+  <p>最反直觉的是 <code>approval/policy = never</code>：它表示“永不弹出询问；凡需审批的动作一律拒绝”，而不是“不询问就批准”。全访问预设之所以无需询问，是因为沙箱本身已经开放，并非 <code>never</code> 构成授权。</p>
+</section>
+
+<section>
+  <h2>2. 端到端决策图有两个审批入口</h2>
+  <pre><code>模型工具调用
+  → durable tool/call 已存在
+  → 参数脱离原引用并冻结
+  → tools/pre-execute waterfall ── 拒绝 ─────────────→ 错误结果
+              │
+              ├─ ask → ApprovalService → allowed-once / 拒绝
+              │
+              └─ 允许
+                   ↓
+             全局 + scoped 单调 guard ───────────────→ 错误结果
+                   ↓
+             around wrapper → 工具体
+                                  │
+                                  └─ shell（bash/pwsh）或 fs sandbox_permissions
+                                     → 严格扩权检查
+                                     → ApprovalService
+                                     → 仅为本次调用标记更宽模式
+                                  ↓
+                           有外部效果的后端执行
+                                  ↓
+                         post 策略 → 持久结果</code></pre>
+  <p>通用入口在 guard 与工具体之前询问。沙箱入口位于 shell（bash/pwsh）或 fs 工具体内部，但仍发生在进程启动或文件变更之前。因此，通用 pre 监听器与工具特定的扩权请求可能对同一次调用各问一次；组合方应避免重复策略。反过来，guard 也可以在工具特定弹窗出现前，根据冻结后的扩权参数直接拒绝。</p>
+</section>
+
+<section>
+  <h2>3. 风险由各层提出，并未被中心化评分</h2>
+  <p><code>PreToolDecision</code> 只有 <code>allow</code>、<code>deny(reason)</code> 与 <code>ask(reason?)</code>。内建代码里没有风险等级、数值分数、通用命令分类器或带特权的“批准 token”。waterfall 末端默认允许，所以需要广泛风险分类的部署必须组合自己的监听器；内建沙箱工具采用的则是一对显式参数：<code>sandbox_permissions</code> 与非空 <code>justification</code>。</p>
+  <div class="claim assessment"><div class="claim-label">模型可以提出什么</div><p>bash 指引把扩权约束为真实沙箱拒绝后的同一命令单次重试，要求选择够用的最窄更宽模式，并要求用户拒绝后不要继续尝试。这些指令有助于模型行为，但真正边界更严格：参数配对、运行时扩权表、审批结果与沙箱后端才负责执行。提示词不计作授权。</p></div>
+</section>
+
+<section>
+  <h2>4. 为什么 <code>tools/pre-execute</code> 是可扩展策略，而不是不可绕过的闸门</h2>
+  <p>pre 阶段是异步且按 scope 路由的 waterfall。监听器可以调用 <code>next</code> 继续下游、替换下游决策，或直接短路。因此注册顺序与 <code>prepend</code> 会影响结果。这个特性适合 hook、部署策略与机器审查器，但也意味着：若把“绝对拒绝”写成普通监听器，更靠前的监听器可以不调用下游、直接返回允许，从而绕过它。</p>
+  <div class="claim fact"><div class="claim-label">独立 guard 注册表补上这一缺口</div><p><code>ctx.tools.guard()</code> 注册同步且只拒绝的检查。运行时先判断全局层，再按从远到近的顺序判断所有适用 Agent scope 层；第一条拒绝原因胜出。任何 guard 都不能返回允许，而且 guard 之后不再运行 pre 监听器。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L1100-L1127" title="全局与 scoped guard 注册表: guard 可按全局或 Agent scope 注册；执行时先查全局，再从远到近遍历 scope 链并取第一条拒绝。" aria-label="证据 APPROVAL-GUARD-REGISTRY">APPROVAL-GUARD-REGISTRY</a></p></div>
+  <aside class="caveat"><strong>设计规则：</strong>可协商、可替换的策略适合 waterfall。所有权、隔离范围、委派上限等必须抵抗扩展顺序的约束，应放在单调 guard 或 owner 服务自身内部。</aside>
+</section>
+
+<section>
+  <h2>5. ApprovalService 是封闭且 fail-closed 的询问边界</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>结果</th><th>含义</th><th>工具后果</th></tr></thead>
+    <tbody>
+      <tr><td><code>allowed-once</code></td><td>某个回答器仅批准这次请求</td><td>通用 gate 变为允许，或把请求的更宽模式仅标到本次调用</td></tr>
+      <tr><td><code>rejected</code></td><td>明确拒绝，或 <code>never</code> 策略的确定性结果</td><td>拒绝</td></tr>
+      <tr><td><code>cancelled</code></td><td>请求被撤回</td><td>拒绝/中止；迟到回答被丢弃</td></tr>
+      <tr><td><code>unavailable</code></td><td>没有回答器、回答器抛错或返回非法值</td><td>拒绝</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">能力缺失绝不升级权限</div><p>结果词表是封闭联合类型。服务会在分派前由自身检查 <code>never</code> 并返回 rejected，因此即使 prepended 回答器也无法覆盖它。处于 <code>ask</code> 时，回答器 waterfall 默认落到 unavailable；同步异常、异步拒绝与非法返回值都会被归一化为 unavailable。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/interaction/user-approval/src/types.ts#L10-L29" title="审批 ID 与封闭结果词表: 每次请求使用品牌化 ID；结果仅允许 allowed-once、rejected、cancelled 与 unavailable。" aria-label="证据 APPROVAL-OUTCOMES">APPROVAL-OUTCOMES</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/interaction/user-approval/src/index.ts#L298-L344" title="回答器 waterfall 的 fail-closed 决策: never 在分派前拒绝；无回答器、异常或非法结果变为 unavailable；取消胜出后丢弃迟到答案。" aria-label="证据 APPROVAL-DECIDE-WATERFALL">APPROVAL-DECIDE-WATERFALL</a></p></div>
+  <p>在 ToolRuntime seam 上，缺少 ApprovalService 或调用没有 Agent 也会拒绝，因为此时不存在可审计的 Session 和路由身份。只有精确的 <code>allowed-once</code> 分支继续；rejected、cancelled 与 unavailable 保留不同错误文案，便于诊断。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L1678-L1728" title="ToolRuntime 的 ask 结果映射: 缺少审批服务或 Agent 时拒绝；只有 allowed-once 放行，其余三种结果映射为不同拒绝原因。" aria-label="证据 APPROVAL-ASK-MAPPING">APPROVAL-ASK-MAPPING</a></p>
+</section>
+
+<section>
+  <h2>6. 审计事件对可持久重放，但在线等待本身不可重放</h2>
+  <pre><code>开放 turn
+  → append approval/asked { 新 id, toolName, callId?, reason? }
+  → 等待回答器 waterfall
+  → append approval/decided { 同一 id, 封闭结果 }
+  → 返回结果</code></pre>
+  <p>审批请求只能发生在开放 turn 内，因为 turn 是 Session 日志的提交与重放边界。请求刻意不重复携带参数：<code>callId</code> 将它链接到已经记录、已经呈现的工具调用，避免两份参数发生漂移。两个审计事件均为 log-only，不是模型 transcript block。模型通过 runtime context 得知常驻策略，并最终收到工具结果。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/interaction/user-approval/src/index.ts#L34-L72" title="审批审计与策略事件: approval/asked 与 approval/decided 以同一 ID 配对；approval/policy 是 log-only 的 Session 覆盖事件。" aria-label="证据 APPROVAL-AUDIT-EVENTS">APPROVAL-AUDIT-EVENTS</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/interaction/user-approval/src/index.ts#L149-L174" title="不复制参数的审批请求: 请求携带 Agent、工具名、可选 callId、理由和 signal；参数通过既有工具调用关联而不重复存储。" aria-label="证据 APPROVAL-REQUEST-SHAPE">APPROVAL-REQUEST-SHAPE</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/interaction/user-approval/src/index.ts#L239-L276" title="Turn 内的审批审计事务: request 要求开放 turn，先写 asked，再等待决策并写 matching decided；任一提交失败都会拒绝调用。" aria-label="证据 APPROVAL-AUDIT-REQUEST">APPROVAL-AUDIT-REQUEST</a></p>
+  <div class="claim assessment"><div class="claim-label">重放边界</div><p>重放日志能够恢复过去的询问、结果与最新常驻策略，但无法在 host 进程重启后复活一个尚未完成的 JavaScript Promise。invariant 允许崩溃尾部保留未匹配的 <code>approval/asked</code>，同时拒绝孤立 decision、重复开放 id、turn 外事件与未知词表。浏览器重连恢复是下文所述的另一套同进程 pending registry。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/interaction/user-approval/src/invariant.ts#L17-L102" title="审批流的重放 invariant: invariant 重放并检查开放 turn、未匹配请求、重复 ID、孤立 decision 与封闭词表；turn 结束时不会强制清空未匹配 asked。" aria-label="证据 APPROVAL-INVARIANT">APPROVAL-INVARIANT</a></p></div>
+</section>
+
+<section>
+  <h2>7. 取消具有明确的竞态语义</h2>
+  <p>若请求 signal 已中止，审批会在回答器分派前得到 cancelled。否则服务令回答器与 signal 竞速；取消立即结算，之后到达的回答成为无效操作。回答器计算会被隔离，但不会被强制杀死。</p>
+  <p>工具准备阶段会在策略前、审批后和分派前再次检查调用方取消。如果正是取消导致审批取消，结果是 <code>ABORTED_BEFORE_DISPATCH</code>；已经完成的策略拒绝可能作为信息更充分的结果保留。同进程工具体一旦开始，ToolRuntime 会等待它达到静止点，然后把原本成功的结果改为 aborted。工具作者必须把 signal 传给子进程或 provider。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/src/index.ts#L1459-L1559" title="策略竞态与工具体取消: 准备阶段多次重查 caller 取消；已启动工具体达到静止点后才把成功结果转为 aborted。" aria-label="证据 APPROVAL-CANCEL-DISPATCH">APPROVAL-CANCEL-DISPATCH</a></p>
+  <aside class="caveat"><strong>不可声称工作已停止：</strong>“调用方不再等待”与“外部效果已经停止”是两件事。注册表明确不会遗弃一个已经开始的 Promise。</aside>
+</section>
+
+<section>
+  <h2>8. 预设是覆盖两个独立 knob 的持久常驻意图</h2>
+  <p>预设表条目包含机器 key、沙箱模式、审批策略与可选呈现文本。<code>custom</code> 保留给派生状态：两个有效 knob 不匹配任何条目时才出现；它不能被配置或选择。若 shell 不声明约束能力、默认值无法解析，或组合默认值不匹配任何预设且又未显式指定默认值，服务会在加载期失败。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/interaction/permission-presets/src/index.ts#L139-L225" title="可配置权限预设与加载期校验: 预设把 sandbox 与 approval 打包；custom 保留为派生值，非约束 shell、无效默认值和不匹配默认组合会加载失败。" aria-label="证据 APPROVAL-PRESET-CONFIG">APPROVAL-PRESET-CONFIG</a></p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>事件</th><th>职责</th><th>是否直接控制执行</th></tr></thead>
+    <tbody>
+      <tr><td><code>permission/preset</code></td><td>记录用户选择意图，并区分相同 bundle 的不同预设名</td><td>否</td></tr>
+      <tr><td><code>sandbox/mode</code></td><td>常驻沙箱覆盖值</td><td>是，每次受约束调用都会 fold</td></tr>
+      <tr><td><code>approval/policy</code></td><td>常驻询问行为</td><td>是，每次 ask 都会检查</td></tr>
+    </tbody>
+  </table></div>
+  <p>当前值由真实 knob 状态派生。如果上次记录的选择仍匹配，它会在多个同 bundle 名称中获胜；否则选择表中第一个匹配项，仍无匹配才是 <code>custom</code>。选择预设时先 append 意图事件，只为确实变化的 knob 写事件。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/interaction/permission-presets/src/index.ts#L280-L338" title="从真实 knob 派生当前预设: 仍匹配的最后选择优先，其次是表中第一个匹配项，否则派生 custom。" aria-label="证据 APPROVAL-PRESET-DERIVE">APPROVAL-PRESET-DERIVE</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/interaction/permission-presets/src/index.ts#L369-L392" title="预设的统一写入路径: 选择变更时先记录 permission/preset，再仅写入实际变化的 sandbox 与 approval knob；净零选择不写事件。" aria-label="证据 APPROVAL-PRESET-WRITE">APPROVAL-PRESET-WRITE</a></p>
+</section>
+
+<section>
+  <h2>9. “未来 Session 默认值”与“当前 Session”是两种不同变更</h2>
+  <p>真正新建的 Session 会读取最新用户设置，并在同步 <code>session/created</code> 发布期间固定全部三个权限事实；这早于创建返回、Agent 发布和首次 prompt，但不是早于 SessionStore 入表。带 seed、resume 或仅部分初始化的 Session 会保留自身有效权限，只补充缺失事实。因此，之后修改 Settings 只影响未来 Session，不会改变现有 Session。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/interaction/permission-presets/src/index.ts#L394-L430" title="新 Session 权限固定: 全新 Session 在同步 session/created 发布期间固定三项事实；seed、resume 或部分初始化 Session 保留有效状态，只补缺失事实。" aria-label="证据 APPROVAL-PRESET-PIN">APPROVAL-PRESET-PIN</a></p>
+  <p>可选 <code>permissions</code> projection 暴露预设表选项与有效当前值；projection key 不存在意味着该能力未被组合，客户端应隐藏控制项。裸 <code>/permission</code> 命令报告当前值与可用值；<code>/permission &lt;key&gt;</code> 校验 key，并与 UI 共享同一个服务写入路径。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/interaction/permission-presets/src/index.ts#L227-L277" title="权限 projection 与命令面: 服务注册 permissions projection，并以 /permission 作为报告与切换当前 Session 预设的统一命令。" aria-label="证据 APPROVAL-PRESET-PROJECTION">APPROVAL-PRESET-PROJECTION</a></p>
+  <div class="claim fact"><div class="claim-label">发布组合不等于库默认值</div><p>base bundle 发布了三行：<code>read-only + ask</code>、<code>workspace-write + ask</code> 与 <code>danger-full-access + never</code>。其环境变量派生默认值通常为 workspace-write + ask。权限服务独立 schema 默认值只有后两行，不能把这两个事实混为一谈。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/bundle/base/cordis.patch.yml#L166-L205" title="发布的三档权限组合: base bundle 组合 read-only+ask、workspace-write+ask 与 danger-full-access+never，并由环境变量决定部署默认值。" aria-label="证据 APPROVAL-SHIPPED-PRESETS">APPROVAL-SHIPPED-PRESETS</a></p></div>
+</section>
+
+<section>
+  <h2>10. 单次沙箱授权必须严格更宽、明确提出且转瞬即逝</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>有效模式</th><th>合法单次目标</th></tr></thead>
+    <tbody>
+      <tr><td><code>read-only</code></td><td><code>workspace-write</code>、<code>danger-full-access</code></td></tr>
+      <tr><td><code>workspace-write</code></td><td><code>danger-full-access</code></td></tr>
+      <tr><td><code>danger-full-access</code></td><td>无</td></tr>
+    </tbody>
+  </table></div>
+  <p>schema 公布封闭目标词表，但运行时会相对本次调用的有效常驻模式检查“严格更宽”。两个扩权字段必须成对出现，理由不能为空。同级或收窄请求会在弹窗前失败。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/sandbox/sandbox/src/escalation.ts#L22-L61" title="严格扩权阶梯与参数配对: read-only 只能升到 workspace-write/full，workspace-write 只能升到 full；权限与理由字段必须成对且理由非空。" aria-label="证据 APPROVAL-ESCALATION-LADDER">APPROVAL-ESCALATION-LADDER</a></p>
+  <p>随后 resolver 要求 ApprovalService 与 Agent 都存在，把目标模式与理由记入审批 reason，并且只接受 <code>allowed-once</code>。返回模式只是单次调用的局部值；它不会 append <code>sandbox/mode</code>，也不会改变预设。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/sandbox/sandbox/src/escalation.ts#L143-L188" title="单次扩权的 fail-closed 流程: 运行时先检查严格更宽，再检查审批服务与 Agent，只有 allowed-once 返回仅供本调用使用的目标模式。" aria-label="证据 APPROVAL-ESCALATION-FLOW">APPROVAL-ESCALATION-FLOW</a></p>
+  <div class="claim fact"><div class="claim-label">优先级</div><p>执行时，已批准的显式模式优先于 Session 最后一条 <code>sandbox/mode</code>，后者又优先于部署默认值。Session cwd 提供 workspace root。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/sandbox/sandbox-policy/src/index.ts#L126-L150" title="沙箱策略解析优先级: 已批准的显式模式优先于 Session 日志覆盖值，后者优先于部署默认值；Session cwd 决定 workspace root。" aria-label="证据 APPROVAL-SANDBOX-PRECEDENCE">APPROVAL-SANDBOX-PRECEDENCE</a></p></div>
+</section>
+
+<section>
+  <h2>11. Shell 与文件系统共享审批编排，再由不同后端真正执行约束</h2>
+  <p>Bash 与 PowerShell 都先校验参数、解析常驻策略，在提出扩权时等待审批，把返回模式标到请求，然后才启动前台进程或提交后台 job starter。因为对象 schema 是开放的、呈现并不等于执行，未公布的扩权字段在当前 executor 不支持沙箱时仍会由工具体拒绝。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/shell/tool-bash/src/index.ts#L190-L390" title="Bash 扩权与启动顺序: Bash 解析常驻策略、在任何进程启动前完成单次审批并标记模式，同时在无沙箱能力的组合中拒绝扩权字段。" aria-label="证据 APPROVAL-BASH-EXECUTION">APPROVAL-BASH-EXECUTION</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/shell/tool-pwsh/src/index.ts#L209-L406" title="PowerShell 扩权与启动顺序: PowerShell 在无沙箱能力时拒绝扩权字段；在执行路径中校验参数、解析常驻策略、等待单次审批并标记模式，之后才提交后台 starter 或运行前台进程。" aria-label="证据 APPROVAL-PWSH-EXECUTION">APPROVAL-PWSH-EXECUTION</a></p>
+  <p>文件系统变更工具使用共享 controller，执行同样的字段配对、常驻策略解析、审批与单次标记。provider 返回沙箱拒绝时，它会转换成结构化错误标记和“精确重试”提示；其他 provider 错误保持原样。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/fs/tool-fs/src/sandbox.ts#L37-L130" title="文件系统扩权 controller: 共享 controller 负责能力公布、参数配对、逐调用策略、审批与单次模式，并把沙箱拒绝映射为结构化重试提示。" aria-label="证据 APPROVAL-FS-ESCALATION">APPROVAL-FS-ESCALATION</a></p>
+  <aside class="caveat"><strong>技术边界：</strong>审批服务判断是否允许更宽请求，但它自身并不约束文件。真实 containment 取决于所选 shell/文件系统后端；第 20 章会审计这些机制。</aside>
+</section>
+
+<section>
+  <h2>12. 被委派的 child 不继承 parent 的单次授权</h2>
+  <p>创建 child 时，运行时同步捕获的只有 parent 的显式 Session 沙箱覆盖值——既不捕获部署默认值，也不捕获单次授权——并且只要审批能力存在，就把 child 的审批策略固定为 <code>never</code>。这些带 delegation source 的事件写在任何 fork seed 之后，因此旧 seed 无法重新开放 child。child 还会收到模型可见说明：需要审批的操作会被拒绝。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subagent/subagent/src/child-agent.ts#L130-L224" title="委派 child 的权限固定: child 只继承 parent 显式沙箱覆盖，不继承部署默认或单次授权；其审批策略固定为 never，并在 fork seed 后写入自身日志。" aria-label="证据 APPROVAL-CHILD-PIN">APPROVAL-CHILD-PIN</a></p>
+  <div class="claim assessment"><div class="claim-label">权限后果</div><p>parent 可以在 child 已固定的沙箱范围内委派工作，但 child 模型无法通过询问自行扩权。之后，可信 runtime/用户仍可 append 更新的策略事件；所以这不是密码学意义上的永久锁。它防止的是通过正常审批路径发生的模型自主扩权，而不是阻止所有更高权限管理。</p></div>
+</section>
+
+<section>
+  <h2>13. Web 审批是稳定的 server request，不是新的 unary RPC</h2>
+  <p>host 发送带稳定 <code>rpcId</code> 的 <code>approval/requested</code>，其中包含 Session id、approval id、工具名、可选 call id 与 reason。客户端响应复用相同 <code>rpcId</code>，并且只能提交 <code>allowed-once</code> 或 <code>rejected</code>；cancelled 与 unavailable 仍由 host 产生。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/src/api/approvals.ts#L1-L20" title="Web 审批 wire 合同: 审批是带稳定 rpcId 的 server request；客户端仅能回传 allowed-once/rejected，并精确回显 Session 与 approval ID。" aria-label="证据 APPROVAL-WIRE-CONTRACT">APPROVAL-WIRE-CONTRACT</a></p>
+  <p>proxy 回答器会认领最新、匹配、未决定且未被其他 pending 项认领的 <code>approval/asked</code> 事件。如果找不到这条审计事实，它会交给下游，而不是凭空创建可回答请求。pending 项能跨浏览器断线保留；打开新 mux 时会用同一 id 重放。abort 与 proxy teardown 会将其结算为 cancelled。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/src/api-proxy.ts#L1407-L1488" title="Host 审批 pending registry: proxy 将请求与未决定、未认领且 callId 匹配的审计事件配对；abort 与 teardown 取消，断线不删除 pending 项。" aria-label="证据 APPROVAL-WEB-REGISTRY">APPROVAL-WEB-REGISTRY</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/src/api-proxy.ts#L3429-L3447" title="重连时重放 pending 审批: 新 mux 订阅会以同一稳定 rpcId 重放仍未结算的审批请求。" aria-label="证据 APPROVAL-WEB-REPLAY">APPROVAL-WEB-REPLAY</a></p>
+  <p>响应先按 <code>rpcId</code> 路由，再经过解析，并且必须回显完全相同的 Session 与 approval id。第一个合法响应删除 pending 项；畸形、外来、过期与迟到响应都会被拒绝。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/src/api-proxy.ts#L3696-L3742" title="审批响应的精确关联: 响应按 rpcId 路由，并校验 payload、Session 与 approval ID；首次合法响应结算，迟到 ID 返回 not-pending。" aria-label="证据 APPROVAL-WEB-RESPOND">APPROVAL-WEB-RESPOND</a></p>
+</section>
+
+<section>
+  <h2>14. 审批面板是一次性的，但它展示的证据并不自包含</h2>
+  <p>请求 pending 时，对话 UI 会用可滚动卡片替换 composer，显示 reason、可选命令、“拒绝”与“仅允许一次”。首次点击后按钮锁定；传输失败时重新启用；收到 resolved frame 后面板消失。只有当 root running tool call 的 JSON 参数包含字符串 <code>command</code> 时，界面才会解析并展示命令；参数畸形、嵌套、无法配对或非 shell 调用都不显示命令行。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/ui-conversation/src/client/skeleton/ApprovalPanel.tsx#L22-L87" title="一次性审批面板: 面板从配对 root call 解析可选 shell 命令，展示理由，并用单次 latch 处理允许/拒绝与传输失败重试。" aria-label="证据 APPROVAL-UI-PANEL">APPROVAL-UI-PANEL</a></p>
+  <div class="claim assessment"><div class="claim-label">知情同意的取舍</div><p><code>ApprovalRequest</code> 不复制参数，避免了审计漂移，却也让已有工具调用呈现成为知情同意的一部分。对于文件系统或其他通用 ask，面板自身可能只有自由文本 reason 与工具名。更强的产品面可以从已记录调用渲染一份类型化、不可变摘要，而不创建第二份权威参数。</p></div>
+</section>
+
+<section>
+  <h2>15. 权限选择器提供便利与风险确认，但不是执行边界</h2>
+  <p>当前 Session 选择器过滤 <code>custom</code> 并提交 <code>/permission &lt;key&gt;</code>；可选命令弹窗执行同一路径；Settings 行用 expected revision 写入未来 Session 的 <code>defaultPreset</code>。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/ui-permission-presets/src/client/settings-store.ts#L128-L155" title="未来 Session 默认预设写入: Settings controller 用 expected revision 更新 defaultPreset，该值明确只供随后创建的 Session 使用。" aria-label="证据 APPROVAL-PERMISSION-SETTINGS-WRITE">APPROVAL-PERMISSION-SETTINGS-WRITE</a>三者都消费服务端公布的选项，但其风险对话框只由一个硬编码机器 key 触发：<code>danger-full-access</code>。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/ui-conversation/src/client/skeleton/PermissionSelect.tsx#L10-L170" title="Composer 权限选择器与风险确认: 选择器过滤 custom、提交 /permission，并仅对机器 key danger-full-access 弹出需勾选的风险确认。" aria-label="证据 APPROVAL-PERMISSION-COMPOSER">APPROVAL-PERMISSION-COMPOSER</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/ui-permission-presets/src/client/index.ts#L55-L169" title="权限命令弹窗装饰: 命令弹窗从 projection 构建选项，只对 FULL_ACCESS_PRESET 附加确认，并最终执行 /permission。" aria-label="证据 APPROVAL-PERMISSION-DECORATION">APPROVAL-PERMISSION-DECORATION</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/ui-permission-presets/src/client/PermissionRow.tsx#L15-L126" title="默认权限 Settings 风险确认: 未来 Session 默认值 UI 同样只对 FULL_ACCESS_PRESET 触发确认，确认后调用选择写入。" aria-label="证据 APPROVAL-PERMISSION-SETTINGS">APPROVAL-PERMISSION-SETTINGS</a></p>
+  <div class="claim assessment"><div class="claim-label">已确认的静态错配</div><p>服务端允许任意预设名，也允许任意沙箱/审批 bundle。因此，另一个名称映射到 <code>danger-full-access + never</code> 时不会触发确认；反过来，一个无害 bundle 若叫 <code>danger-full-access</code> 却会触发。直接命令或 Settings API 变更同样没有复选框。对于发布表，这个弹窗是有价值的 UX 警告，却不是通用授权检查。加固时应从公布的 bundle 或服务端所有的 risk 字段派生风险；真正权威仍应是服务端策略，而非 key 名称。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/interaction/permission-presets/src/index.ts#L139-L225" title="可配置权限预设与加载期校验: 预设把 sandbox 与 approval 打包；custom 保留为派生值，非约束 shell、无效默认值和不匹配默认组合会加载失败。" aria-label="证据 APPROVAL-PRESET-CONFIG">APPROVAL-PRESET-CONFIG</a></p></div>
+</section>
+
+<section>
+  <h2>16. 浏览器请求信任防御 origin 混淆，但源码明确说明它不是身份认证</h2>
+  <p>每个 <code>/api</code> 请求都必须通过 Host 校验、显式 cross-site Fetch Metadata 拒绝，以及 Origin 存在时的同 authority 校验。这能阻止 DNS rebinding 与普通恶意网页的跨站请求。源码明确把网络可达性和身份认证留在范围外。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/connection/src/api-request-trust.ts#L1-L122" title="浏览器请求信任围栏及其边界: Host、Fetch Metadata 与 Origin 检查防御 DNS rebinding/跨站请求；源码明确说明这不是身份认证层。" aria-label="证据 APPROVAL-WEB-TRUST">APPROVAL-WEB-TRUST</a></p>
+  <div class="claim assessment"><div class="claim-label">部署边界</div><p>任何能够通过被接受 authority 合法访问本地 API 的客户端，都能看到 mux 并竞速回答 pending 审批；第一个 id 完全匹配的合法响应获胜。这符合其明确的本地单用户服务假设。若 carrier 要暴露给互不信任的用户，就必须在 Host/Origin 围栏之外增加“已认证主体到 Session”的授权。</p></div>
+</section>
+
+<section>
+  <h2>17. ACP 是带精确所有权与单次选项的机器回答器</h2>
+  <p>只有当 ACP bridge 拥有完全相同的 Agent，且请求携带 call id 时，它才会认领审批。它只呈现两个选项——仅允许一次与仅拒绝一次——并显式映射取消；所有未知的非允许选项都变为拒绝。它绝不会把响应升级成持久授权。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/acp/acp/src/index.ts#L212-L229" title="ACP 单次机器回答器: ACP 只认领自己拥有且带 callId 的 Agent 请求，只提供 allow-once/reject-once，并把未知非允许结果收敛为拒绝。" aria-label="证据 APPROVAL-ACP-ANSWERER">APPROVAL-ACP-ANSWERER</a></p>
+  <p>这体现了回答器架构的意图：Web UI、ACP 或其他 provider 可以占据同一个 waterfall seam，而 ApprovalService 统一拥有词表、持久审计、取消与不可绕过的 <code>never</code> 策略。</p>
+</section>
+
+<section>
+  <h2>18. 测试编码了负向路径，而不只是成功弹窗</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>测试组</th><th>在固定基线中证明什么</th></tr></thead>
+    <tbody>
+      <tr><td>ToolRuntime 策略</td><td>deny/ask 映射、服务缺失、无 Agent 调用、非法结果、取消顺序，以及 pre 策略后的 guard</td></tr>
+      <tr><td>审批服务</td><td>开放 turn 要求、审计事件对、首个回答器、异常/非法值、取消、新 id、prepended 监听器之前的 <code>never</code>，以及策略 context</td></tr>
+      <tr><td>权限预设</td><td>fold、同 bundle 身份、<code>custom</code>、无变更写入、加载失败、新 Session 固定、seed/resume 保留与 HMR 补齐</td></tr>
+      <tr><td>沙箱扩权</td><td>严格阶梯、字段配对、单次授权、非扩权拒绝、渠道缺失/无 Agent，以及全部结果</td></tr>
+      <tr><td>Web proxy</td><td>往返、重连重放、畸形/外来/过期响应、abort、teardown、并行配对与无 call-id 请求隔离</td></tr>
+    </tbody>
+  </table></div>
+  <p><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/tests/tools.spec.ts#L676-L853" title="ToolRuntime 审批负向测试: 测试覆盖 pre 拒绝、缺少审批 seam、全部 ask 结果、取消、无 Agent 与非法回答。" aria-label="证据 APPROVAL-TOOLS-TESTS">APPROVAL-TOOLS-TESTS</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/tools/tests/scoped.spec.ts#L284-L375" title="单调 scoped guard 测试: 测试证明 prepended allow 无法绕过 owner guard，并覆盖全局组合、scope 隔离、处置与在线注册行为。" aria-label="证据 APPROVAL-GUARD-TESTS">APPROVAL-GUARD-TESTS</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/interaction/user-approval/tests/approval.spec.ts#L42-L503" title="ApprovalService 行为与策略测试: 测试覆盖开放 turn、审计事件对、回答器异常、取消、新 ID、never 不可绕过、Session 覆盖与模型 context。" aria-label="证据 APPROVAL-SERVICE-TESTS">APPROVAL-SERVICE-TESTS</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/interaction/permission-presets/tests/permission-presets.spec.ts#L67-L300" title="权限预设与 Session 固定测试: 测试覆盖 fold、custom、同 bundle 身份、写入、配置失败、新 Session 默认、seed/resume 保留与 HMR 补齐。" aria-label="证据 APPROVAL-PRESET-TESTS">APPROVAL-PRESET-TESTS</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/sandbox/sandbox/tests/escalation.spec.ts#L20-L111" title="沙箱扩权 fail-closed 测试: 测试覆盖参数配对、严格扩权、审计理由、服务/Agent 缺失，以及所有非授权结果。" aria-label="证据 APPROVAL-ESCALATION-TESTS">APPROVAL-ESCALATION-TESTS</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/tests/api-proxy-approval.spec.ts#L87-L329" title="Web 审批 registry 与恢复测试: 测试覆盖往返、稳定 ID 重放、畸形/外来/迟到响应、abort、teardown、并行配对与无审计事件分派。" aria-label="证据 APPROVAL-WEB-TESTS">APPROVAL-WEB-TESTS</a></p>
+  <aside class="caveat"><strong>证据等级：</strong>这里把生产测试作为可执行规格进行审阅；本章不声称在研究 checkout 中实际运行了上游测试套件。</aside>
+</section>
+
+<section>
+  <h2>19. 两处 README 描述已经落后于生产源码</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>文档说法</th><th>固定源码事实</th><th>影响</th></tr></thead>
+    <tbody>
+      <tr><td>权限 README 写成 <code>permissionPresets/preset</code> 与 <code>/permissionPresets</code></td><td>运行时实际使用 <code>permission/preset</code> 与 <code>/permission</code></td><td>运维或扩展作者可能搜索、集成错误标识符</td></tr>
+      <tr><td>API proxy README 声称 pending 表只处理 question，没有 approval 项</td><td>proxy 已有完整审批 registry、重连重放、响应校验、abort 与 teardown</td><td>文档中的 wire 能力和恢复模型已过时</td></tr>
+    </tbody>
+  </table></div>
+  <p><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/interaction/permission-presets/README.md#L5-L17" title="权限 README 的标识符漂移: README 仍把持久事件写作 permissionPresets/preset，并把命令写作 /permissionPresets。" aria-label="证据 APPROVAL-DOC-PRESET-DRIFT">APPROVAL-DOC-PRESET-DRIFT</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/host/apiproxy/README.md#L75-L81" title="API proxy README 的审批能力漂移: README 仍声称 pending interaction 表只处理 question，且没有 approval 项。" aria-label="证据 APPROVAL-DOC-API-DRIFT">APPROVAL-DOC-API-DRIFT</a></p>
+  <div class="claim assessment"><div class="claim-label">为何重要</div><p>权限代码对命名和生命周期误解尤其敏感。源码与测试内部一致；应修正公开 package README，让安全审阅从真实事件与命令路径开始。</p></div>
+</section>
+
+<section>
+  <h2>20. 与 Codex 的窄范围比较：分层方式相似，策略丰富度不同</h2>
+  <p>本节只使用 OpenAI 公开的 <a href="https://learn.chatgpt.com/docs/agent-approvals-security.md">Agent approvals &amp; security</a> 与 <a href="https://learn.chatgpt.com/docs/agent-configuration/subagents.md">Subagents</a> 文档，读取日期为 2026-08-13。DeepSeek 一侧是固定 commit 的源码级证据；Codex 一侧是截至读取日期的文档级证据。本节不推断私有服务或未公开实现。</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>维度</th><th>DeepSeek Harness 固定源码</th><th>Codex 公开文档</th></tr></thead>
+    <tbody>
+      <tr><td>核心分层</td><td>沙箱模式与审批策略是两个独立持久 knob，由预设打包</td><td>明确把沙箱模式与审批策略定义成两个独立控制项</td></tr>
+      <tr><td>典型平衡模式</td><td>发布 <code>workspace-write + ask</code></td><td>Auto 记录为 <code>workspace-write + on-request</code></td></tr>
+      <tr><td>审批策略词表</td><td><code>ask</code> 或 <code>never</code></td><td>记录了 <code>untrusted</code>、<code>on-request</code>、<code>never</code> 与 granular 类别</td></tr>
+      <tr><td>审查者</td><td>可组合回答器 waterfall；发布 Web 与 ACP 回答器；未发现中心自动风险审查器</td><td>记录了用户审查，以及通过独立 reviewer 完成的合格 <code>auto_review</code></td></tr>
+      <tr><td>外部效果领域</td><td>通用 pre 策略，加显式 bash/fs 扩权</td><td>记录 shell/沙箱请求，以及带副作用的 app 与 MCP 工具审批</td></tr>
+      <tr><td>Fail-closed</td><td>回答器缺失/抛错/非法、无 Agent 与 <code>never</code> 都会拒绝</td><td>记录了无法获得必需审批时阻止动作；自动审查不会扩大沙箱</td></tr>
+      <tr><td>委派</td><td>child 审批固定为 <code>never</code>，parent 单次授权不转移</td><td>公开文档称 subagent 继承当前沙箱策略；无法呈现新审批时，需新批准的动作会失败</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">可迁移经验</div><p>两者都把技术 containment 与人/机器同意视作不同层。DeepSeek Harness 特别值得复用的设计是可扩展策略之后显式的 deny-only guard；Codex 文档体现的优势则是更丰富的审批策略词表与明确的自动审查角色。这个比较是架构对照而非功能打分：源码证据与产品文档的置信层级不同。</p></div>
+</section>
+
+<section>
+  <h2>21. 设计评价、加固优先级与验证状态</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>发现</th><th>评价</th><th>优先级</th></tr></thead>
+    <tbody>
+      <tr><td>冻结参数 + pre 不可重写</td><td>强审计/执行同一性</td><td>保持</td></tr>
+      <tr><td>可扩展审批之后的 guard</td><td>能抵抗监听器顺序的强单调否决</td><td>所有 owner 不变量都应采用</td></tr>
+      <tr><td>封闭结果与 fail-closed 缺失语义</td><td>降级安全，且原因可诊断</td><td>保持</td></tr>
+      <tr><td>预设与单次授权分离</td><td>时间维度权限清楚；child 不继承临时扩权</td><td>保持并补强文档</td></tr>
+      <tr><td>风险弹窗依赖预设名称</td><td>可配置表下已确认的 UX/策略静态错配</td><td>高优先级加固</td></tr>
+      <tr><td>非 shell 调用的审批面板不自包含</td><td>同意质量依赖周边 call 呈现</td><td>增加类型化摘要</td></tr>
+      <tr><td>可达但无身份认证</td><td>只在明确的本地单用户信任模型下可接受</td><td>多用户暴露前重审</td></tr>
+      <tr><td>README 标识符/恢复语义漂移</td><td>实现能力强于文档描述</td><td>尽快修正</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">验证范围</div><p>本章追踪了 ToolRuntime 准备与取消；审批类型、服务、事件与 invariant；权限配置、projection、命令、Settings 与发布 bundle；共享沙箱扩权及 shell/fs 消费者；child 委派；Web wire/registry/UI；ACP；以及聚焦的生产测试。本次交付还运行了覆盖审批、preset、扩权、文件、进程、Job 与 Terminal 的 15 个 targeted Vitest 文件：508 项通过，1 项跳过。静态发现均明确标注；测试通过不等于完成运行时渗透测试、OS 沙箱验证、已认证多用户行为验证，也不提供任何未公开 Codex 内部实现信息。</p></div>
+</section>
+<section class="learning-notes" aria-labelledby="learning-notes-title"><h2 id="learning-notes-title">我的学习体会</h2>
     <p class="privacy">内容仅自动保存到当前浏览器，不上传、不进入仓库。你可以导出 Markdown 自行归档。</p><textarea data-learning-notes aria-label="我的学习体会" placeholder="记录你的理解、疑问、反例和可迁移原则……"></textarea>
     <div class="note-footer"><span data-note-saved>本地草稿</span><button type="button" data-note-export>导出 Markdown</button>
     <button type="button" class="danger" data-note-clear>清空</button><span data-note-count>0 字符</span></div></section><nav class="pagination" aria-label="章节翻页"><a href="../pages/tool-parallelism.html"><small>← 上一章 · 18</small><strong>工具并行器与结果顺序</strong></a><a class="next" href="../pages/sandbox-filesystem.html"><small>下一章 · 20 →</small><strong>Sandbox、Filesystem 与观察策略</strong></a></nav></article>

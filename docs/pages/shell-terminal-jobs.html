@@ -6,7 +6,7 @@
 <body data-page="shell-terminal-jobs" data-baseline="47f943859bef60e4160492346772ded9b24f765a" data-lang="en">
   <header class="topbar"><button class="icon-button nav-toggle" type="button" data-nav-toggle aria-label="Open chapter directory" aria-expanded="false">☰</button>
     <a class="brand" href="../index.html"><span class="brand-mark">DS</span><span>Harness Systems Dissection</span></a>
-    <span class="topbar-meta">Pinned baseline 47f943859b · 17 verified / 1 in progress / 36 chapters</span>
+    <span class="topbar-meta">Pinned baseline 47f943859b · 21 verified / 1 in progress / 36 chapters</span>
     <div class="topbar-actions"><a class="language-switch" href="../zh/pages/shell-terminal-jobs.html" lang="zh-CN" aria-label="Read this chapter in Chinese">中文</a><button class="icon-button" type="button" data-theme-toggle aria-label="Toggle light or dark theme">◐</button></div></header>
   <div class="layout"><aside class="sidebar" data-sidebar aria-label="Chapter directory"><input class="filter" data-chapter-filter type="search" placeholder="Filter chapters…" aria-label="Filter chapters"><section class="nav-part" data-part><h2 class="part-title">Introduction</h2>
     <a class="chapter-link" data-chapter-item href="../pages/reading-guide.html">
@@ -33,11 +33,11 @@
     <a class="chapter-link" data-chapter-item href="../pages/tool-primitives.html">
       <span class="chapter-number">16</span><span>Tool Definition Primitives and the Execution Pipeline</span><span class="status-dot verified" title="Verified"></span></a><a class="chapter-link" data-chapter-item href="../pages/tool-catalog.html">
       <span class="chapter-number">17</span><span>Complete Tool Catalog and Capability Taxonomy</span><span class="status-dot verified" title="Verified"></span></a><a class="chapter-link" data-chapter-item href="../pages/tool-parallelism.html">
-      <span class="chapter-number">18</span><span>Tool Parallelism and Result Ordering</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/permission-approval.html">
-      <span class="chapter-number">19</span><span>Permission Analysis, Approval, and Monotonic Guards</span><span class="status-dot queued" title="Queued"></span></a></section><section class="nav-part" data-part><h2 class="part-title">Execution Environment</h2>
+      <span class="chapter-number">18</span><span>Tool Parallelism and Result Ordering</span><span class="status-dot verified" title="Verified"></span></a><a class="chapter-link" data-chapter-item href="../pages/permission-approval.html">
+      <span class="chapter-number">19</span><span>Permission Analysis, Approval, and Monotonic Guards</span><span class="status-dot verified" title="Verified"></span></a></section><section class="nav-part" data-part><h2 class="part-title">Execution Environment</h2>
     <a class="chapter-link" data-chapter-item href="../pages/sandbox-filesystem.html">
-      <span class="chapter-number">20</span><span>Sandbox, Filesystem, and Observation Policy</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link current" data-chapter-item href="../pages/shell-terminal-jobs.html">
-      <span class="chapter-number">21</span><span>Shell, PTY, Terminal, and Background Jobs</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/web-lsp-mcp-skill.html">
+      <span class="chapter-number">20</span><span>Sandbox, Filesystem, and Observation Policy</span><span class="status-dot verified" title="Verified"></span></a><a class="chapter-link current" data-chapter-item href="../pages/shell-terminal-jobs.html">
+      <span class="chapter-number">21</span><span>Shell, PTY, Terminal, and Background Jobs</span><span class="status-dot verified" title="Verified"></span></a><a class="chapter-link" data-chapter-item href="../pages/web-lsp-mcp-skill.html">
       <span class="chapter-number">22</span><span>Web, LSP, MCP, and Skills</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/code-mode-self-modification.html">
       <span class="chapter-number">23</span><span>Code Mode, Self-Modification, and Dynamic Plugins</span><span class="status-dot queued" title="Queued"></span></a></section><section class="nav-part" data-part><h2 class="part-title">Orchestration</h2>
     <a class="chapter-link" data-chapter-item href="../pages/multi-agent.html">
@@ -56,10 +56,223 @@
       <span class="chapter-number">34</span><span>Gaps, Limitations, and Open Questions</span><span class="status-dot queued" title="Queued"></span></a><a class="chapter-link" data-chapter-item href="../pages/glossary-evidence.html">
       <span class="chapter-number">35</span><span>Glossary, Evidence Catalog, and Source Index</span><span class="status-dot queued" title="Queued"></span></a></section></aside>
     <main class="main"><div class="page-shell"><article class="article" data-article><header><div class="page-kicker"><span>Execution Environment</span><span>·</span><span>Chapter 21</span></div>
-      <h1>Shell, PTY, Terminal, and Background Jobs</h1><p class="subtitle">Short-lived processes, persistent sessions, retained output, and ownership</p><div class="page-meta"><span class="status queued">Queued</span><span>Upstream 47f943859b</span><span>Scope: Trace subprocesses, shell executors, terminal ownership, job registries, spill, signals, and kill escalation.</span></div></header>
-      <section class="placeholder"><p class="eyebrow">Research queue</p><h2>This chapter has not reached a conclusion state</h2>
-    <p><strong>Current scope:</strong> Trace subprocesses, shell executors, terminal ownership, job registries, spill, signals, and kill escalation.</p><p>This page is part of the complete research map, but its source-level control-flow audit is not complete. It must cover all of the following before it can be marked Verified:</p>
-    <ul class="placeholder-checks"><li>Actual bundle and profile assembly entry points</li><li>Public types, events, and configuration schemas</li><li>Normal control flow and exact mutation points</li><li>Concurrency, scope, ownership, and cleanup</li><li>Error, cancellation, retry, and degradation branches</li><li>Persistence, projections, and replay semantics</li><li>Production-path tests and runtime invariants</li><li>Benefits, costs, limitations, and open questions</li></ul></section><section class="learning-notes" aria-labelledby="learning-notes-title"><h2 id="learning-notes-title">My Learning Notes</h2>
+      <h1>Shell, PTY, Terminal, and Background Jobs</h1><p class="subtitle">Short-lived processes, persistent sessions, retained output, and ownership</p><div class="page-meta"><span class="status verified">Verified</span><span>Upstream 47f943859b</span><span>Scope: Trace subprocesses, shell executors, terminal ownership, job registries, spill, signals, and kill escalation.</span></div></header>
+      <section>
+  <h2>Conclusion: This Is Not One Shell but Four Orthogonal Lifecycle Systems</h2>
+  <div class="thesis"><p>DeepSeek Harness splits “run a command” into four layers: <code>ctx.subprocess</code> owns the execution world, process trees, and byte streams; <code>ctx.shell</code> normalizes a one-shot command into a foreground result or background process; <code>ctx.jobs</code> gives heterogeneous producers one background identity, ownership, and completion plane; and <code>ctx.terminals</code> manages PTY sessions that survive across calls. Tools are model-facing adapters over those seams; they do not own the underlying resources.</p></div>
+  <p>The split solves lifecycle rather than command syntax: who may see a resource, when cancellation counts as complete, how output loss remains explicit, and who reaps work when an Agent disappears. The cost is that deployment composition, owner scope, and provider capability all matter. A tool named <code>bash</code> alone does not reveal whether it starts a fresh process or reuses a persistent shell.</p>
+</section>
+
+<section>
+  <h2>1. Four-Layer Topology: Execution, Commands, Background Control, and Interactive Sessions</h2>
+  <pre><code>model tools
+  bash / pwsh ───────────────→ ctx.shell ──────→ ctx.subprocess.spawn
+       └─ run_in_background ─→ ctx.jobs ───────┘
+
+  terminal_* ────────────────→ ctx.terminals ─→ PTY backend
+       └─ background send ───→ ctx.jobs             └→ ctx.subprocess.spawnTerminal
+
+  persistent bash wrapper ───→ ctx.terminals (one reused PTY per Agent)</code></pre>
+  <div class="claim fact"><div class="claim-label">Substrate contract</div><p><code>SubprocessRuntime</code> is the shared substrate for ordinary processes and the shipped Bash terminal backend. A provider must resolve executables in the same execution world, return live handles immediately, define tree-scoped termination contracts, and reap live resources when the service is disposed. <code>TerminalBackend</code> remains replaceable, so another backend may bring a different substrate. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subprocess/subprocess/src/index.ts#L37-L139" title="Subprocess execution-world and lifecycle seam: Defines the shared environment scrub and the contracts for executables, ordinary processes, PTYs, tree-scoped termination, output reads, and service disposal." aria-label="Evidence SHELL-SUBPROCESS-SEAM">SHELL-SUBPROCESS-SEAM</a></p></div>
+  <p><code>ctx.shell</code> intentionally knows nothing about Sessions or Job IDs; background registration, polling, and notices belong to the Job layer. Conversely, the Job Registry knows nothing about commands, PTYs, or subagent implementations. It accepts producer-supplied cancel, done, and readOutput hooks.</p>
+</section>
+
+<section>
+  <h2>2. Shipped Compositions Select Two Completely Different <code>bash</code> Contracts</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Preset</th><th>Model-facing Bash</th><th>State</th><th>Background control</th></tr></thead>
+    <tbody>
+      <tr><td>Standard</td><td><code>dsh-tool-bash</code>; <code>pwsh</code> on Windows</td><td>Fresh process per call</td><td><code>run_in_background</code> plus three <code>job_*</code> tools</td></tr>
+      <tr><td>Minimal</td><td><code>dsh-tool-bash-persistent</code></td><td>One reused PTY per exact Agent</td><td>Commands serialize; long work backgrounds inside the shell</td></tr>
+      <tr><td>Terminal tool package</td><td>Six <code>terminal_*</code> tools</td><td>Explicit create, send, read, signal, list, and close</td><td><code>terminal_send</code> can join the Job Registry</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Actual assembly</div><p>The Standard preset registers one-shot Bash off Windows and PowerShell on Windows, plus Job controls. Minimal isolates its own Terminal service/backend and exposes only persistent Bash and an editor. Standard does not expose the six Terminal tools, and Minimal does not hand raw PTY lifecycle control to the model. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/apps/cli/config/agent-presets/standard/agent.cordis.yml#L35-L74" title="Standard one-shot shell and Job composition: Standard selects tool-bash or tool-pwsh by platform and places model Job controls in the Agent preset while the registry remains on the Host." aria-label="Evidence SHELL-STANDARD-COMPOSITION">SHELL-STANDARD-COMPOSITION</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/apps/cli/config/agent-presets/minimal/agent.cordis.yml#L1-L60" title="Minimal isolated persistent-shell composition: Minimal composes only persistent Bash and an editor through an isolated Terminal service, Bash backend, and persistent wrapper, without raw Terminal tools." aria-label="Evidence SHELL-MINIMAL-COMPOSITION">SHELL-MINIMAL-COMPOSITION</a></p></div>
+  <aside class="caveat"><strong>Audit rule:</strong> identical <code>bash</code> names do not imply identical contracts. Historical analysis needs the tool definition and the active preset/composition at that time.</aside>
+</section>
+
+<section>
+  <h2>3. The Subprocess Seam Rejects Hidden Defaults: the Caller Specifies Every Execution Condition</h2>
+  <p><code>SubprocessSpawnSpec</code> explicitly carries <code>argv</code>, <code>cwd</code>, all three stdio dispositions, cleanup grace, an AbortSignal, and an environment overlay. The provider does not guess a shell, directory, buffer limit, or deadline. <code>argv[0]</code> is the executable; the substrate performs no shell interpretation.</p>
+  <div class="claim fact"><div class="claim-label">Outcome semantics</div><p><code>done</code> rejects only for a spawn-level failure; exit code and signal after a successful spawn are ordinary outcomes. Collected streams use caller-owned byte offsets, so independent readers do not consume one another. A raw pipe belongs completely to the upper layer. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subprocess/subprocess/src/types.ts#L55-L193" title="Explicit subprocess spawn, output, and handle contract: The spawn spec explicitly carries argv, cwd, stdio, grace, signal, and env; done rejects only on spawn failure, collected output uses independent byte offsets, and terminate/wait are tree-scoped." aria-label="Evidence SHELL-SPAWN-CONTRACT">SHELL-SPAWN-CONTRACT</a></p></div>
+  <p>This allows local and remote execution to be swapped without changing the tool contract. A provider can change executable lookup, process/PTY transport, and filesystem world while callers continue to own policy and presentation.</p>
+</section>
+
+<section>
+  <h2>4. Child Environments Are Scrubbed First, Then the Current Harness Identity Is Rebuilt Explicitly</h2>
+  <pre><code>process.env
+  ├─ remove names matching KEY|PASSWORD|SECRET|TOKEN
+  ├─ remove every DSH_* name, case-insensitively
+  └─ retain PATH / HOME / locale / proxy and ordinary values
+        ↓
+caller env overlay (string restores; undefined deletes)
+        ↓
+shell tool injects the current ctx.shellEnv DSH_* snapshot per call</code></pre>
+  <div class="claim fact"><div class="claim-label">Preventing stale identity leaks</div><p>Ordinary-process and PTY backends share one scrub function. The explicit overlay merges afterward, so a deployment can still deliberately forward a credential-shaped or <code>DSH_*</code> value. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subprocess/subprocess/src/index.ts#L37-L66" title="Shared ambient environment scrub: The child baseline removes credential-shaped names and every DSH_* variable; a later explicit provider overlay can restore deliberately forwarded values." aria-label="Evidence SHELL-ENV-SCRUB">SHELL-ENV-SCRUB</a></p></div>
+  <div class="claim fact"><div class="claim-label">Managed variables</div><p><code>ctx.shellEnv</code> rebuilds, sorts, and freezes <code>DSH_HOME</code>, <code>DSH_SHELL=1</code>, an Agent's <code>DSH_SESSION_ID</code>, and <code>DSH_SESSION_JSONL</code> when the backend exposes a location. Contributors must predeclare keys; duplicate ownership or an undeclared runtime key fails loudly. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/shell/shell-env/src/index.ts#L81-L216" title="Per-execution managed DSH environment registry: The registry validates contributor and key ownership, collects built-ins plus current contributions per call, sorts and freezes them, and exposes an optional JSONL location through the persistence seam." aria-label="Evidence SHELL-MANAGED-ENV">SHELL-MANAGED-ENV</a></p></div>
+  <aside class="caveat"><strong>Boundary:</strong> sensitive-environment scrubbing is a name heuristic, not secret taint tracking. It can remove a non-secret variable containing TOKEN and cannot recognize a secret with another name; the explicit overlay is intentionally a trust entry point.</aside>
+</section>
+
+<section>
+  <h2>5. Long Output Prefers the Tail; a Complete Spill Is Published Only While It Remains Trustworthy</h2>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>Bounded memory</h3><p>The collector counts bytes and drops from the head to retain exactly the last <code>maxBytes</code>.</p></div>
+    <div><span>2</span><h3>Lazy spill</h3><p>First overflow creates a random, exclusive, mode-0600 file in a private temporary directory and backfills prior chunks.</p></div>
+    <div><span>3</span><h3>Completeness has a cap</h3><p>Once the total stream exceeds the spill cap, the spill is removed because it can no longer represent the complete output.</p></div>
+    <div><span>4</span><h3>Readable while running, final after settlement</h3><p>The current spill path may be returned while complete; it represents final complete output only after process settlement and a successful seal.</p></div>
+  </div>
+  <div class="claim fact"><div class="claim-label">Observable loss</div><p>An offset read returns <code>lossy</code>, the next offset, and the spill path while complete. During execution that path represents the complete stream so far; only successful settlement sealing makes it the final file. If the requested offset has fallen out of the memory window, the reader returns the entire retained tail instead of pretending it is a contiguous delta. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subprocess/subprocess-local/src/spawn.ts#L84-L247" title="Bounded tail collector and trustworthy spill protocol: The local collector retains an exact byte tail, uses a private directory and exclusive mode-0600 spill, deletes it beyond the completeness cap, exposes lossy offset reads, and suppresses paths after seal failure." aria-label="Evidence SHELL-OUTPUT-SPILL">SHELL-OUTPUT-SPILL</a></p></div>
+  <p>Tail retention is optimized for diagnostics: errors and summaries often appear at the end, while the spill preserves complete retrieval. Tool rendering applies another result cap, so recoverable substrate output does not mean every byte enters that model request.</p>
+</section>
+
+<section>
+  <h2>6. One-Shot Shell Treats Nonzero Exit, Timeout, and Cancellation as Facts, Not Infrastructure Failures</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Case</th><th><code>ctx.shell.run</code></th><th>Model tool</th></tr></thead>
+    <tbody>
+      <tr><td>Exit 0 / nonzero</td><td>Resolves a <code>ShellRunResult</code></td><td>Returns output; nonzero adds an exit marker</td></tr>
+      <tr><td>Executor timeout</td><td>Resolves with <code>timedOut:true</code></td><td>Shows timeout and partial output</td></tr>
+      <tr><td>Tool AbortSignal wins first</td><td>Resolves with <code>aborted:true</code></td><td>Converts it to a stable tool-aborted error</td></tr>
+      <tr><td>Spawn/provider failure</td><td>Rejects in foreground</td><td>Normalizes an execution error</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Service contract</div><p>The executor's <code>resolve</code> owns defaults and caps; foreground <code>run</code> rejects only for infrastructure failure. Background <code>start</code> applies no timeout, and even a spawn failure becomes a killed handle with stderr so Job cleanup cannot hang on a rejected <code>done</code>. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/shell/shell/src/index.ts#L46-L100" title="One-shot Shell executor result contract: run rejects only for infrastructure failure; nonzero, timeout, and abort are result facts; start has no timeout, output is incrementally consumed, and substrate composition teardown reaps background processes." aria-label="Evidence SHELL-EXECUTOR-CONTRACT">SHELL-EXECUTOR-CONTRACT</a></p></div>
+</section>
+
+<section>
+  <h2>7. Switching to Background Is an Atomic Ownership Transfer, Not Merely “Do Not Await”</h2>
+  <pre><code>bash(args)
+  → resolve arguments / escalation / workdir / shellEnv
+  → verify the tool-call signal is not already aborted
+  → jobs.start({ owner, kind, label, run })
+       ├─ controller / owner / capacity preflight
+       ├─ run() actually spawns
+       ├─ register record and JobId
+       └─ Job runtime owns cancel / done / output
+  → return job id
+</code></pre>
+  <div class="claim fact"><div class="claim-label">Detached cancellation boundary</div><p>The Bash tool retains tool-call cancellation until <code>jobs.start</code>. After Job ID publication it no longer passes <code>exec.signal</code> to the process; only <code>job_kill</code> or owner/service teardown stops it. A nonzero background command is <code>completed</code> with an exit-code detail, not registry-level <code>failed</code>. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/shell/tool-bash/src/index.ts#L330-L389" title="Bash foreground/background ownership handoff: The tool first resolves approval, directory, and managed env; background atomically preflights and spawns through jobs.start after a signal check, while foreground passes the tool signal to the executor." aria-label="Evidence SHELL-BASH-TOOL">SHELL-BASH-TOOL</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/shell/tool-bash/src/background.ts#L9-L27" title="Background Shell outcome mapping: Signal-killed processes map to killed; every other exit, including nonzero, maps to completed with an exit-code detail; a TODO records that an unconfined spawn failure can still alias a kill." aria-label="Evidence SHELL-BACKGROUND-OUTCOME">SHELL-BACKGROUND-OUTCOME</a></p></div>
+</section>
+
+<section>
+  <h2>8. The Job Registry Is a Producer-Neutral, Process-Local Control Plane</h2>
+  <p>A Job carries a <code>kind</code>, label, optional exact-Agent owner, output cap, and three hooks. The producer returns cancel, non-rejecting done, and optional consuming readOutput from <code>run()</code>; the registry owns IDs, status, access control, waiters, notices, and teardown.</p>
+  <div class="claim fact"><div class="claim-label">Check before starting work</div><p>The local registry validates a reachable scoped controller, kind, label, output limit, live registered owner, and the per-owner active cap—10 by default—before invoking the producer. There is no queue. Only after all preflight succeeds does it call <code>run()</code> and mint <code>&lt;kind&gt;-N</code>. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/jobs/jobs-local/src/index.ts#L86-L190" title="Local Job preflight, allocation, and registration: Before producer run, the Job Registry validates a scoped controller, fields, exact live owner, and per-owner active cap; only then does it run the producer, mint kind-N, and register the record." aria-label="Evidence SHELL-JOBS-START">SHELL-JOBS-START</a></p></div>
+  <div class="claim fact"><div class="claim-label">Isolation and first-wins</div><p>An owned Job can be read or cancelled only by a caller with the same Session ID; listeners are routed through the exact owner's scope chain. Settlement is first-wins: commit terminal state, release waiters, notify UI observers, then invoke completion listeners, so a reporter cannot open a turn before other observers see the committed record. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/jobs/jobs-local/src/index.ts#L307-L440" title="Scoped Job access and first-wins settlement: Owner access and listener/observer routing are isolated by Session and scope; settlement is first-wins and commits the record, releases waiters, updates observers, then invokes completion listeners." aria-label="Evidence SHELL-JOBS-SETTLEMENT">SHELL-JOBS-SETTLEMENT</a></p></div>
+</section>
+
+<section>
+  <h2>9. Job Tools Distinguish “Cancellation Requested” from “Actually Stopped”</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Tool</th><th>Read/mutation</th><th>Key semantics</th></tr></thead>
+    <tbody>
+      <tr><td><code>job_output</code></td><td>Consumes the next stream delta, or retrieves final output after settlement</td><td>A timed-out <code>wait:true</code> returns running and leaves the Job alive</td></tr>
+      <tr><td><code>job_list</code></td><td>Lists visible live and settled records</td><td>The registry does not delete records on settlement</td></tr>
+      <tr><td><code>job_kill</code></td><td>Calls the cancel hook immediately</td><td>Returns cancellation-requested; terminal state waits for producer settlement</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Model control plane</div><p>All three tools honor the producer's output cap. <code>job_output</code> owns its wait deadline so ordinary “still running” is not mapped to a tool timeout. Kill then reads a non-consuming snapshot, avoiding accidental consumption of remaining output. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/jobs/tool-jobs/src/index.ts#L302-L401" title="Job output, list, and cancellation tools: The three tools provide optionally bounded waits, consuming output, visible listing, and cancellation requests; wait timeout leaves the Job alive and the kill snapshot does not consume output." aria-label="Evidence SHELL-JOB-TOOLS">SHELL-JOB-TOOLS</a></p></div>
+</section>
+
+<section>
+  <h2>10. Completion Notices Choose the Current Turn's Inbox or a New Follow-up Turn</h2>
+  <pre><code>Job settles and is not reported
+  ├─ owner busy                         → owner.inject(notice)
+  ├─ owner idle + wake budget remains  → owner.followup(notice)
+  └─ quiet mode / exhausted budget     → owner.inject(notice)
+</code></pre>
+  <div class="claim fact"><div class="claim-label">Bounding self-excitation</div><p>The default wake budget permits three consecutive Job-completion turns per exact Agent. Only claiming a genuinely user-authored message resets it. This prevents “completion starts a turn, that turn starts another job, its completion starts another turn” from buying requests forever. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/jobs/tool-jobs/src/index.ts#L205-L300" title="Job completion delivery and wake budget: Unreported completion chooses inject or followup from owner busy/idle state; the default consecutive wake cap is three, and only a claimed user source resets the exact-Agent budget." aria-label="Evidence SHELL-JOB-NOTICES">SHELL-JOB-NOTICES</a></p></div>
+  <aside class="caveat"><strong>Documented limitation:</strong> the source README acknowledges a narrow turn-retirement window where a notice can be injected into an Agent about to become idle without a wake. A spent budget also does not recover with time. This notice layer is live memory, not a durable Job queue.</aside>
+</section>
+
+<section>
+  <h2>11. Job Lifetime Is Bound to the Exact Agent Object, Not Merely a Reusable Session String</h2>
+  <p>Owner cleanup attaches to the exact Agent scope. On disposal the registry requests cancellation for owned Jobs, awaits every settlement, then deletes records and updates mirrors. Whole-service disposal performs the same quiescence protocol.</p>
+  <div class="claim fact"><div class="claim-label">Failure boundary</div><p>If a cancel hook throws, the registry force-fails the record and explicitly records that work may be orphaned. If cancel returns but the producer never settles, teardown cannot distinguish “slow stop” from “ineffective cancellation” and continues waiting. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/jobs/jobs-local/src/index.ts#L442-L528" title="Exact-owner Job teardown and cancellation failure boundary: Owner/service disposal requests cancellation and awaits every Job; a throwing cancel force-fails and reports possible orphaning, while a cancel that returns without settling may block teardown." aria-label="Evidence SHELL-JOBS-CLEANUP">SHELL-JOBS-CLEANUP</a></p></div>
+  <p>The Web Job list is only a read-only mirror pushed by the Host. It empties on process restart while historical start cards remain in the transcript. “A start was recorded” and “a live control handle still exists” are distinct facts. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/client/ui-jobs/README.md#L5-L24" title="Read-only Web Job mirror and restart semantics: The Web renders read-only live and settled rows from a Host mirror; restart empties the list while the transcript retains start cards, and unowned Jobs are visible to every Session." aria-label="Evidence SHELL-JOBS-UI">SHELL-JOBS-UI</a></p>
+</section>
+
+<section>
+  <h2>12. The Terminal Service Publishes Exact-Owner Sessions, Not Guessable Global PTYs</h2>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>Reserve</h3><p>Validate the live owner, backend, and owner-local name; reserve the name and pending spawn.</p></div>
+    <div><span>2</span><h3>Initialize</h3><p>The backend allocates and initializes a PTY; owner/service cancellation can abort unpublished setup.</p></div>
+    <div><span>3</span><h3>Publish</h3><p>Recheck the service and exact owner before inserting <code>pty-N</code> into the registry.</p></div>
+    <div><span>4</span><h3>Roll back</h3><p>Close an unpublished session on failure; retain or aggregate cleanup errors instead of silently leaking.</p></div>
+  </div>
+  <div class="claim fact"><div class="claim-label">Access and exclusion</div><p>Read, signal, kill, and list all require the exact owner; at most one send is active per PTY. Close removes the record only after backend quiescence. A close failure clears the closing fence so a caller can retry. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/terminal/terminal/src/index.ts#L104-L405" title="Exact-Agent PTY publication, ownership, and close: The Terminal service reserves name/spawn, rechecks the exact live owner before publication, allows one active send per session, fences every operation by owner, and deletes only after quiescent, retryable close." aria-label="Evidence SHELL-TERMINAL-SERVICE">SHELL-TERMINAL-SERVICE</a></p></div>
+</section>
+
+<section>
+  <h2>13. A <code>terminal_send</code> Return Means “Reasonable Time to Think Again,” Not Command Exit</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>waitReason</th><th>Evidence</th><th>It does not prove</th></tr></thead>
+    <tbody>
+      <tr><td><code>stdin_read</code></td><td>Controlled prompt plus shell foreground group, or foreground syscall probe waiting for input</td><td>The entire Session exited</td></tr>
+      <tr><td><code>inferred_idle</code></td><td>A configured silence window after output</td><td>The foreground process completed</td></tr>
+      <tr><td><code>timeout</code></td><td>This send's wait deadline elapsed</td><td>The process was killed or the Session exited</td></tr>
+      <tr><td><code>session_exit</code></td><td>Top-level PTY process outcome arrived</td><td>An earlier idle inference was equivalent to exit</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Readiness algorithm</div><p>The local PTY backend combines a controlled prompt, foreground process group, Linux exact stdin-wait probing, output silence, and an absolute timeout. A prompt is accepted only after the shell regains the foreground group. Cancelling an active send delivers a real <code>SIGINT</code> to the foreground group and retains the exclusive slot until the signal path settles. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/terminal/terminal-bash/src/session.ts#L225-L564" title="PTY readiness inference, interrupt, and close quiescence: Readiness combines session exit, a controlled prompt plus foreground group, exact stdin wait, and silence inference; cancellation sends real SIGINT and close awaits termination plus completion." aria-label="Evidence SHELL-PTY-READINESS">SHELL-PTY-READINESS</a></p></div>
+</section>
+
+<section>
+  <h2>14. Six Terminal Tools Expose the Resource; Persistent Bash Hides It</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Interface</th><th>Model responsibility</th><th>Runtime responsibility</th></tr></thead>
+    <tbody>
+      <tr><td><code>terminal_open/send/read/signal/list/close</code></td><td>Retain Session IDs, interpret readiness, and eventually close</td><td>Owner fence, scrollback, signals, quiescent cleanup</td></tr>
+      <tr><td>Persistent <code>bash(command)</code></td><td>Submit only commands</td><td>Cache a PTY per owner, serialize calls, extract marker-delimited exits, reset after timeout/abort</td></tr>
+      <tr><td>One-shot <code>bash/pwsh</code></td><td>Supply a complete command/workdir each time</td><td>Fresh process, timeout, bounded output, optional Job detach</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Explicit Terminal tools</div><p>All six tools require a calling Agent. Background <code>terminal_send</code> reserves the PTY's exclusive send and exposes it as a <code>pty-send</code> Job. Job cancellation becomes operation cancellation/SIGINT, and output plus results share one byte cap. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/terminal/tool-terminal/src/index.ts#L157-L399" title="Six owner-scoped Terminal tools and background send: Defines open, send, read, signal, close, and list; every call requires an Agent, and background send hands an exclusive operation, cancellation, and bounded output to a pty-send Job." aria-label="Evidence SHELL-TERMINAL-TOOLS">SHELL-TERMINAL-TOOLS</a></p></div>
+  <div class="claim fact"><div class="claim-label">Hidden Persistent Bash</div><p>The wrapper surrounds each command with random start/end markers and serially reads scrollback per owner. Timeout, abort, send failure, or shell exit closes the uncertain session and recreates it from the workspace next time rather than reusing potentially contaminated state. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/shell/tool-bash-persistent/src/index.ts#L62-L398" title="Persistent Bash marker protocol and per-owner serialization: The wrapper uses random markers, scrollback, and a per-owner promise queue to delimit commands; timeout, abort, send failure, or shell exit resets the PTY, while nonzero exit is a marker result." aria-label="Evidence SHELL-PERSISTENT-BASH">SHELL-PERSISTENT-BASH</a></p></div>
+</section>
+
+<section>
+  <h2>15. Kill Targets a Process Tree, but the Quiescence Proof Is Platform-Specific</h2>
+  <p>An ordinary local process uses a detached process group on POSIX, TERM followed by grace and KILL, with group-liveness observation. Windows requests tree termination through <code>taskkill /T /F</code> but treats direct-child exit as the observable completion proxy; it has no independent descendant/group liveness probe.</p>
+  <div class="claim fact"><div class="claim-label">Ordinary process tree</div><p>On POSIX, the implementation continues probing group liveness after direct-child close so a TERM-trapping helper is not missed, and stops escalation only after group disappearance. The Windows guarantee is weaker: termination includes <code>/T</code>, but the wait boundary remains root-process exit and therefore does not independently prove whole-tree quiescence. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subprocess/subprocess-local/src/spawn.ts#L253-L543" title="Local process-tree signalling and quiescence: POSIX uses a detached process group for TERM-to-KILL and continues probing group liveness; Windows requests tree termination through taskkill /T /F, while waitForExit uses direct-child exit as its observable proxy." aria-label="Evidence SHELL-PROCESS-TREE">SHELL-PROCESS-TREE</a></p></div>
+  <div class="claim fact"><div class="claim-label">PTY cleanup</div><p>The PTY backend tracks descendants by PID plus start identity, clears descendants, stops the shell, then scans descendants again. <code>SIGKILL</code> to the current shell itself is rejected; callers should close the Terminal session. Close fails explicitly if survivors remain. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/subprocess/subprocess-local/src/terminal.ts#L93-L248" title="Identity-fenced PTY signalling and cleanup: The PTY rejects direct SIGKILL to the top-level shell, tracks descendants by PID plus start identity, and verifies quiescence through descendants-shell-descendants TERM/KILL cleanup, failing if survivors remain." aria-label="Evidence SHELL-PTY-CLEANUP">SHELL-PTY-CLEANUP</a></p></div>
+</section>
+
+<section>
+  <h2>16. Cross-Platform and Remote Replacement Belongs in the Substrate/Provider, Not the Tool Contract</h2>
+  <p>Bash and PowerShell tools share <code>ctx.shell</code>, Job, approval, and managed-environment semantics; executable choice, launch flags, encoding, and sandbox runner stay provider-specific. The E2B provider replaces executable lookup, ordinary process execution, and Terminal transport behind <code>ctx.subprocess</code>, leaving upper Shell/PTY consumers on the same seam. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/e2b/subprocess-e2b/src/index.ts#L51-L205" title="Remote E2B subprocess and Terminal provider: E2B implements SubprocessRuntime with remote executable lookup, ordinary process handles, Terminal allocation, publication fences, and disposal cleanup, without requiring consumer-specific tools." aria-label="Evidence SHELL-E2B-SEAM">SHELL-E2B-SEAM</a></p>
+  <div class="claim assessment"><div class="claim-label">Design assessment</div><p>This is a stronger boundary than letting every tool call child-process APIs directly: security environment, process trees, output, and PTY transport can be replaced centrally. Cross-platform parity still depends on each concrete tool provider actually reusing the shared helpers. A public Service Definition is a contract, not automatic proof of parity.</p></div>
+</section>
+
+<section>
+  <h2>17. Three Static Audit Findings at the Pinned Baseline</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Finding</th><th>Impact</th><th>Assessment</th></tr></thead>
+    <tbody>
+      <tr><td><code>shellEnv.list()</code> omits the registry's three built-ins</td><td>Diagnostics/UI treating it as exhaustive will under-report actual injection</td><td>Explicitly recorded in both source TODO and README</td></tr>
+      <tr><td>The PowerShell README still declares old inject names: <code>tools,bash,systemPrompt,bashEnv</code></td><td>Extension authors copying it reference obsolete or absent seams</td><td>Current source uses <code>tools,shell,systemPrompt,shellEnv</code></td></tr>
+      <tr><td>PowerShell's default cwd still uses the raw Session header while Bash canonicalizes and prefers the policy workspace root</td><td>The same Session can have non-isomorphic path identity across platforms</td><td>The README records this as a known parity gap</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Reproducible drift</div><p>These are direct comparisons between current production source and adjacent official READMEs, not runtime inference. <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/shell/shell-env/src/index.ts#L175-L192" title="Managed-environment list built-in omission: A source TODO states that list() enumerates contributor declarations but omits registry-owned built-ins, so diagnostics/UI cannot treat it as an exhaustive environment catalog." aria-label="Evidence SHELL-ENV-LIST-GAP">SHELL-ENV-LIST-GAP</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/shell/tool-pwsh/README.md#L5-L9" title="Stale PowerShell inject names in README: The README declares the tool-pwsh inject list as tools/bash/systemPrompt/bashEnv." aria-label="Evidence SHELL-PWSH-DOC-DRIFT">SHELL-PWSH-DOC-DRIFT</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/shell/tool-pwsh/src/index.ts#L42-L50" title="Current PowerShell inject declaration: Current production source declares tools/shell/systemPrompt/shellEnv, directly demonstrating drift in the README list." aria-label="Evidence SHELL-PWSH-INJECT">SHELL-PWSH-INJECT</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/shell/tool-pwsh/src/index.ts#L147-L158" title="PowerShell raw Session-cwd resolution: PowerShell defaults directly to session.header.cwd and resolves relative workdir against it, without Bash&#39;s policy-root preference and canonicalPath step." aria-label="Evidence SHELL-PWSH-CWD-GAP">SHELL-PWSH-CWD-GAP</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/shell/tool-bash/src/index.ts#L138-L156" title="Bash canonical policy-root workdir resolution: Bash prefers the sandbox-policy workspace root, otherwise canonicalizes the Session cwd, and resolves a relative workdir against that identity." aria-label="Evidence SHELL-BASH-CWD">SHELL-BASH-CWD</a></p></div>
+</section>
+
+<section>
+  <h2>18. Guarantee Matrix: Durable Facts Versus Current-Process Control State</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Object</th><th>Across calls</th><th>Across Agents</th><th>Across process restart</th><th>Output read</th></tr></thead>
+    <tbody>
+      <tr><td>Foreground one-shot Shell</td><td>No</td><td>N/A</td><td>No</td><td>Replayable after its result enters the Session</td></tr>
+      <tr><td>Background Job</td><td>Yes</td><td>No for owned Jobs</td><td>No</td><td>Streams are single-consumer; result/notice is durable once logged</td></tr>
+      <tr><td>Explicit Terminal</td><td>Yes</td><td>No, exact owner</td><td>No</td><td>Bounded paginated scrollback</td></tr>
+      <tr><td>Persistent Bash</td><td>Yes, same Agent</td><td>No</td><td>No</td><td>One marker-delimited command result</td></tr>
+      <tr><td>Spill file</td><td>While process/file survives</td><td>Host path permissions decide</td><td>Not Session durability</td><td>Published only while complete and successfully sealed</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">Final assessment</div><p>The strongest design choice is keeping “cancellation requested” separate from “resource quiescent,” “wait returned” separate from “command exited,” and “transcript has a start card” separate from “a live control handle still exists.” That precision is also the largest cognitive cost: Process, Job, Terminal, and Turn each have their own state machine. Operations and UI must expose those states rather than flattening all of them into running/done.</p></div>
+  <div class="claim fact"><div class="claim-label">Verification status</div><p>In addition to tracing source, configuration, READMEs, and test control flow at the pinned commit, this delivery ran 15 targeted Vitest files spanning approval, presets, escalation, filesystem, process, Job, and Terminal behavior: 508 tests passed and one was skipped. Platform differences and the chapter's static findings remain separately bounded by their evidence.</p></div>
+</section>
+<section class="learning-notes" aria-labelledby="learning-notes-title"><h2 id="learning-notes-title">My Learning Notes</h2>
     <p class="privacy">Autosaved only in this browser. Nothing is uploaded or committed. Export Markdown whenever you want to keep a copy.</p><textarea data-learning-notes aria-label="My Learning Notes" placeholder="Record your understanding, questions, counterexamples, and transferable principles…"></textarea>
     <div class="note-footer"><span data-note-saved>Local draft</span><button type="button" data-note-export>Export Markdown</button>
     <button type="button" class="danger" data-note-clear>Clear</button><span data-note-count>0 characters</span></div></section><nav class="pagination" aria-label="Chapter pagination"><a href="../pages/sandbox-filesystem.html"><small>← Previous chapter · 20</small><strong>Sandbox, Filesystem, and Observation Policy</strong></a><a class="next" href="../pages/web-lsp-mcp-skill.html"><small>Next chapter · 22 →</small><strong>Web, LSP, MCP, and Skills</strong></a></nav></article>

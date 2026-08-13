@@ -1,0 +1,200 @@
+<section>
+  <h2>Conclusion: there is no universal “sandbox” here, but four independent policy chains that must hold together</h2>
+  <div class="thesis"><p>DeepSeek Harness separates safety and consistency into four layers: <strong>process argv confinement</strong> limits shell file-write effects; the <strong>Filesystem provider</strong> defines path identity, reads, and atomic publication; an <strong>in-process write fence</strong> rejects filesystem mutations outside the current sandbox mode; and the <strong>observation policy</strong> requires a Session to have seen a target and its version before changing it. Permission presets and escalation approval only choose a wider mode; they replace none of those layers. The decomposition is clean, but the names invite stronger assumptions than the code supports: <code>read-only</code> does not mean “unable to read secrets,” and <code>workspace-write</code> does not isolate networks, processes, devices, or credentials. <evidence id="SANDBOX-SEAM"></evidence><evidence id="SANDBOX-DOC-BOUNDARY"></evidence></p></div>
+  <div class="claim assessment"><div class="claim-label">Audit conclusion</div><p>The shipped base composition connects these layers coherently, but the core services do not prove that they all belong to the same security world. Custom compositions, shared temporary directories, out-of-process writers, symlink races, and reuse of remote process identities remain deployment boundaries that operators must understand.</p></div>
+</section>
+
+<section>
+  <h2>1. Start by separating four contracts</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Layer</th><th>Question it answers</th><th>Question it does not answer</th></tr></thead>
+    <tbody>
+      <tr><td><code>SandboxProvider</code></td><td>How should this exact argv be wrapped, and where may its file writes land?</td><td>What may the command read, whether it may use the network, or which processes it can see</td></tr>
+      <tr><td><code>FileSystem</code></td><td>How are paths resolved and identified, and how are files read, written, and published?</td><td>It does not provide root containment or read-before-write by default</td></tr>
+      <tr><td><code>fs-sandbox</code></td><td>Is a write/edit target inside the writable roots for the current mode?</td><td>It does not fence reads and is not a kernel boundary for arbitrary code</td></tr>
+      <tr><td><code>fs-observation-policy</code></td><td>Has this Session observed “present/absent + version,” and does it still match before mutation?</td><td>It is neither identity authorization nor path authorization, and it does not prove the whole file was viewed</td></tr>
+    </tbody>
+  </table></div>
+  <p>Sandbox mode has exactly three values—<code>read-only</code>, <code>workspace-write</code>, and <code>danger-full-access</code>—and the production types explicitly define it as “file-effect confinement.” A provider returns not only argv but also full/partial enforcement, denial signatures, and runner-failure rules. The consumer must execute the returned argv and may not silently fall back to the original command. <evidence id="SANDBOX-SEAM"></evidence></p>
+</section>
+
+<section>
+  <h2>2. There are two defaults: the service defaults to read-only, while the shipped base defaults to workspace-write</h2>
+  <div class="claim fact"><div class="claim-label">Do not confuse a schema default with a product default</div><p>The <code>sandbox-policy</code> service itself defaults to <code>read-only</code>. The base bundle explicitly overrides the deployment default to <code>workspace-write</code> and sets the approval policy to <code>ask</code>. A bare service instance and the shipped product composition therefore produce different results, both directly supported by source. <evidence id="SANDBOX-SHIPPED-POLICY"></evidence><evidence id="SANDBOX-POLICY"></evidence></p></div>
+  <p>The effective policy for each call follows fixed precedence: an explicitly approved mode, then the last mode event in the Session, then the deployment default. The policy root comes from the current Session cwd, with a normalized deployment root as fallback when no Session exists. The writable set for <code>workspace-write</code> is the workspace root, fixed <code>/tmp</code>, and platform <code>os.tmpdir()</code>, canonicalized on a best-effort basis and deduplicated; <code>read-only</code> has no writable root. <evidence id="SANDBOX-WRITABLE-ROOTS"></evidence></p>
+</section>
+
+<section>
+  <h2>3. Mode is a Session event, not a mutable global on a shell process</h2>
+  <pre><code>deployment default
+        ↓
+last sandbox/mode event in this Session
+        ↓
+approved per-call override (one execution only)
+        ↓
+SandboxExecutionPolicy { mode, root, sessionId }</code></pre>
+  <p>Session mode is folded from <code>sandbox/mode</code> events, and the sole formal write path merely appends that event. Resume and replay can therefore reconstruct permission state, while a one-time approval never silently becomes the persistent Session default. <evidence id="SANDBOX-MODE-EVENT"></evidence></p>
+  <aside class="caveat"><strong>State scope:</strong> mode belongs to a Session, while some local-provider resources live as long as the Context/provider. They are not interchangeable: policy resolution runs per call, while runner probe results and Windows workspace grants may be reused.</aside>
+</section>
+
+<section>
+  <h2>4. Escalation approval is a strictly monotonic pre-execution flow</h2>
+  <p>A call may escalate only from read-only to workspace/full, or from workspace to full; the same or a narrower mode is not a valid “escalation.” <code>sandbox_permissions</code> and <code>justification</code> must appear together. Approval occurs before any execution and forwards cancellation to the approval service. Only <code>allowed-once</code> yields a wider one-call policy; rejection, cancellation, and unavailability never execute the original command. <evidence id="SANDBOX-ESCALATION"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Permission is not confinement</div><p>Approval answers whether this call may widen its boundary; the sandbox provider answers how the widened boundary is enforced. Treating the former as the latter gives false conclusions when approval is absent, the runner is unavailable, or enforcement is partial.</p></div>
+</section>
+
+<section>
+  <h2>5. The local backend is a chain of platform dialects, not one cross-platform isomorphic implementation</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Platform</th><th>Candidate chain / profile</th><th>Enforcement</th><th>Material difference</th></tr></thead>
+    <tbody>
+      <tr><td>Linux</td><td>bwrap → Landlock</td><td>bwrap full; Landlock may be partial</td><td>bwrap read-only binds <code>/</code> and gives workspace mode a private <code>/tmp</code>; Landlock permits writes to host temp and workspace</td></tr>
+      <tr><td>macOS</td><td>Seatbelt</td><td>declared full</td><td>allow by default, deny file writes, then allow writes to the writable roots</td></tr>
+      <tr><td>Windows</td><td>ACL helper</td><td>always partial</td><td>materializes capability through restricted SIDs/ACEs and temporary directories, without eliminating Everyone/hard-link bypasses</td></tr>
+    </tbody>
+  </table></div>
+  <p>Linux probes candidates and caches the verdict when several exist, and fails closed with a structured error when all fail; a sole platform candidate is selected directly. Every dialect also carries its own denial and runner-failure signatures so consumers can distinguish command failure, sandbox denial, and sandbox unavailability. <evidence id="SANDBOX-LOCAL-DIALECTS"></evidence><evidence id="SANDBOX-PROFILES"></evidence><evidence id="SANDBOX-LOCAL-SELECT"></evidence></p>
+</section>
+
+<section>
+  <h2>6. A custom runner is an operator trust boundary; stderr classification is diagnostic only</h2>
+  <p>A non-empty <code>runnerCommand</code> skips platform probing and is treated as full enforcement. The framework validates command shape and failure signatures, but cannot prove that the external program implements the confinement it claims. This is an explicit trusted deployment input. <evidence id="SANDBOX-LOCAL-WRAP"></evidence></p>
+  <p>The one-shot shell executes the provider's exact argv, records enforcement, and classifies sandbox denial or runner failure from exit status, spawn attribution, and stderr signatures. Because the classifier consumes in-band stderr, a child can emit matching text and cause false attribution. That can harm availability and diagnosis, but it cannot undo confinement that was already applied. <evidence id="SANDBOX-BASH-CONSUMER"></evidence><evidence id="SANDBOX-RESULT-CLASSIFIER"></evidence></p>
+</section>
+
+<section>
+  <h2>7. Windows ACL support is honestly labeled a partial capability</h2>
+  <p>The restricted ACE on a workspace root is a standing grant. Session temp creates a random SID and random directory, rolling back half-materialized state on failure. Disposal best-effort revokes temporary grants and removes directories, but the workspace ACE remains and a process crash may leave residue. The implementation therefore reports partial enforcement instead of letting the word “sandbox” obscure Everyone ACEs, hard links, and cleanup limits. <evidence id="SANDBOX-WINDOWS-CAPS"></evidence></p>
+  <aside class="caveat"><strong>Cross-platform non-equivalence:</strong> the same <code>workspace-write</code> mode receives an isolated <code>/tmp</code> under bwrap, while Landlock, Seatbelt, and the in-process filesystem fence permit shared host temp. Concurrent Sessions under one OS user can therefore collide or interfere through temporary names.</aside>
+</section>
+
+<section>
+  <h2>8. The Filesystem seam separates display paths from target identity</h2>
+  <p><code>FileSystem</code> defines opaque targets, opaque versions, present/absent observations, guarded create/replace intents, and structured <code>FsError</code> values. Write/edit intents are single-slot waterfalls; observed is a synchronous recorder. A provider may expose <code>sandboxMode</code>, which determines whether tools may advertise mutation escalation. <evidence id="SANDBOX-FS-TYPES"></evidence><evidence id="SANDBOX-FS-SEAM"></evidence></p>
+  <p>The local provider's <code>cwd</code> only resolves relative paths; it is not a containment boundary. It separates the human-readable absolute path from a canonical target key: existing targets use native realpath, while missing targets canonicalize from the nearest existing ancestor and append the missing suffix. Aliases and most symlink spellings consequently share locks and observation identity. <evidence id="SANDBOX-FS-LOCAL"></evidence><evidence id="SANDBOX-FS-IDENTITY"></evidence></p>
+</section>
+
+<section>
+  <h2>9. Read paths are layered and publication is atomic, but the replace guard is not a cross-process CAS</h2>
+  <p>Local reads distinguish whole-file UTF-8, bounded raw bytes, and streams. Binary detection samples only the first 8192 bytes, raw-byte reads have an explicit cap, and streams accept cancellation. The underlying <code>readText</code> has no <code>maxBytes</code>, so “every long read is inherently bounded” is not a provider guarantee; model tools separately choose window or stream paths. <evidence id="SANDBOX-FS-READ-IO"></evidence></p>
+  <p>Mutation runs under a provider-local lock for each canonical target: first validate the create/replace guard, then write and sync a mode-0600 file inside a mode-0700 sibling staging directory, and finally publish through hard-link no-replace create, Windows ReplaceFile, or rename. Cancellation is checked again before commit; after commit, cleanup is best effort. <evidence id="SANDBOX-FS-LOCAL-MUTATION"></evidence><evidence id="SANDBOX-FS-ATOMIC"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Guarantee boundary</div><p><code>createIfAbsent</code> uses a no-replace primitive at publication and is the stronger guarantee. The <code>replaceIfVersion</code> check occurs before staging/rename, however, and the lock covers only this provider process. Another process can write after the check and be overwritten at publication. This is “serialization inside one provider plus a pre-publication metadata check,” not a cross-process linearizable CAS. The official limitations likewise acknowledge metadata versions and process-local locks. <evidence id="SANDBOX-FS-LOCAL-LIMITS"></evidence></p></div>
+</section>
+
+<section>
+  <h2>10. fs-sandbox is a mutation-only path fence</h2>
+  <p><code>fs-sandbox</code> extends the local filesystem: read/list remain unchanged, and only write/edit check mode before delegation. Read-only rejects every mutation; workspace mode freshly resolves the target at call time and requires it to fall within canonical writable roots; full passes through. It explicitly positions itself as defense in depth for trusted in-process providers and model-supplied paths, not a kernel boundary for arbitrary native code. <evidence id="SANDBOX-FS-FENCE"></evidence></p>
+  <p>Containment combines a separator-aware lexical check with file-identity fallback for existing roots and targets, including Windows aliases/casing. Tests cover absolute paths, <code>..</code>, existing symlink escape, creation beneath a symlink, stale targets, and per-call overrides. <evidence id="SANDBOX-CONTAINMENT"></evidence><evidence id="SANDBOX-FS-FENCE-TEST"></evidence></p>
+  <aside class="caveat"><strong>Accepted TOCTOU:</strong> another writer can replace a missing ancestor inside an allowed root with a symlink after the fresh check but before mkdir/open/rename. The source documents this residual reopen race directly. Strong adversarial isolation must come from an OS or remote sandbox, not from promoting a path check into a kernel guarantee.</aside>
+</section>
+
+<section>
+  <h2>11. The actual read / write / edit control flow</h2>
+  <pre><code>read(path)
+  resolve from Session cwd → stat/read bounded window → emit present/absent observation
+
+write/edit(path, optional escalation)
+  resolve requested policy → approval if wider → resolve from policy root
+  → fs write/edit intent waterfall → provider guard + mutation
+  → map structured denial → emit new present observation</code></pre>
+  <p>Session cwd is canonicalized again during resolution so symlink-sensitive <code>..</code> does not inherit a stale string; the sandbox policy root takes precedence over ordinary cwd. A successful read records present, while confirmed ENOENT records absent. Write and edit both obtain policy and trigger an intent before I/O, and refresh observation only after success. <evidence id="SANDBOX-SESSION-CWD"></evidence><evidence id="SANDBOX-READ-TOOL"></evidence><evidence id="SANDBOX-READ-TARGET"></evidence><evidence id="SANDBOX-WRITE-TOOL"></evidence><evidence id="SANDBOX-EDIT-TOOL"></evidence></p>
+  <p>Escalation fields appear in a tool schema only when the mounted filesystem provider reports <code>sandboxMode</code>. Structured <code>FS_SANDBOX_DENIED</code> maps to the shared denial marker and hint. A bare local filesystem and the default E2B filesystem do not masquerade as an escalatable local sandbox. <evidence id="SANDBOX-FS-ESCALATION"></evidence></p>
+</section>
+
+<section>
+  <h2>12. Observation policy is an ephemeral state machine keyed by Session object and canonical target</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Latest observation</th><th>Write intent</th><th>Edit intent</th></tr></thead>
+    <tbody>
+      <tr><td>none</td><td>reject overwrite; absence is unproven</td><td>reject</td></tr>
+      <tr><td>absent</td><td><code>createIfAbsent</code></td><td>reject</td></tr>
+      <tr><td>present(version)</td><td><code>replaceIfVersion(version)</code></td><td><code>replaceIfVersion(version)</code></td></tr>
+    </tbody>
+  </table></div>
+  <p>State lives in <code>WeakMap&lt;Session object, Map&lt;targetKey, observation&gt;&gt;</code>; weak entries may be reclaimed once the Session owner is garbage-collected. Source has no Session-dispose hook. Explicit reset of the whole table occurs on policy-plugin disposal/HMR. Successful read/write/edit refreshes state, and a mutation with no Session owner cannot borrow another Session's observation. <evidence id="SANDBOX-OBSERVATION"></evidence></p>
+  <p>Write/edit intent is a first-listener-wins waterfall, and registration order is not a stable contract. Removing the policy reduces mutation to the provider's unconditional call. Production tests pin present/absent decisions, owner isolation, the first-listener rule, and state reset after policy-plugin disposal. <evidence id="SANDBOX-OBSERVATION-DOC"></evidence><evidence id="SANDBOX-OBSERVATION-TEST"></evidence></p>
+</section>
+
+<section>
+  <h2>13. “Read before edit” guarantees freshness, not completeness or authorization</h2>
+  <div class="claim assessment"><div class="claim-label">Three common misreadings</div><p>First, observations are not persisted, so resume must read again. Second, bypassing tools and calling <code>ctx.fs.read*</code> directly does not automatically record an observation. Third, reading one window is sufficient to authorize a whole-file overwrite at the same version. The policy proves that “the caller saw some view of this target at a current version”; it does not prove that the caller saw the whole file or is authorized for the path. <evidence id="SANDBOX-OBSERVATION-LIMITS"></evidence></p></div>
+  <p>The correct composition is therefore: identity/deployment authority grants possession of a capability, sandboxing decides where it may write, the observation guard prevents overwrites from stale or unseen state, and atomic publication defines the on-disk commit. None compensates for another.</p>
+</section>
+
+<section>
+  <h2>14. Permission presets synchronize three states but validate only shell confinement</h2>
+  <p>The permission-preset service requires a confining <code>ctx.shell</code> and an approval service. Shipped presets correspond to workspace-write + ask and danger-full-access + never. A user switch writes permission/preset, <code>sandbox/mode</code>, and approval/policy together, and pins initial state for new Sessions. <evidence id="SANDBOX-PERMISSION-PRESETS"></evidence><evidence id="SANDBOX-PERMISSION-WRITE"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Composition gap</div><p>The preset service checks only that the shell is confining; it does not prove that <code>ctx.fs</code> is provided by fs-sandbox under the same policy. The shipped base does mount observation, tool-fs, and fs-sandbox together, so the pinned baseline is coherent. A custom composition could nevertheless display “workspace-write” while connecting write/edit to a bare filesystem. The cross-capability same-policy invariant belongs to deployment composition rather than being enforced by types or startup validation. <evidence id="SANDBOX-SHIPPED-FS"></evidence><evidence id="SANDBOX-SHIPPED-FS-PROVIDER"></evidence></p></div>
+</section>
+
+<section>
+  <h2>15. Persistent terminals inherit confinement but lose part of the structured observation surface</h2>
+  <p>The terminal provider blocks a change to Session sandbox mode while a PTY is being created or remains active, preventing one long-lived shell from crossing a permission boundary. At creation it resolves policy for the Session, asks the sandbox provider to wrap the shell argv, and cleans up on initialization failure. <evidence id="SANDBOX-TERMINAL-FENCE"></evidence></p>
+  <p>The terminal uses only the wrapped argv, however; unlike the one-shot shell, it does not carry enforcement, diagnostic dialect, and runner classification into each result. Runner refusal still fails, but the Host has weaker structured visibility into why a persistent PTY failed or whether enforcement was partial. This is an observation-surface difference, not a confinement bypass.</p>
+</section>
+
+<section>
+  <h2>16. E2B is not another <code>SandboxProvider</code> runner; it replaces the whole execution world</h2>
+  <p>The E2B owner holds one remote sandbox handle per Context, validates the API key and absolute Linux cwd, creates a mode-0700 runtime root, and kills the sandbox to roll back failed bootstrap. The SDK's unavoidable login shell receives a random HOME to reduce startup-file effects. This ownership scope means that multiple Sessions sharing one owner in the same Context also share the remote filesystem/process world; a Session is not itself a VM isolation unit. <evidence id="SANDBOX-E2B-OWNER"></evidence></p>
+  <p>The remote filesystem establishes canonical identity with remote GNU <code>realpath</code> and provides bounded raw-byte reads, process-local target locks, guard checks, and atomic staging/publication; <code>readText</code> instead asks the SDK for the whole file. Once publication starts, link/rename deliberately stops receiving cancellation, avoiding an ambiguous state in which the caller sees “canceled” but cannot know whether commit occurred. <evidence id="SANDBOX-E2B-FS"></evidence><evidence id="SANDBOX-E2B-PUBLICATION"></evidence></p>
+  <p>Remote subprocess resolves executables and manages process groups and terminals in that same sandbox. Group signaling still has a known numeric-PGID reuse race. Official limitations also state that there is no host file synchronization, path reopen races remain, and locks are process-local. <evidence id="SANDBOX-E2B-SUBPROCESS"></evidence><evidence id="SANDBOX-E2B-PGID"></evidence><evidence id="SANDBOX-E2B-LIMITS"></evidence></p>
+</section>
+
+<section>
+  <h2>17. The core invariant of remote composition is “capabilities in one world”</h2>
+  <p>The headless E2B example explicitly disables local filesystem and local subprocess, then mounts the E2B owner, remote filesystem, and remote subprocess together. Its inner sandbox policy is full because the real boundary is the remote machine, not a local host runner. Equal path strings do not upload host files; inputs must enter the remote world through an explicit API or file write. <evidence id="SANDBOX-E2B-COMPOSITION"></evidence></p>
+  <p>One more seam is easy to miss: <code>glob</code>/<code>grep</code> bypass <code>ctx.fs</code> and use <code>ctx.subprocess</code> to execute an absolute ripgrep path resolved from the host package, assuming that executable, workdir, and readable paths share one world. A custom remote adapter that cannot see that host binary cannot enable search merely by replacing the filesystem provider; composition must colocate the executable and filesystem. <evidence id="SANDBOX-SEARCH-WORLD"></evidence></p>
+</section>
+
+<section>
+  <h2>18. Cancellation, failure, and cleanup: different commit points produce different answers</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Path</th><th>Cancellation boundary</th><th>Failure semantics</th><th>Residual risk</th></tr></thead>
+    <tbody>
+      <tr><td>Approval</td><td>before execution; directly cancelable</td><td>never executes without approval</td><td>no mutation</td></tr>
+      <tr><td>Local shell</td><td>forwarded to runner/subprocess</td><td>spawn, denial, and runner failure are classified</td><td>the child's external effects depend on termination timing</td></tr>
+      <tr><td>Local filesystem</td><td>last check before commit</td><td>post-commit cleanup failure does not roll back the published file</td><td>sibling staging residue receives best-effort cleanup</td></tr>
+      <tr><td>E2B filesystem</td><td>cancelable before publication; commit primitive is not canceled</td><td>avoids an ambiguous canceled commit</td><td>remote staging cleanup is still best effort</td></tr>
+      <tr><td>Windows ACL</td><td>grant/revoke have separate rollback paths</td><td>half-materialized failures are best-effort revoked</td><td>a crash may leave SID/ACE/temp residue</td></tr>
+      <tr><td>E2B process group</td><td>signal/kill ladder</td><td>driven by remote numeric identity</td><td>a small PGID-reuse window</td></tr>
+    </tbody>
+  </table></div>
+  <p>The Filesystem API has no generic timeout parameter; bounded raw-byte reads, streaming, and AbortSignal are its primary resource controls. The design prioritizes an explainable commit point over a promise of “instant cancellation” at any moment.</p>
+</section>
+
+<section>
+  <h2>19. Static security audit: confirmed boundaries and risks</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Level</th><th>Finding</th><th>Impact / correct treatment</th></tr></thead>
+    <tbody>
+      <tr><td>Boundary</td><td>The three modes constrain file-write effects only</td><td>They cannot support claims of network, read, process, device, or credential isolation</td></tr>
+      <tr><td>Medium</td><td>Landlock/Seatbelt/fs fence share host temp</td><td>Sessions under one OS user can collide or interfere; sensitive parallel work needs an isolated execution world</td></tr>
+      <tr><td>Medium</td><td>The fs fence explicitly accepts missing-ancestor symlink TOCTOU</td><td>It is defense in depth for trusted/model paths, not a strong adversarial boundary</td></tr>
+      <tr><td>Medium</td><td>Permission presets do not validate fs/shell same-policy composition</td><td>The shipped composition is not mismatched; custom compositions need an additional startup audit</td></tr>
+      <tr><td>Medium</td><td>The replace version guard is not cross-process CAS</td><td>An external writer may be overwritten between check and publication</td></tr>
+      <tr><td>Low</td><td>Observation is first-wins, removable, and a window read can authorize a whole-file write</td><td>It is a freshness guard, not an authorization chain or proof of content completeness</td></tr>
+      <tr><td>Low</td><td>Runner/denial classification depends on stderr signatures</td><td>Diagnostic attribution can be spoofed, but confinement cannot be escaped this way</td></tr>
+      <tr><td>Deployment trust</td><td>A custom runner claims full without probing</td><td>Operators must validate the runner independently; the config value is not proof</td></tr>
+      <tr><td>Low</td><td>Windows cleanup residue and E2B PGID reuse</td><td>Isolation remains partial / best effort and requires deployment-level monitoring and reclamation</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>20. Documentation drift: two concrete, repairable inconsistencies</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Document</th><th>Current statement</th><th>Source fact</th></tr></thead>
+    <tbody>
+      <tr><td><code>packages/fs/fs/README.md</code></td><td>Its FsErrorCode list omits sandbox denial</td><td>The type union includes <code>FS_SANDBOX_DENIED</code></td></tr>
+      <tr><td><code>packages/sandbox/sandbox/README.md</code></td><td>It summarizes implementations as Linux/macOS and consumers as bash only</td><td>Production now includes Windows ACL, a PowerShell path, and a filesystem-sandbox consumer</td></tr>
+    </tbody>
+  </table></div>
+  <p>The first can cause provider/consumer authors to omit a structured error branch. The second causes architecture readers to underestimate the current platform surface and filesystem policy. <evidence id="SANDBOX-DOC-ERROR-CODE"></evidence><evidence id="SANDBOX-DOC-BACKENDS"></evidence></p>
+</section>
+
+<section>
+  <h2>21. Verification coverage and this chapter's boundary</h2>
+  <p>Production tests cover local runner profiles, custom runners, candidate fallback/fail-closed behavior; all three fs-fence modes plus <code>..</code> and symlink escape; and observation absent/present decisions, Session-owner isolation, first-wins, and disposal. <evidence id="SANDBOX-LOCAL-TEST"></evidence><evidence id="SANDBOX-FS-FENCE-TEST"></evidence><evidence id="SANDBOX-OBSERVATION-TEST"></evidence></p>
+  <div class="claim fact"><div class="claim-label">Verification status</div><p>This chapter statically traces production source, shipped composition, READMEs, and existing tests at the pinned commit, and separates source guarantees, official limitations, and this chapter's assessments. This delivery ran 15 targeted Vitest files spanning approval, presets, escalation, filesystem, process, Job, and Terminal behavior: 508 tests passed and one was skipped. That keeps the existing behavioral suite green; it does not promote a static security audit into a dynamic penetration-test conclusion.</p></div>
+  <div class="claim assessment"><div class="claim-label">Final assessment</div><p>The strongest design choice is the layering of capability seams, per-call policy, guarded mutation, and durable Session mode. The clearest opportunities are a cross-capability composition invariant, a cross-process replace CAS, and product-level visibility for shared temp and partial enforcement. The system's real safety comes from all layers holding together, not from the word <code>sandbox</code>.</p></div>
+</section>

@@ -1,0 +1,200 @@
+<section>
+  <h2>结论：这里没有一个万能的“沙箱”，而是四条需要同时成立、却彼此独立的策略链</h2>
+  <div class="thesis"><p>DeepSeek Harness 把安全与一致性拆成四层：<strong>进程 argv confinement</strong> 限制 shell 的文件写副作用；<strong>Filesystem provider</strong> 定义路径身份、读取与原子发布；<strong>进程内写围栏</strong>按 sandbox mode 拒绝越界文件 mutation；<strong>observation policy</strong>要求 Session 在修改前见过目标及其版本。权限预设与升级审批只负责选择更宽的 mode，不能替代上述任何一层。这个分解很清晰，但名称容易制造过强直觉：<code>read-only</code> 不是“不可读取秘密”，<code>workspace-write</code> 也不是网络、进程、设备或凭据隔离。<evidence id="SANDBOX-SEAM"></evidence><evidence id="SANDBOX-DOC-BOUNDARY"></evidence></p></div>
+  <div class="claim assessment"><div class="claim-label">审计主结论</div><p>shipped base composition 把这些层正确拼在一起，但核心 service 并不证明它们必然来自同一安全世界。自定义 composition、共享临时目录、进程外写入者、符号链接竞态和远端进程身份复用，仍是部署者必须理解的剩余边界。</p></div>
+</section>
+
+<section>
+  <h2>1. 先分清四种 contract</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>层</th><th>回答的问题</th><th>不回答的问题</th></tr></thead>
+    <tbody>
+      <tr><td><code>SandboxProvider</code></td><td>这组精确 argv 应如何被 runner 包装，写文件时允许到哪里</td><td>命令能读什么、能否联网、能看见哪些进程</td></tr>
+      <tr><td><code>FileSystem</code></td><td>路径如何解析、目标如何定址、文件如何读写与发布</td><td>默认不承诺 root containment，也不承诺读前见过</td></tr>
+      <tr><td><code>fs-sandbox</code></td><td>一次 write/edit 的目标是否位于当前 mode 的 writable roots</td><td>不围住 read，也不是内核级任意代码边界</td></tr>
+      <tr><td><code>fs-observation-policy</code></td><td>当前 Session 是否观察过“存在/缺席 + 版本”，修改前是否仍匹配</td><td>不是身份授权、路径授权，也不证明看过完整文件</td></tr>
+    </tbody>
+  </table></div>
+  <p>Sandbox mode 只有 <code>read-only</code>、<code>workspace-write</code>、<code>danger-full-access</code> 三个值，而且生产类型明确把它定义为“file-effect confinement”。provider 返回的不只是 argv，还返回 full/partial enforcement、拒绝签名和 runner failure 规则；调用方必须执行返回的 argv，不能静默回退到原命令。<evidence id="SANDBOX-SEAM"></evidence></p>
+</section>
+
+<section>
+  <h2>2. 默认值有两层：service 默认只读，shipped base 默认 workspace-write</h2>
+  <div class="claim fact"><div class="claim-label">不要把 schema 默认等同于产品默认</div><p><code>sandbox-policy</code> 自身的配置默认是 <code>read-only</code>；base bundle 则显式把部署默认覆盖为 <code>workspace-write</code>，并把 approval policy 设为 <code>ask</code>。因此缺省 service 实例和 shipped 产品组合得到不同结果，两者都是源码事实。<evidence id="SANDBOX-SHIPPED-POLICY"></evidence><evidence id="SANDBOX-POLICY"></evidence></p></div>
+  <p>每次调用的有效策略按固定优先级解析：已获批的显式 mode → Session event 中最后一个 mode → 部署默认。policy root 来自当前 Session cwd；没有 Session 时回退到已规范化的部署 root。<code>workspace-write</code> 的可写集合是 workspace root、固定 <code>/tmp</code> 和平台 <code>os.tmpdir()</code>，经过 realpath 尽力规范化与去重；<code>read-only</code> 没有 writable root。<evidence id="SANDBOX-WRITABLE-ROOTS"></evidence></p>
+</section>
+
+<section>
+  <h2>3. Mode 是 Session 事件，不是 shell 进程上的可变全局变量</h2>
+  <pre><code>deployment default
+        ↓
+last sandbox/mode event in this Session
+        ↓
+approved per-call override (one execution only)
+        ↓
+SandboxExecutionPolicy { mode, root, sessionId }</code></pre>
+  <p>Session mode 从 <code>sandbox/mode</code> 事件 fold 得出；唯一正式写入口也只是追加该事件。这样 resume/replay 能重建 permission 状态，而一次性批准不会偷偷变成 Session 的持久默认。<evidence id="SANDBOX-MODE-EVENT"></evidence></p>
+  <aside class="caveat"><strong>状态范围：</strong>mode 属于 Session，local provider 的某些资源却属于更长寿命的 Context/provider。二者不可互换：策略解析每次调用重做，runner probe 结果和 Windows workspace grant 则可能被复用。</aside>
+</section>
+
+<section>
+  <h2>4. 升级审批是一条严格单调的 pre-execution 流程</h2>
+  <p>调用只能从只读升级到 workspace/full，或从 workspace 升级到 full；相同或更窄 mode 都不是合法“升级”。<code>sandbox_permissions</code> 与 <code>justification</code> 必须成对出现，审批发生在任何执行之前，并把取消 signal 传给 approval service。只有 <code>allowed-once</code> 返回更宽的单次 policy；拒绝、取消和 unavailable 都不会执行原命令。<evidence id="SANDBOX-ESCALATION"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">权限不是沙箱</div><p>approval 回答“这一次是否允许扩大边界”，sandbox provider 回答“扩大后的边界如何落实”。把前者当成后者，会在 approval service 缺失、runner 不可用或 partial enforcement 时得出错误安全结论。</p></div>
+</section>
+
+<section>
+  <h2>5. Local backend 是平台方言链，不是一个跨平台同构实现</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>平台</th><th>候选链 / profile</th><th>enforcement</th><th>关键差异</th></tr></thead>
+    <tbody>
+      <tr><td>Linux</td><td>bwrap → Landlock</td><td>bwrap full；Landlock 可为 partial</td><td>bwrap 把 <code>/</code> 只读 bind，并给 workspace mode 一个临时 <code>/tmp</code>；Landlock 允许写 host temp 与 workspace</td></tr>
+      <tr><td>macOS</td><td>Seatbelt</td><td>声明 full</td><td>默认 allow，显式 deny file-write，再为 writable roots 放行写入</td></tr>
+      <tr><td>Windows</td><td>ACL helper</td><td>始终 partial</td><td>通过受限 SID/ACE 与临时目录物化能力，无法消除 Everyone/hard-link 等旁路</td></tr>
+    </tbody>
+  </table></div>
+  <p>Linux 多候选时会 probe 并缓存 verdict，全部失败就结构化 fail closed；单一平台候选直接选取。每种方言还有独立 denial 与 runner-failure 签名，供调用方区分“命令失败”“被沙箱拒绝”和“沙箱根本不可用”。<evidence id="SANDBOX-LOCAL-DIALECTS"></evidence><evidence id="SANDBOX-PROFILES"></evidence><evidence id="SANDBOX-LOCAL-SELECT"></evidence></p>
+</section>
+
+<section>
+  <h2>6. 自定义 runner 是 operator trust boundary；stderr 分类只是诊断</h2>
+  <p>配置非空 <code>runnerCommand</code> 会跳过平台探测，并把该 runner 视为 full enforcement。框架验证命令形状与 failure signatures，但无法证明外部程序真的实现了声明的 confinement；这是明确的部署信任输入。<evidence id="SANDBOX-LOCAL-WRAP"></evidence></p>
+  <p>一次性 shell 会执行 provider 返回的精确 argv，记录 enforcement，并依据 exit code、spawn attribution 和 stderr signatures 分类 sandbox denial/runner failure。因为分类依赖带内 stderr，子进程可以输出相同文本制造错误归因；这会影响可用性与诊断，不会让它逃过已经施加的 confinement。<evidence id="SANDBOX-BASH-CONSUMER"></evidence><evidence id="SANDBOX-RESULT-CLASSIFIER"></evidence></p>
+</section>
+
+<section>
+  <h2>7. Windows ACL 是诚实标注的 partial capability</h2>
+  <p>workspace root 的受限 ACE 是 standing grant；Session temp 则建立随机 SID 与随机目录，失败时回滚半物化状态。dispose 会尽力撤销临时 grant 和目录，但 workspace ACE 保留，进程崩溃也可能留下 residue。实现因此明确报告 partial，而非用“沙箱”一词掩盖 Everyone ACE、hard-link 与 cleanup 的限制。<evidence id="SANDBOX-WINDOWS-CAPS"></evidence></p>
+  <aside class="caveat"><strong>跨平台不等价：</strong>相同 <code>workspace-write</code> mode 在 bwrap 中拿到隔离的 <code>/tmp</code>，而 Landlock、Seatbelt 与进程内 fs fence 允许共享 host temp。对同一 OS 用户并行运行的 Session，这形成临时文件名冲突与相互干扰面。</aside>
+</section>
+
+<section>
+  <h2>8. Filesystem seam 把“显示路径”和“目标身份”分开</h2>
+  <p><code>FileSystem</code> 使用 opaque target、opaque version、存在/缺席 observation、guarded create/replace intent，以及结构化 <code>FsError</code>。write/edit intent 是 single-slot waterfall，observed 是同步 recorder；provider 可选暴露 <code>sandboxMode</code>，这决定工具是否能宣传 mutation escalation。<evidence id="SANDBOX-FS-TYPES"></evidence><evidence id="SANDBOX-FS-SEAM"></evidence></p>
+  <p>local provider 的 <code>cwd</code> 只负责相对路径解析，绝不是 containment boundary。它把人类可读绝对路径与 canonical target key 分开：存在目标用 native realpath；不存在目标从最近存在祖先开始规范化，再拼回缺失后缀，从而让别名与多数 symlink 路径共享锁和 observation 身份。<evidence id="SANDBOX-FS-LOCAL"></evidence><evidence id="SANDBOX-FS-IDENTITY"></evidence></p>
+</section>
+
+<section>
+  <h2>9. 读取路径分层，发布原子，但 replace guard 不是跨进程 CAS</h2>
+  <p>local read 区分 whole-file UTF-8、bounded raw bytes 与 stream；二进制探测只采样前 8192 bytes，raw-byte read 有明确上限，stream 接受取消。底层 <code>readText</code> 本身没有 <code>maxBytes</code>，因此“所有长读取都天然有界”并不是 provider 保证；模型工具会另行选择 window 或 stream 路径。<evidence id="SANDBOX-FS-READ-IO"></evidence></p>
+  <p>mutation 在每个 canonical target 的 provider 内锁中完成：先核对 create/replace guard，再在 mode 0700 的 sibling 临时目录里写 mode 0600 文件并 sync，最后通过 hard-link no-replace create、Windows ReplaceFile 或 rename 发布。取消在 commit 前再次检查；commit 后 cleanup 仅 best effort。<evidence id="SANDBOX-FS-LOCAL-MUTATION"></evidence><evidence id="SANDBOX-FS-ATOMIC"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">保证边界</div><p><code>createIfAbsent</code> 在发布点用 no-replace 原语，保证较强；<code>replaceIfVersion</code> 的版本检查却发生在 staging/rename 之前，且锁只覆盖当前 provider 进程。另一个进程可在检查后、发布前写入并被覆盖。因此它是“同一 provider 内串行 + 发布前元数据检查”，不是跨进程线性化 CAS。官方限制也承认 metadata version 与 process-local lock 的边界。<evidence id="SANDBOX-FS-LOCAL-LIMITS"></evidence></p></div>
+</section>
+
+<section>
+  <h2>10. fs-sandbox 是 mutation-only 路径围栏</h2>
+  <p><code>fs-sandbox</code> 继承 local filesystem：read/list 原样保留，只有 write/edit 在委托前检查 mode。只读拒绝所有 mutation；workspace mode 在调用时重新 resolve 目标，并要求目标落在 canonical writable roots 内；full 直接通过。它明确定位为 trusted in-process provider / model path 的纵深防御，而非约束任意原生代码的内核边界。<evidence id="SANDBOX-FS-FENCE"></evidence></p>
+  <p>containment 同时做 separator-aware lexical check 与存在 root/target 的 file identity fallback，处理 Windows alias/case。测试覆盖绝对路径、<code>..</code>、已存在 symlink escape、symlink 下新文件、stale target 与 per-call override。<evidence id="SANDBOX-CONTAINMENT"></evidence><evidence id="SANDBOX-FS-FENCE-TEST"></evidence></p>
+  <aside class="caveat"><strong>已接受 TOCTOU：</strong>当允许 root 内的缺失祖先在 fresh check 之后、mkdir/open/rename 之前被另一个写入者替换为 symlink，进程内围栏仍有 reopen race。源码直接记录了这个剩余边界；需要强对抗隔离时应依赖 OS/remote sandbox，而不是把路径检查升级成内核保证。</aside>
+</section>
+
+<section>
+  <h2>11. read / write / edit 的真实控制流</h2>
+  <pre><code>read(path)
+  resolve from Session cwd → stat/read bounded window → emit present/absent observation
+
+write/edit(path, optional escalation)
+  resolve requested policy → approval if wider → resolve from policy root
+  → fs write/edit intent waterfall → provider guard + mutation
+  → map structured denial → emit new present observation</code></pre>
+  <p>Session cwd 会在解析时重新 canonicalize，以免 symlink-sensitive <code>..</code> 继承陈旧字符串；sandbox policy root 优先于普通 cwd。read 成功后记录 present，确认 ENOENT 时记录 absent。write 与 edit 都在真正 I/O 前取得 policy 并触发 intent，只有成功后才刷新 observation。<evidence id="SANDBOX-SESSION-CWD"></evidence><evidence id="SANDBOX-READ-TOOL"></evidence><evidence id="SANDBOX-READ-TARGET"></evidence><evidence id="SANDBOX-WRITE-TOOL"></evidence><evidence id="SANDBOX-EDIT-TOOL"></evidence></p>
+  <p>只有 mounted fs provider 声明 <code>sandboxMode</code> 时，工具 schema 才接受升级字段；结构化 <code>FS_SANDBOX_DENIED</code> 会被映射为共享 denial marker 与提示。bare local fs 和默认 E2B fs 不伪装成可升级的本地沙箱。<evidence id="SANDBOX-FS-ESCALATION"></evidence></p>
+</section>
+
+<section>
+  <h2>12. Observation policy 是按 Session 对象和 canonical target 的易失状态机</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>最近 observation</th><th>write intent</th><th>edit intent</th></tr></thead>
+    <tbody>
+      <tr><td>无</td><td>拒绝覆盖；不能证明目标缺席</td><td>拒绝</td></tr>
+      <tr><td>absent</td><td><code>createIfAbsent</code></td><td>拒绝</td></tr>
+      <tr><td>present(version)</td><td><code>replaceIfVersion(version)</code></td><td><code>replaceIfVersion(version)</code></td></tr>
+    </tbody>
+  </table></div>
+  <p>状态存于 <code>WeakMap&lt;Session object, Map&lt;targetKey, observation&gt;&gt;</code>；Session owner 被垃圾回收后，弱引用条目可随之释放。源码没有 Session-dispose hook，显式重置整张表发生在 policy plugin dispose/HMR。成功的 read/write/edit 会刷新状态；没有 Session owner 的 mutation 也不能借用别人的 observation。<evidence id="SANDBOX-OBSERVATION"></evidence></p>
+  <p>write/edit intent 是 first-listener-wins 的 waterfall，注册顺序不属于稳定 contract；卸载 policy 后 mutation 会退化为 provider 的无条件调用。生产测试固定了 present/absent 决策、owner 隔离、首 listener 胜出，以及 policy plugin disposal 后状态重置。<evidence id="SANDBOX-OBSERVATION-DOC"></evidence><evidence id="SANDBOX-OBSERVATION-TEST"></evidence></p>
+</section>
+
+<section>
+  <h2>13. “Read before edit” 精确保证 freshness，不保证 completeness 或 authorization</h2>
+  <div class="claim assessment"><div class="claim-label">三个常见误读</div><p>第一，observation 不持久化，resume 后必须重新读；第二，绕过 tool 直接调用 <code>ctx.fs.read*</code> 不会自动产生 observation；第三，只读了一个 window 也足以授权同版本的 whole-file overwrite。它证明“调用者见过这个目标的某个当前版本”，不证明调用者看过全文件，更不证明其有权访问路径。<evidence id="SANDBOX-OBSERVATION-LIMITS"></evidence></p></div>
+  <p>因此正确组合顺序是：身份/部署授权决定能否拥有 capability，sandbox 决定能写哪里，observation guard 防止基于陈旧或从未见过的状态覆盖，atomic publication 决定落盘提交语义。四者不能互相代偿。</p>
+</section>
+
+<section>
+  <h2>14. Permission preset 同步三项状态，但只验证 shell confinement</h2>
+  <p>permission preset 需要 confining <code>ctx.shell</code> 与 approval service；shipped presets 对应 workspace-write + ask 与 danger-full-access + never。用户切换时会同时写 permission/preset、<code>sandbox/mode</code> 和 approval/policy，并为新 Session pin 初始状态。<evidence id="SANDBOX-PERMISSION-PRESETS"></evidence><evidence id="SANDBOX-PERMISSION-WRITE"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">组合缺口</div><p>preset service 只检查 shell 是否 confining，并不证明 <code>ctx.fs</code> 也由 fs-sandbox 提供、使用同一 policy。shipped base 确实同时装了 observation、tool-fs 与 fs-sandbox，所以当前基线一致；自定义 composition 却可能展示“workspace-write”权限，同时把 write/edit 接到 bare filesystem。跨 capability 的 same-policy invariant 由部署组合承担，而不是由类型或启动检查强制。<evidence id="SANDBOX-SHIPPED-FS"></evidence><evidence id="SANDBOX-SHIPPED-FS-PROVIDER"></evidence></p></div>
+</section>
+
+<section>
+  <h2>15. Persistent terminal 继承 confinement，却丢失部分结构化观察面</h2>
+  <p>terminal provider 在 PTY 创建/活动期间禁止更改 Session sandbox mode，避免一个长寿命 shell 跨越权限边界。创建时按 Session 解析 policy、把 shell argv 交给 sandbox provider 包装，并在 init failure 时清理。<evidence id="SANDBOX-TERMINAL-FENCE"></evidence></p>
+  <p>但 terminal 只使用包装后的 argv，没有像 one-shot shell 那样把 enforcement、diagnostic dialect 和 runner classification 带到每次结果中。runner 拒绝仍会 fail，但 Host 对 persistent PTY 的结构化“为何失败/partial enforcement”可见性更弱。这是 observation surface 差异，不是 confinement 绕过。</p>
+</section>
+
+<section>
+  <h2>16. E2B 不是 <code>SandboxProvider</code> 的另一个 runner，而是整套执行世界替换</h2>
+  <p>E2B owner 在一个 Context 内持有一个 remote sandbox handle，验证 API key 与 absolute Linux cwd，创建 mode 0700 的 runtime root，并在 bootstrap 失败时 kill 回滚。SDK 不可避免的 login shell 被赋予随机 HOME 以降低启动文件副作用。这个 ownership scope 意味着：同一 Context 下多个 Session 若共用该 owner，也共用远端 filesystem/process 世界；Session 本身不是 VM 隔离单位。<evidence id="SANDBOX-E2B-OWNER"></evidence></p>
+  <p>remote fs 在远端用 GNU <code>realpath</code> 建立 canonical identity，提供 bounded raw-byte read、process-local target locks、guard check 和原子 staging/publish；<code>readText</code> 则调用 SDK 的整文件读取。publication 开始后不再把取消 signal 传入 link/rename，刻意避免“调用方收到 canceled，却不知道提交是否发生”的模糊状态。<evidence id="SANDBOX-E2B-FS"></evidence><evidence id="SANDBOX-E2B-PUBLICATION"></evidence></p>
+  <p>remote subprocess 也在同一个 sandbox 中解析 executable、管理进程组与 terminal；group signaling 仍有 numeric PGID reuse 的已知竞态。官方限制还明确：没有 host 文件同步、路径 reopen 有竞态、锁只在当前进程。<evidence id="SANDBOX-E2B-SUBPROCESS"></evidence><evidence id="SANDBOX-E2B-PGID"></evidence><evidence id="SANDBOX-E2B-LIMITS"></evidence></p>
+</section>
+
+<section>
+  <h2>17. Remote composition 的核心不变量是“能力同世界”</h2>
+  <p>headless E2B 示例明确禁用 local fs 与 local subprocess，再同时装 E2B owner、remote fs 和 remote subprocess；内层 sandbox policy 设为 full，因为真正边界是远端机器，而不是 host 上的本地 runner。相同路径字符串不会上传 host 文件，所有输入必须经显式 API/文件写入进入远端。<evidence id="SANDBOX-E2B-COMPOSITION"></evidence></p>
+  <p>还有一个容易漏掉的 seam：<code>glob</code>/<code>grep</code> 不经 <code>ctx.fs</code>，而是用 <code>ctx.subprocess</code> 执行 host package 解析出的 ripgrep 绝对路径，并假设 workdir 与可读路径处于同一世界。自定义 remote adapter 若看不见该 host binary，搜索就不能仅靠替换 fs provider 工作；composition 必须同时解决 executable 与 filesystem 共址。<evidence id="SANDBOX-SEARCH-WORLD"></evidence></p>
+</section>
+
+<section>
+  <h2>18. 取消、失败与 cleanup：不同 commit point 有不同答案</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>路径</th><th>取消边界</th><th>失败语义</th><th>残留风险</th></tr></thead>
+    <tbody>
+      <tr><td>Approval</td><td>执行前，可直接取消</td><td>未获批绝不执行</td><td>无 mutation</td></tr>
+      <tr><td>Local shell</td><td>传给 runner/subprocess</td><td>spawn、denial、runner failure 分型</td><td>子进程自己的外部副作用取决于终止时点</td></tr>
+      <tr><td>Local fs</td><td>commit 前最后检查</td><td>commit 后 cleanup failure 不回滚已发布文件</td><td>sibling staging residue 可 best-effort 清理</td></tr>
+      <tr><td>E2B fs</td><td>publication 前可取消；commit 原语不取消</td><td>避免 ambiguous canceled commit</td><td>远端 staging cleanup 仍是 best effort</td></tr>
+      <tr><td>Windows ACL</td><td>grant/revoke 各自有回滚路径</td><td>半物化失败尽力撤销</td><td>崩溃可留下 SID/ACE/temp residue</td></tr>
+      <tr><td>E2B process group</td><td>signal/kill ladder</td><td>远端 numeric identity 驱动</td><td>PGID reuse 小窗口</td></tr>
+    </tbody>
+  </table></div>
+  <p>Filesystem API 没有通用超时参数；bounded raw-byte reads、streaming 与 AbortSignal 是主要资源控制。这里的设计优先保证 commit point 可解释，而不是承诺任何时刻的“瞬间取消”。</p>
+</section>
+
+<section>
+  <h2>19. 静态安全审计：已确认的边界与风险</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>级别</th><th>发现</th><th>影响 / 正确处理</th></tr></thead>
+    <tbody>
+      <tr><td>边界</td><td>三种 mode 只约束文件写副作用</td><td>不能据此声称网络、读取、进程、设备或凭据隔离</td></tr>
+      <tr><td>中</td><td>Landlock/Seatbelt/fs fence 共享 host temp</td><td>同 OS 用户的 Session 可发生临时名冲突和相互干扰；敏感并行任务应使用隔离执行世界</td></tr>
+      <tr><td>中</td><td>fs fence 明确接受 missing-ancestor symlink TOCTOU</td><td>trusted/model path 的纵深防御，不应用作强对抗边界</td></tr>
+      <tr><td>中</td><td>permission preset 不验证 fs/shell same-policy</td><td>shipped 组合无此错配；自定义组合需额外启动审计</td></tr>
+      <tr><td>中</td><td>replace version guard 非跨进程 CAS</td><td>外部写入者可在检查和 publish 之间被覆盖</td></tr>
+      <tr><td>低</td><td>observation first-wins、可卸载、window read 可授权 whole-file write</td><td>它是 freshness guard，不是授权链或内容完整性证明</td></tr>
+      <tr><td>低</td><td>runner/denial 依赖 stderr signatures</td><td>可伪造诊断归因，不能由此逃逸 confinement</td></tr>
+      <tr><td>部署信任</td><td>custom runner 不 probe 即声明 full</td><td>operator 必须独立验证 runner，不能把配置值当证明</td></tr>
+      <tr><td>低</td><td>Windows cleanup residue 与 E2B PGID reuse</td><td>隔离是 partial / best effort，监控和生命周期回收仍需要部署兜底</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>20. 文档漂移：两个具体、可修复的不一致</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>文档</th><th>当前说法</th><th>源码事实</th></tr></thead>
+    <tbody>
+      <tr><td><code>packages/fs/fs/README.md</code></td><td>列举 FsErrorCode 时遗漏 sandbox denial</td><td>类型表已包含 <code>FS_SANDBOX_DENIED</code></td></tr>
+      <tr><td><code>packages/sandbox/sandbox/README.md</code></td><td>实现只概括 Linux/macOS，consumer 只提 bash</td><td>生产实现已有 Windows ACL、PowerShell 路径和 filesystem sandbox consumer</td></tr>
+    </tbody>
+  </table></div>
+  <p>第一处会让 provider/consumer 作者漏掉结构化错误分支；第二处会让架构读者低估当前平台面与 fs policy 的存在。<evidence id="SANDBOX-DOC-ERROR-CODE"></evidence><evidence id="SANDBOX-DOC-BACKENDS"></evidence></p>
+</section>
+
+<section>
+  <h2>21. 验证覆盖与本章边界</h2>
+  <p>生产测试已覆盖 local runner profiles、custom runner、候选 fallback/fail-closed；fs fence 的三种 mode、<code>..</code> 与 symlink escape；observation 的 absent/present、Session owner 隔离、first-wins 和 disposal。<evidence id="SANDBOX-LOCAL-TEST"></evidence><evidence id="SANDBOX-FS-FENCE-TEST"></evidence><evidence id="SANDBOX-OBSERVATION-TEST"></evidence></p>
+  <div class="claim fact"><div class="claim-label">本章验证状态</div><p>本章基于固定 commit 的生产源码、shipped composition、README 与现有测试做静态控制流核对，并逐项区分源码保证、官方限制与本章 assessment。本次交付运行了覆盖审批、preset、扩权、文件、进程、Job 与 Terminal 的 15 个 targeted Vitest 文件：508 项通过，1 项跳过；这验证现有行为测试保持绿色，但不把静态安全审计升级为动态穿透测试结论。</p></div>
+  <div class="claim assessment"><div class="claim-label">最终评价</div><p>最值得保留的是“能力 seam + 单次 policy + guarded mutation + durable Session mode”的分层；最需要补强的是跨 capability composition invariant、跨进程 replace CAS，以及对共享 temp/partial enforcement 的产品级可见性。这个系统的真实安全性来自各层同时成立，而不是来自 <code>sandbox</code> 这个名字。</p></div>
+</section>

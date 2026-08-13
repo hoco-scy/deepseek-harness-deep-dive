@@ -1,0 +1,215 @@
+<section>
+  <h2>结论：这里不是一个 Shell，而是四个相互正交的生命周期系统</h2>
+  <div class="thesis"><p>DeepSeek Harness 把“运行命令”拆成四层：<code>ctx.subprocess</code> 管执行世界、进程树与字节流；<code>ctx.shell</code> 把一次性命令归一化为前台结果或后台进程；<code>ctx.jobs</code> 给不同生产者提供统一的后台身份、所有权和完成通知；<code>ctx.terminals</code> 则管理跨调用存活的 PTY 会话。工具只是这些 seam 的模型界面，不拥有底层资源。</p></div>
+  <p>这种拆分真正解决的是生命周期，而不是命令语法：谁能看见资源、取消何时算完成、输出丢失怎样显式表达、Agent 销毁时谁负责收尸。代价是部署者必须同时理解 composition、owner scope 和 provider 能力；仅看到一个 <code>bash</code> 工具名，无法判断它是一次性进程还是持久 Shell。</p>
+</section>
+
+<section>
+  <h2>1. 四层拓扑：执行、命令、后台控制与交互会话</h2>
+  <pre><code>模型工具
+  bash / pwsh ───────────────→ ctx.shell ──────→ ctx.subprocess.spawn
+       └─ run_in_background ─→ ctx.jobs ───────┘
+
+  terminal_* ────────────────→ ctx.terminals ─→ PTY backend
+       └─ background send ───→ ctx.jobs             └→ ctx.subprocess.spawnTerminal
+
+  persistent bash wrapper ───→ ctx.terminals（每个 Agent 复用一个 PTY）</code></pre>
+  <div class="claim fact"><div class="claim-label">底层合同</div><p><code>SubprocessRuntime</code> 是 shipped Bash terminal backend 与普通进程的共享 substrate；它要求 provider 在同一执行世界中解析 executable、立即返回 live handle、定义树级终止合同，并在服务销毁时回收仍存活的资源。<code>TerminalBackend</code> 本身仍是可替换接口，其他 backend 可以自带不同 substrate。<evidence id="SHELL-SUBPROCESS-SEAM"></evidence></p></div>
+  <p><code>ctx.shell</code> 刻意不知道 Session 与 Job ID；后台注册、轮询和通知属于 Job 层。反过来，Job Registry 不知道命令、PTY 或 subagent 的实现，只接受生产者给出的 cancel/done/readOutput hooks。</p>
+</section>
+
+<section>
+  <h2>2. 发布配置选择两种完全不同的 <code>bash</code></h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Preset</th><th>模型看到的 Bash</th><th>状态</th><th>后台控制</th></tr></thead>
+    <tbody>
+      <tr><td>Standard</td><td><code>dsh-tool-bash</code>；Windows 换为 <code>pwsh</code></td><td>每次调用新进程</td><td><code>run_in_background</code> + 三个 <code>job_*</code> 工具</td></tr>
+      <tr><td>Minimal</td><td><code>dsh-tool-bash-persistent</code></td><td>每个 exact Agent 复用一个 PTY</td><td>命令本身串行；长任务由 Shell 内部后台化</td></tr>
+      <tr><td>Terminal 工具包</td><td>六个 <code>terminal_*</code></td><td>显式创建、发送、读取、signal、列出、关闭</td><td><code>terminal_send</code> 可接入 Job Registry</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">真实装配</div><p>Standard preset 在非 Windows 注册一次性 Bash、在 Windows 注册 PowerShell，并挂载 Job controls；Minimal preset 则隔离自己的 Terminal service/backend，只暴露持久 Bash 与编辑器。Standard 不暴露六个 Terminal 工具，Minimal 也不把 PTY lifecycle 直接交给模型。<evidence id="SHELL-STANDARD-COMPOSITION"></evidence><evidence id="SHELL-MINIMAL-COMPOSITION"></evidence></p></div>
+  <aside class="caveat"><strong>审计规则：</strong>同名 <code>bash</code> 不等于同一合同。必须把历史 tool definition 与当时 preset/composition 一起读取。</aside>
+</section>
+
+<section>
+  <h2>3. Subprocess seam 拒绝隐式默认：每一项执行条件都由 caller 给出</h2>
+  <p><code>SubprocessSpawnSpec</code> 明确携带 <code>argv</code>、<code>cwd</code>、三条 stdio disposition、cleanup grace、AbortSignal 和环境 overlay；provider 不替调用者猜 Shell、目录、缓冲上限或 deadline。<code>argv[0]</code> 直接作为 executable，substrate 本身不做 Shell 解释。</p>
+  <div class="claim fact"><div class="claim-label">结果语义</div><p><code>done</code> 只为 spawn-level failure reject；进程启动后的 exit code/signal 是普通 outcome。Collected stream 用调用者持有的 byte offset 读取，多个 reader 不会互相消费；raw pipe 则完全交给上层。<evidence id="SHELL-SPAWN-CONTRACT"></evidence></p></div>
+  <p>这使本地执行与远端执行可以替换而不改工具合同：provider 可以改变 executable lookup、进程/PTY transport 与文件系统世界，但调用者仍决定策略和呈现。</p>
+</section>
+
+<section>
+  <h2>4. 子进程环境先清洗，再显式重建当前 Harness 身份</h2>
+  <pre><code>process.env
+  ├─ 删除名称匹配 KEY|PASSWORD|SECRET|TOKEN 的变量
+  ├─ 删除全部 DSH_*（大小写不敏感）
+  └─ 保留 PATH / HOME / locale / proxy 等
+        ↓
+调用者 env overlay（string 恢复；undefined 删除）
+        ↓
+Shell tool 每次从 ctx.shellEnv 注入当前 DSH_* snapshot</code></pre>
+  <div class="claim fact"><div class="claim-label">防止陈旧身份泄漏</div><p>清洗函数是普通 process 与 PTY backend 共用的单一定义；显式 overlay 在清洗后合并，因此部署仍可有意识地转发 credential-shaped 或 <code>DSH_*</code> 值。<evidence id="SHELL-ENV-SCRUB"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">受管变量</div><p><code>ctx.shellEnv</code> 每次调用重建、排序并冻结 <code>DSH_HOME</code>、<code>DSH_SHELL=1</code>、Agent 的 <code>DSH_SESSION_ID</code>，以及后端可定位时的 <code>DSH_SESSION_JSONL</code>；贡献者必须预声明 key，重复 owner 或运行时返回未声明 key 会 fail loud。<evidence id="SHELL-MANAGED-ENV"></evidence></p></div>
+  <aside class="caveat"><strong>边界：</strong>敏感变量清洗是名称启发式，不是 secret taint tracking。它可能删掉名字含 TOKEN 的非秘密变量，也无法识别采用其他命名的秘密；显式 overlay 更是有意的信任入口。</aside>
+</section>
+
+<section>
+  <h2>5. 长输出优先保留尾部；完整 Spill 只有在仍可信时才发布</h2>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>内存有界</h3><p>Collector 逐字节计数，超限后从头删除，精确保留最后 <code>maxBytes</code>。</p></div>
+    <div><span>2</span><h3>首次溢出建 Spill</h3><p>私有临时目录、随机文件名、exclusive create、0600 权限，并补写先前 chunks。</p></div>
+    <div><span>3</span><h3>完整性有上限</h3><p>总流超过 spill cap 后删除 spill；它不再能代表完整输出。</p></div>
+    <div><span>4</span><h3>运行中可读，settle 后定稿</h3><p>仍完整时可以返回当前 spill path；进程 settle 且 seal 成功后，它才代表最终完整输出。</p></div>
+  </div>
+  <div class="claim fact"><div class="claim-label">可观测丢失</div><p>Offset reader 返回 <code>lossy</code>、下一 offset 与仍完整时的 spill path；进程运行期间该路径表示截至当下的完整流，settlement seal 成功后才可视为最终文件。请求的 offset 已滑出内存窗口时，返回的是整个保留尾部，而不是伪装成连续 delta。<evidence id="SHELL-OUTPUT-SPILL"></evidence></p></div>
+  <p>“保留尾部”是诊断取向：错误和总结常在输出末端；spill 才承担完整取回。模型结果还会再经过工具级渲染上限，因此 substrate 可恢复并不等于该次模型上下文包含全部字节。</p>
+</section>
+
+<section>
+  <h2>6. 一次性 Shell 把非零退出、超时与取消当成事实，而不是基础设施异常</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>情况</th><th><code>ctx.shell.run</code></th><th>模型工具</th></tr></thead>
+    <tbody>
+      <tr><td>exit 0 / 非零</td><td>resolve <code>ShellRunResult</code></td><td>输出；非零追加 exit marker</td></tr>
+      <tr><td>Executor timeout</td><td>resolve，<code>timedOut:true</code></td><td>显示 timeout/partial output</td></tr>
+      <tr><td>Tool AbortSignal 首先触发</td><td>resolve，<code>aborted:true</code></td><td>转成稳定的 tool aborted error</td></tr>
+      <tr><td>无法 spawn / provider failure</td><td>reject（前台）</td><td>归一化 execution error</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Service contract</div><p>Executor 的 <code>resolve</code> 拥有 defaults/caps；前台 <code>run</code> 只有 infrastructure failure reject。后台 <code>start</code> 不施加 timeout，spawn failure 也被收敛成 killed handle 和 stderr，避免 Job cleanup 因 rejected <code>done</code> 悬挂。<evidence id="SHELL-EXECUTOR-CONTRACT"></evidence></p></div>
+</section>
+
+<section>
+  <h2>7. 后台切换不是“不要 await”，而是一次原子所有权转移</h2>
+  <pre><code>bash(args)
+  → 参数 / escalation / workdir / shellEnv 全部解析
+  → 检查 tool-call signal 尚未 abort
+  → jobs.start({ owner, kind, label, run })
+       ├─ controller / owner / capacity preflight
+       ├─ run() 真正 spawn
+       ├─ 注册 record 与 JobId
+       └─ Job runtime 接管 cancel / done / output
+  → 返回 job id
+</code></pre>
+  <div class="claim fact"><div class="claim-label">Detached cancellation boundary</div><p>Bash 工具在 <code>jobs.start</code> 之前保留 tool-call cancellation；Job ID 发布后，不再把 <code>exec.signal</code> 传给进程。之后只有 <code>job_kill</code> 或 owner/service teardown 终止它。非零后台命令是 <code>completed</code> 并在 detail 报 exit code，不是 registry-level <code>failed</code>。<evidence id="SHELL-BASH-TOOL"></evidence><evidence id="SHELL-BACKGROUND-OUTCOME"></evidence></p></div>
+</section>
+
+<section>
+  <h2>8. Job Registry 是 producer-neutral 的 process-local 控制面</h2>
+  <p>一个 Job 由 <code>kind</code>、label、可选 exact-Agent owner、输出 cap 与三个 hook 组成：producer 在 <code>run()</code> 中返回 cancel、永不 reject 的 done、可选 consuming readOutput；registry 负责 ID、状态、访问控制、waiter、通知与销毁。</p>
+  <div class="claim fact"><div class="claim-label">先检查，再开工</div><p>本地 registry 在调用 producer 前验证 scoped controller 可达、kind/label/output limit、owner 正在注册表中，以及每 owner 活跃数未达到默认 10 的上限；没有队列。只有 preflight 全部成功才调用 <code>run()</code> 并分配 <code>&lt;kind&gt;-N</code>。<evidence id="SHELL-JOBS-START"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">隔离与 first-wins</div><p>Owned Job 只允许同 Session ID caller 读取/取消；监听器又按 exact owner 的 scope chain 路由。Settlement first-wins，先提交终态、释放 waiter、通知 UI observer，最后才发完成 listener，防止 reporter 开新 turn 时其他观察者仍看见旧状态。<evidence id="SHELL-JOBS-SETTLEMENT"></evidence></p></div>
+</section>
+
+<section>
+  <h2>9. Job 工具区分“请求取消”和“已经停止”</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>工具</th><th>读取/突变</th><th>关键语义</th></tr></thead>
+    <tbody>
+      <tr><td><code>job_output</code></td><td>流式 producer 消费下一段；final-output producer settle 后取最终值</td><td><code>wait:true</code> 超时只返回 running，不杀 Job</td></tr>
+      <tr><td><code>job_list</code></td><td>列出 caller 可见的 live 与 settled records</td><td>registry 不在 settle 时自动删除</td></tr>
+      <tr><td><code>job_kill</code></td><td>立即调用 cancel hook</td><td>返回 cancellation-requested；真正终态等待 producer settle</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">模型控制面</div><p>三工具共享 producer 提供的输出上限；<code>job_output</code> 自己管理 wait deadline，避免将正常的“仍在运行”映射成 tool timeout。Kill 后取的是非消费 snapshot，因此不会意外吃掉剩余输出。<evidence id="SHELL-JOB-TOOLS"></evidence></p></div>
+</section>
+
+<section>
+  <h2>10. 完成通知会选择当前 Turn 的 inbox 或新 Follow-up Turn</h2>
+  <pre><code>Job settle 且尚未 reported
+  ├─ owner busy                         → owner.inject(notice)
+  ├─ owner idle + wake budget 尚有余额 → owner.followup(notice)
+  └─ quiet mode / budget耗尽           → owner.inject(notice)
+</code></pre>
+  <div class="claim fact"><div class="claim-label">防止自激循环</div><p>默认 wake budget 是每 exact Agent 连续 3 个由 Job completion 打开的 Turn；只有真正 user-authored message 被 claim 才重置。这样“完成通知触发新任务，新任务又完成并唤醒”不会无限购买模型请求。<evidence id="SHELL-JOB-NOTICES"></evidence></p></div>
+  <aside class="caveat"><strong>已记录限制：</strong>源码 README 承认 turn retirement 的窄窗口仍可能让通知被 inject 到即将 idle 的 Agent 而没有 wake；spent budget 也不会随时间恢复。这个通知层是活跃内存状态，不是耐久 Job queue。</aside>
+</section>
+
+<section>
+  <h2>11. Job 生命周期跟 exact Agent 对象绑定，而不只是可复用的 Session 字符串</h2>
+  <p>Owner cleanup 被挂到 exact Agent scope；销毁时 registry 先对 owned Jobs 请求取消，等待每个 settlement，最后删除 records 并通知镜像。服务整体销毁也执行同一套 quiescence。</p>
+  <div class="claim fact"><div class="claim-label">失败边界</div><p>如果 cancel hook 抛错，registry 会强制把 record 标成 failed，并明确记录工作可能 orphan；如果 cancel 返回但生产者永不 settle，teardown 无法区分“慢停”与“取消无效”，会一直等待。<evidence id="SHELL-JOBS-CLEANUP"></evidence></p></div>
+  <p>Web 的 Job 列表只是 Host 推送的只读镜像：进程重启后清空，历史 transcript 中的启动卡仍然存在。它显示“曾经启动”和“当前仍有 live control”是两种不同事实。<evidence id="SHELL-JOBS-UI"></evidence></p>
+</section>
+
+<section>
+  <h2>12. Terminal service 发布的是 exact-owner 会话，不是可猜中的全局 PTY</h2>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>预留</h3><p>验证 live owner、backend 与 owner-local name，预留 name 和 pending spawn。</p></div>
+    <div><span>2</span><h3>初始化</h3><p>Backend 分配 PTY 并完成初始化；期间 owner/service cancellation 可中止。</p></div>
+    <div><span>3</span><h3>发布</h3><p>再次检查 service 与 exact owner，才把 <code>pty-N</code> 放入 registry。</p></div>
+    <div><span>4</span><h3>回滚</h3><p>失败时 close 未发布 session；清理也失败则保留/聚合错误，而不是静默泄漏。</p></div>
+  </div>
+  <div class="claim fact"><div class="claim-label">访问与互斥</div><p>read/signal/kill/list 全部要求 exact owner；同一 PTY 同时最多一个 active send。Close 只有 backend 真正静止后才删除 record；close 失败会清除 closing fence，允许调用者重试。<evidence id="SHELL-TERMINAL-SERVICE"></evidence></p></div>
+</section>
+
+<section>
+  <h2>13. <code>terminal_send</code> 的返回表示“何时适合再次思考”，不等于命令退出</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>waitReason</th><th>证据</th><th>不能推出</th></tr></thead>
+    <tbody>
+      <tr><td><code>stdin_read</code></td><td>受控 prompt + Shell 前台组，或 foreground syscall probe 显示等待输入</td><td>整个 Session 已退出</td></tr>
+      <tr><td><code>inferred_idle</code></td><td>有输出后经历配置的 silence 窗口</td><td>前台进程已完成</td></tr>
+      <tr><td><code>timeout</code></td><td>本次 send 等待 deadline 到达</td><td>进程已被杀；Session 已退出</td></tr>
+      <tr><td><code>session_exit</code></td><td>顶层 PTY process outcome 已到达</td><td>此前的 idle 推断等同于 exit</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Readiness algorithm</div><p>Local PTY backend 结合受控 prompt、foreground process-group、Linux exact stdin-wait probe、输出静默与绝对 timeout；prompt 只有在 shell 重新拥有前台组后才被接受。取消 active send 会真正向 foreground group 发送 <code>SIGINT</code>，并持有 exclusive slot 直到 signal path settle。<evidence id="SHELL-PTY-READINESS"></evidence></p></div>
+</section>
+
+<section>
+  <h2>14. 六个 Terminal 工具暴露资源；Persistent Bash 则隐藏资源</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>界面</th><th>模型责任</th><th>Runtime 责任</th></tr></thead>
+    <tbody>
+      <tr><td><code>terminal_open/send/read/signal/list/close</code></td><td>保存 Session ID、理解 readiness、最终 close</td><td>Owner fence、scrollback、signal、quiescent cleanup</td></tr>
+      <tr><td>Persistent <code>bash(command)</code></td><td>只提交命令</td><td>每 owner 缓存 PTY、串行调用、marker 抽取 exit、timeout/abort 后 reset</td></tr>
+      <tr><td>一次性 <code>bash/pwsh</code></td><td>每次给完整 command/workdir</td><td>新进程、timeout、bounded output、可选 Job detach</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">显式 Terminal 工具</div><p>六工具都要求调用 Agent；后台 <code>terminal_send</code> 先占用 PTY 的 exclusive send，再作为 <code>pty-send</code> Job 暴露。Job cancel 转成 operation cancel/SIGINT，输出和结果受统一 byte cap。<evidence id="SHELL-TERMINAL-TOOLS"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">隐藏式 Persistent Bash</div><p>Wrapper 用随机 start/end marker 包裹每条命令，按 owner 串行读取 scrollback；timeout、abort、send failure 或 shell exit 会关闭不确定会话，下次从 workspace 新建，而不是冒险复用污染状态。<evidence id="SHELL-PERSISTENT-BASH"></evidence></p></div>
+</section>
+
+<section>
+  <h2>15. Kill 面向进程树，但静止证明因平台而异</h2>
+  <p>普通本地进程在 POSIX 以 detached process group 为树根，先 TERM、等待 grace、再 KILL，并用 group liveness 观察静止；Windows 调用 <code>taskkill /T /F</code> 请求树级终止，但把 direct-child exit 当作可观察完成代理，没有独立的 descendant/group liveness probe。</p>
+  <div class="claim fact"><div class="claim-label">普通进程树</div><p>POSIX 实现会在 direct child 关闭后继续探测 group liveness，避免 TERM-trapping helper 被遗漏；确认 group 消失后才停止 escalation。Windows 的保障更弱：终止动作包含 <code>/T</code>，而等待边界仍是 root process exit，不能据此声称独立证明整棵树已经静止。<evidence id="SHELL-PROCESS-TREE"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">PTY 清理</div><p>PTY backend 用 PID + start identity 跟踪后代，先清后代、再关 shell、再扫描后代；向当前 shell 本身发 <code>SIGKILL</code> 会被拒绝，调用者应关闭 Terminal session。若仍有 survivor，close 明确失败。<evidence id="SHELL-PTY-CLEANUP"></evidence></p></div>
+</section>
+
+<section>
+  <h2>16. 跨平台与远端替换发生在 substrate/provider，不应渗进工具合同</h2>
+  <p>Bash 与 PowerShell 工具共享 <code>ctx.shell</code>、Job、审批和 managed env 语义；差异留在 executable、启动 flags、编码与 sandbox runner。E2B provider 则替换 <code>ctx.subprocess</code> 的 executable lookup、普通进程和 Terminal transport，让上层 Shell/PTY consumer 继续使用同一 seam。<evidence id="SHELL-E2B-SEAM"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">设计评价</div><p>这是比“每个工具自己调用 child_process”更强的抽象边界：安全环境、进程树、输出和 PTY transport 可以集中替换。然而跨平台 parity 仍依赖每个具体 tool provider 是否真正复用共享 helper；公共 Service Definition 只是合同，不是自动证明。</p></div>
+</section>
+
+<section>
+  <h2>17. 固定基线上的三个静态审计发现</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>发现</th><th>影响</th><th>判定</th></tr></thead>
+    <tbody>
+      <tr><td><code>shellEnv.list()</code> 不列出 registry 自己拥有的三个 built-ins</td><td>诊断/UI 若把 list 当全集，会漏报实际注入变量</td><td>源码 TODO 与 README 均明确记录</td></tr>
+      <tr><td>PowerShell README 仍声明旧 inject：<code>tools,bash,systemPrompt,bashEnv</code></td><td>扩展作者照抄会引用不存在/过时 seam</td><td>当前源码实际为 <code>tools,shell,systemPrompt,shellEnv</code></td></tr>
+      <tr><td>PowerShell 的默认 cwd 仍直接取 raw Session header，而 Bash 会 canonicalize/优先 policy workspace root</td><td>跨平台同一 Session 的路径身份可能不完全同构</td><td>README 将其列为已知 parity gap</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">可复核漂移</div><p>这些结论来自当前生产源码与相邻官方 README 的直接对照，不是运行推断。<evidence id="SHELL-ENV-LIST-GAP"></evidence><evidence id="SHELL-PWSH-DOC-DRIFT"></evidence><evidence id="SHELL-PWSH-INJECT"></evidence><evidence id="SHELL-PWSH-CWD-GAP"></evidence><evidence id="SHELL-BASH-CWD"></evidence></p></div>
+</section>
+
+<section>
+  <h2>18. 保证矩阵：什么是耐久事实，什么只是当前进程的控制状态</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>对象</th><th>跨调用</th><th>跨 Agent</th><th>跨进程重启</th><th>输出读取</th></tr></thead>
+    <tbody>
+      <tr><td>前台一次性 Shell</td><td>否</td><td>N/A</td><td>否</td><td>结果写入 Session 后可重放</td></tr>
+      <tr><td>Background Job</td><td>是</td><td>Owned Job 否</td><td>否</td><td>stream 为单消费；结果/通知进入历史后耐久</td></tr>
+      <tr><td>Explicit Terminal</td><td>是</td><td>否，exact owner</td><td>否</td><td>bounded scrollback 分页</td></tr>
+      <tr><td>Persistent Bash</td><td>是，同一 Agent</td><td>否</td><td>否</td><td>marker 定界的一次命令结果</td></tr>
+      <tr><td>Spill file</td><td>同一进程/文件存在期间</td><td>由路径与主机权限决定</td><td>不是 Session durability</td><td>仅完整且 seal 成功时发布</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">最终评价</div><p>最成熟的部分是把“已经发出取消”与“资源已经静止”、把“等待返回”与“命令退出”、把“历史中有启动卡”与“当前仍有控制 handle”严格分开。最大的认知成本也来自这里：Process、Job、Terminal、Turn 各有自己的状态机。正确的运维和 UI 必须显示这些状态，而不能把它们压扁成 running/done 两个词。</p></div>
+  <div class="claim fact"><div class="claim-label">验证状态</div><p>除固定 commit 的源码、配置、README 与测试控制流审计外，本次交付运行了覆盖审批、preset、扩权、文件、进程、Job 与 Terminal 的 15 个 targeted Vitest 文件：508 项通过，1 项跳过。平台差异与本章静态 findings 仍按证据边界单独陈述。</p></div>
+</section>

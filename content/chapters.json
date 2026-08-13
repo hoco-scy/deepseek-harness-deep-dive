@@ -22,10 +22,10 @@
 
     {"id":"16","slug":"tool-primitives","part":"工具系统","title":"工具定义原语与执行管线","subtitle":"schema、scope、execution mode、presentation 与 waterfall","status":"verified","scope":"拆解 ToolDefinition、registry、快照、pre/guard/around/post/finalize/result 和 Code Mode 子调用。"},
     {"id":"17","slug":"tool-catalog","part":"工具系统","title":"工具全集与能力分类","subtitle":"每一个模型可见工具的输入、输出、策略与 UI 意图","status":"verified","scope":"从生成 catalog 与源码逐项枚举工具名、提供包、schema、并行模式、危险面和后端 seam。"},
-    {"id":"18","slug":"tool-parallelism","part":"工具系统","title":"工具并行器与结果顺序","subtitle":"barrier、滚动窗口、重分类与模型顺序提交","status":"queued","scope":"追踪 executionMode 分类、并发池、屏障、开跑前重分类、settlement 和 additional context 顺序。"},
-    {"id":"19","slug":"permission-approval","part":"工具系统","title":"权限分析、审批与单调 Guard","subtitle":"谁提出风险、谁能放行、谁只能拒绝","status":"queued","scope":"分析 pre-execute policy、approval waterfall、absence fail-closed、monotonic guards、preset 与每次调用授权。"},
-    {"id":"20","slug":"sandbox-filesystem","part":"执行环境","title":"Sandbox、Filesystem 与观察策略","subtitle":"进程和文件如何共享一个执行世界与根目录策略","status":"queued","scope":"分析 sandbox seam/backends、policy、fs providers、write/edit intent、read-before-edit、E2B 与跨平台实现。"},
-    {"id":"21","slug":"shell-terminal-jobs","part":"执行环境","title":"Shell、PTY、Terminal 与后台作业","subtitle":"短命进程、持久会话、输出留存和生命周期","status":"queued","scope":"追踪 subprocess、shell executor、terminal ownership、job registry、spill、signal 和 kill escalation。"},
+    {"id":"18","slug":"tool-parallelism","part":"工具系统","title":"工具并行器与结果顺序","subtitle":"barrier、滚动窗口、重分类与模型顺序提交","status":"verified","scope":"追踪 executionMode 分类、并发池、屏障、开跑前重分类、settlement 和 additional context 顺序。"},
+    {"id":"19","slug":"permission-approval","part":"工具系统","title":"权限分析、审批与单调 Guard","subtitle":"谁提出风险、谁能放行、谁只能拒绝","status":"verified","scope":"分析 pre-execute policy、approval waterfall、absence fail-closed、monotonic guards、preset 与每次调用授权。"},
+    {"id":"20","slug":"sandbox-filesystem","part":"执行环境","title":"Sandbox、Filesystem 与观察策略","subtitle":"进程和文件如何共享一个执行世界与根目录策略","status":"verified","scope":"分析 sandbox seam/backends、policy、fs providers、write/edit intent、read-before-edit、E2B 与跨平台实现。"},
+    {"id":"21","slug":"shell-terminal-jobs","part":"执行环境","title":"Shell、PTY、Terminal 与后台作业","subtitle":"短命进程、持久会话、输出留存和生命周期","status":"verified","scope":"追踪 subprocess、shell executor、terminal ownership、job registry、spill、signal 和 kill escalation。"},
     {"id":"22","slug":"web-lsp-mcp-skill","part":"执行环境","title":"Web、LSP、MCP 与 Skill","subtitle":"稳定工具名、可替换提供者和渐进式能力披露","status":"queued","scope":"分析 web provider registry、LSP 归一化、MCP client 挂载、Skill catalog/load 与提示词暴露。"},
     {"id":"23","slug":"code-mode-self-modification","part":"执行环境","title":"Code Mode、自修改与动态插件","subtitle":"模型如何编排工具，乃至检查和挂载自己的运行时","status":"queued","scope":"分析 run_code transport、worker runtime、serialized subcall、Cordis inspect/define、VM 与处置生命周期。"},
 
