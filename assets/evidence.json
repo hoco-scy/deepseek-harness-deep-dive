@@ -1051,6 +1051,196 @@
       "supports": "README 多处称 retry 会关闭旧 Turn 并开启新编号 Turn；生产源码和测试实际在同一 while loop、同一 turn/step 内 continue。",
       "titleEn": "Retry README drift from the current loop boundary",
       "supportsEn": "The README repeatedly says retries close the old Turn and open a freshly numbered Turn, while production source and tests continue in the same loop, Turn, and Step."
+    },
+    {
+      "id": "SESSION-FORMAT-HEADER",
+      "kind": "production-source",
+      "path": "packages/core/session/src/types.ts",
+      "lines": "33-99",
+      "title": "Session format version 与持久 header",
+      "supports": "格式版本固定为 0 且无兼容承诺；header 保存 identity、createdAt、cwd、fork parent/seedLength、subagent origin/depth 与 agent preset。",
+      "titleEn": "Session format version and durable header",
+      "supportsEn": "The format version is fixed at zero with no compatibility promise; the header stores identity, creation time, cwd, fork parent and seed length, subagent origin and depth, and agent preset."
+    },
+    {
+      "id": "SESSION-CORE-EVENTS",
+      "kind": "production-source",
+      "path": "packages/core/session/src/types.ts",
+      "lines": "230-332",
+      "title": "核心 SessionEvent vocabulary",
+      "supports": "核心声明 Turn/Step、user、raw assistant chunks、assembled assistant、tool call/result、todo、request header/context 与 end-seed 事件及其 payload 语义。",
+      "titleEn": "Core SessionEvent vocabulary",
+      "supportsEn": "Core declares Turn and Step boundaries, user messages, raw assistant chunks, assembled assistants, tool calls and results, todos, request header and context, and end-seed events with their payload semantics."
+    },
+    {
+      "id": "SESSION-EVENT-ENVELOPE",
+      "kind": "production-source",
+      "path": "packages/core/session/src/types.ts",
+      "lines": "335-435",
+      "title": "SessionEvent envelope、surface marker 与 ignorable",
+      "supports": "事件是按 type 区分的 union，含 seq/time/data；只有三类 message event 可带 surfaceOp/sourceEventSeqs，未知事件只有 ignorable=true 才可安全跳过。",
+      "titleEn": "SessionEvent envelope, surface markers, and ignorable flag",
+      "supportsEn": "Events are a type-discriminated union with seq, time, and data; only three message event types may carry surfaceOp and sourceEventSeqs, and an unknown event is skippable only with ignorable=true."
+    },
+    {
+      "id": "SESSION-KNOWN-EVENTS",
+      "kind": "generated-source",
+      "path": "packages/core/session/src/known-event-types.ts",
+      "lines": "9-64",
+      "title": "本构建识别的 44 种事件",
+      "supports": "生成 catalog 列出全仓库声明的 44 个事件类型；持久化读路径用它拒绝未知 required vocabulary。",
+      "titleEn": "The 44 event types known to this build",
+      "supportsEn": "The generated catalog lists all 44 event types declared in the repository and lets persistence refuse unknown required vocabulary."
+    },
+    {
+      "id": "SESSION-LOSSLESS-JSON",
+      "kind": "production-source",
+      "path": "packages/core/session/src/json.ts",
+      "lines": "69-178",
+      "title": "一次遍历的 lossless-JSON snapshot",
+      "supports": "迭代遍历一次读取、校验并复制 plain JSON graph；拒绝稀疏/循环/exotic object、负零、非有限数和非字符串 own key。",
+      "titleEn": "Single-pass lossless-JSON snapshot",
+      "supportsEn": "An iterative traversal reads, validates, and copies a plain JSON graph once, rejecting sparse, cyclic, and exotic objects, negative zero, non-finite numbers, and non-string own keys."
+    },
+    {
+      "id": "SESSION-SEED-ACCEPTANCE",
+      "kind": "production-source",
+      "path": "packages/core/session/src/index.ts",
+      "lines": "499-547",
+      "title": "Seed 的逐事件接纳与 end-seed 边界",
+      "supports": "Seed 事件被 snapshot/adopt、校验 envelope/header/连续 seq，并经同一 surface transition 接纳；构造后记录 firstLiveSeq，缺少 marker 时追加 end-seed。",
+      "titleEn": "Per-event seed acceptance and end-seed boundary",
+      "supportsEn": "Seed events are snapshotted or adopted, checked for envelope, header, and contiguous sequence, and accepted through the same surface transition; construction records firstLiveSeq and appends end-seed when absent."
+    },
+    {
+      "id": "SESSION-APPEND-COMMIT",
+      "kind": "production-source",
+      "path": "packages/core/session/src/index.ts",
+      "lines": "550-654",
+      "title": "Session.append 的同步提交点",
+      "supports": "Append 先 snapshot JSON 与 surface metadata、freeze candidate、验证 surface、解析 precommit dispatch；log.push 是提交点，随后 observer failure 被隔离，重入 append 被拒绝。",
+      "titleEn": "Synchronous commit point of Session.append",
+      "supportsEn": "Append snapshots JSON and surface metadata, freezes the candidate, validates the surface, and resolves precommit dispatch; log.push is the commit point, after which observer failures are contained and reentrant append is rejected."
+    },
+    {
+      "id": "SESSION-APPEND-BOUNDARY-TEST",
+      "kind": "production-test",
+      "path": "packages/core/session/tests/session.spec.ts",
+      "lines": "1388-1507",
+      "title": "Append precommit veto、postcommit containment 与 surface 原子性测试",
+      "supports": "测试证明 observer 在通知前已看到 committed event，observer 失败不回滚；internal dispatch 可在 commit 前 veto，失败 surface plan 不污染下一 append。",
+      "titleEn": "Append precommit veto, postcommit containment, and surface atomicity tests",
+      "supportsEn": "Tests prove observers see an already committed event and cannot roll it back; internal dispatch may veto before commit, and a rejected surface plan does not pollute the next append."
+    },
+    {
+      "id": "SESSION-IMMUTABILITY-TEST",
+      "kind": "production-test",
+      "path": "packages/core/session/tests/session.spec.ts",
+      "lines": "437-495",
+      "title": "派生消息不可改写日志与非法 JSON 源头拒绝测试",
+      "supports": "测试尝试修改派生 message/content 均因冻结失败；BigInt、函数、Symbol、Map、undefined、Infinity、稀疏/循环 graph 在 append 前拒绝且日志不增长。",
+      "titleEn": "Derived-message immutability and source rejection of invalid JSON",
+      "supportsEn": "Tests cannot mutate frozen derived messages or content, and append rejects BigInt, functions, symbols, maps, undefined, infinity, sparse arrays, and cyclic graphs without growing the log."
+    },
+    {
+      "id": "SESSION-SURFACE-PROJECTION",
+      "kind": "production-source",
+      "path": "packages/core/session/src/surface.ts",
+      "lines": "70-142",
+      "title": "Event 到 model-visible message 的唯一投影",
+      "supports": "只有 user/message、非空 assistant/message 与 tool/result 投影，且直接复用已冻结 message；boundary、chunk 和 log-only event 不进入模型历史。",
+      "titleEn": "The sole event-to-model-visible-message projection",
+      "supportsEn": "Only user messages, non-empty assistant messages, and tool results project, reusing frozen messages directly; boundaries, chunks, and log-only events never enter model history."
+    },
+    {
+      "id": "SESSION-SURFACE-PROVENANCE",
+      "kind": "production-source",
+      "path": "packages/core/session/src/surface.ts",
+      "lines": "184-243",
+      "title": "Surface eligibility 与 source provenance 校验",
+      "supports": "三类 eligible event 强制 surfaceOp，其他事件禁止 surface metadata；source seq 必须唯一且更早，replacement 必须覆盖每个被遮蔽 node。",
+      "titleEn": "Surface eligibility and source-provenance validation",
+      "supportsEn": "The three eligible event types require surfaceOp while all others forbid surface metadata; source sequences must be unique and earlier, and replacements must cite every shadowed node."
+    },
+    {
+      "id": "SESSION-SURFACE-REPLACE",
+      "kind": "production-source",
+      "path": "packages/core/session/src/surface.ts",
+      "lines": "245-379",
+      "title": "Positional surface replacement 的原子 fold",
+      "supports": "Replace 在当前 node list 中定位 start/end，计划后一次 splice 成新 node 并递增 generation；tool/result 只能改写一个当前 result 的 content。",
+      "titleEn": "Atomic fold of positional surface replacement",
+      "supportsEn": "Replace locates start and end in the current node list, then one splice installs the new node and increments generation; a tool result may rewrite only the content of one current result."
+    },
+    {
+      "id": "SESSION-DERIVED-CACHE",
+      "kind": "production-source",
+      "path": "packages/core/session/src/index.ts",
+      "lines": "700-747",
+      "title": "Derived message 的增量 cache",
+      "supports": "无 replacement 时只投影新增 surface nodes；generation 变化则全量重建；每次返回新 array，但共享事件中已冻结 message。",
+      "titleEn": "Incremental derived-message cache",
+      "supportsEn": "Without replacement only new surface nodes are projected; a generation change rebuilds fully; every call returns a fresh array while sharing frozen messages from events."
+    },
+    {
+      "id": "SESSION-DERIVED-ORACLE-TEST",
+      "kind": "production-test",
+      "path": "packages/core/session/tests/derived-cache.spec.ts",
+      "lines": "22-86",
+      "title": "增量派生与 fresh replay oracle 等价测试",
+      "supports": "测试在 append、空 assistant 与 replacement 后比较 live cache 和 fresh Session replay，并验证旧 array snapshot 不随新 append 增长。",
+      "titleEn": "Incremental derivation equality with a fresh replay oracle",
+      "supportsEn": "Tests compare the live cache with a fresh Session replay after appends, an empty assistant, and replacement, and prove a previously returned array does not grow after later appends."
+    },
+    {
+      "id": "SESSION-RELATIONAL-INVARIANT",
+      "kind": "production-source",
+      "path": "packages/core/session/src/invariant.ts",
+      "lines": "54-165",
+      "title": "可选的 Turn/Step/tool 关系 invariant",
+      "supports": "Companion 检查 seq、Turn/Step 编号与闭合、execution event enclosure、同 Step call/result 配对；merge-extensible 事件关系交给 owner。",
+      "titleEn": "Optional Turn, Step, and tool relational invariant",
+      "supportsEn": "The companion checks sequence order, Turn and Step numbering and closure, execution-event enclosure, and same-Step call/result pairing, leaving merge-extensible event relations to their owner."
+    },
+    {
+      "id": "SESSION-INVARIANT-COMMIT",
+      "kind": "production-source",
+      "path": "packages/core/session/src/invariant.ts",
+      "lines": "189-250",
+      "title": "Invariant 的 precommit staging 与 postcommit advance",
+      "supports": "Companion 从现有日志建 trace，在 internal/dispatch 纯验证并暂存 transition，只有匹配的 session/event 发布后才推进；veto 不污染状态。",
+      "titleEn": "Invariant precommit staging and postcommit advancement",
+      "supportsEn": "The companion builds traces from existing logs, validates and stages a pure transition during internal dispatch, and advances only after matching session/event publication, so a veto cannot pollute state."
+    },
+    {
+      "id": "SESSION-UNKNOWN-EVENT-GATE",
+      "kind": "production-source",
+      "path": "packages/session/session-persistence/src/coordinator.ts",
+      "lines": "1046-1065",
+      "title": "未知 required event 的恢复拒绝",
+      "supports": "持久化 load 在 normalization 后逐事件检查 known catalog；未知且未标 ignorable 的 event 使整份 session fail-closed。",
+      "titleEn": "Recovery refusal for unknown required events",
+      "supportsEn": "After normalization, persistence load checks every event against the known catalog and fails the entire session closed when an unknown event is not marked ignorable."
+    },
+    {
+      "id": "SESSION-UNKNOWN-EVENT-TEST",
+      "kind": "production-test",
+      "path": "packages/session/session-persistence/tests/coordinator-contract.ts",
+      "lines": "1360-1382",
+      "title": "未知 required/ignorable event 的 load 测试",
+      "supports": "测试定义未知 required event 必须报 SessionFormatUnsupportedError，而 ignorable=true 的未知 event 保留在 loaded event log 中。",
+      "titleEn": "Load test for unknown required and ignorable events",
+      "supportsEn": "The test requires an unknown required event to raise SessionFormatUnsupportedError while retaining an unknown ignorable=true event in the loaded event log."
+    },
+    {
+      "id": "SESSION-SEED-REPLAY-TEST",
+      "kind": "production-test",
+      "path": "packages/core/session/tests/session.spec.ts",
+      "lines": "116-155",
+      "title": "Seed replay 与 end-seed 幂等测试",
+      "supports": "测试证明 seeded Session 派生消息等同原始日志、保留 verbatim prefix、追加一次 end-seed；再次打开已标记 seed 不继续增长。",
+      "titleEn": "Seed replay and idempotent end-seed test",
+      "supportsEn": "The test proves a seeded Session derives the same messages, retains the verbatim prefix, appends one end-seed, and does not keep growing when an already marked seed is reopened."
     }
   ],
   "usage": {
@@ -1154,6 +1344,25 @@
     "ROOT-EFFECTS": 2,
     "ROOT-MODEL-LOGGED": 4,
     "ROOT-PREVIEW": 4,
+    "SESSION-APPEND-BOUNDARY-TEST": 2,
+    "SESSION-APPEND-COMMIT": 6,
+    "SESSION-CORE-EVENTS": 4,
+    "SESSION-DERIVED-CACHE": 2,
+    "SESSION-DERIVED-ORACLE-TEST": 2,
+    "SESSION-EVENT-ENVELOPE": 4,
+    "SESSION-FORMAT-HEADER": 4,
+    "SESSION-IMMUTABILITY-TEST": 2,
+    "SESSION-INVARIANT-COMMIT": 2,
+    "SESSION-KNOWN-EVENTS": 2,
+    "SESSION-LOSSLESS-JSON": 2,
+    "SESSION-RELATIONAL-INVARIANT": 2,
+    "SESSION-SEED-ACCEPTANCE": 2,
+    "SESSION-SEED-REPLAY-TEST": 2,
+    "SESSION-SURFACE-PROJECTION": 4,
+    "SESSION-SURFACE-PROVENANCE": 4,
+    "SESSION-SURFACE-REPLACE": 2,
+    "SESSION-UNKNOWN-EVENT-GATE": 2,
+    "SESSION-UNKNOWN-EVENT-TEST": 2,
     "TURN-SEQUENCE": 4,
     "WEB-AGENT-PLANE": 2
   }
