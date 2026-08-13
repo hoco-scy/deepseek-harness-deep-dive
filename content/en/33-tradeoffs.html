@@ -1,0 +1,156 @@
+<section>
+  <h2>Conclusion: complexity earns its keep only when it makes a boundary enforceable</h2>
+  <div class="thesis"><p>DeepSeek Harness spends complexity on explicit composition, lifecycle ownership, durable facts, commit points, scoped policy, and independently replaceable product surfaces. That complexity is justified when it creates a checkable property: a candidate is not published before it is valid, a side-effect intent is durable before execution, a replacement retracts what it owned, or a replay derives the same model-visible history. The same machinery becomes debt when an operator must understand another layer but receives no stronger authority, failure attribution, recovery boundary, or interoperability seam in return.</p></div>
+  <p>The verified chapters do not support a single verdict such as “more modular is always better.” They describe a portfolio of coupled choices. Each choice below is evaluated by four questions: what it makes possible, what recurring cost it creates, how it fails when its premise is violated, and under which operating conditions that exchange is rational.</p>
+</section>
+
+<section>
+  <h2>1. Decision matrix: what each layer buys and what must remain true</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Tradeoff</th><th>Strength</th><th>Recurring cost</th><th>Failure mode</th><th>Best fit</th></tr></thead>
+    <tbody>
+      <tr><td>Configuration-programmed plugin tree</td><td>Products, providers, and session capabilities vary without forking one central application</td><td>Effective topology is distributed across patches, service dependencies, scopes, and module resolution</td><td>A wrong identity, missing service, or incomplete disposer makes replacement partial or prevents activation</td><td>Operator-controlled deployments with several product profiles and live replacement</td></tr>
+      <tr><td>Small Loop plus event-driven policy</td><td>One Turn/Step protocol serves prompt, provider, retry, planning, and tool policy</td><td>Behavior must be traced through ordered waterfalls and scoped registrations</td><td>A listener uses the wrong event mode or mutates after the commit boundary, so reconstructed and live behavior diverge</td><td>Many independently owned policies that must share one execution path</td></tr>
+      <tr><td>Append-only truth plus projections</td><td>Resume, replay, history, and multiple clients can derive from one durable fact stream</td><td>More events, explicit provenance, checkpointing, repair, and compatibility work</td><td>A cache or UI window is mistaken for authority, or a side effect occurs before its durable prefix</td><td>Long-lived sessions where auditability and crash recovery matter</td></tr>
+      <tr><td>Specialized capability contracts</td><td>Each surface can put stability at the layer that actually owns its semantics</td><td>Similar-looking features expose different lifetime, authority, and replay rules</td><td>A common label such as “planning,” “tool,” or “memory” is treated as a common guarantee</td><td>Systems integrating heterogeneous local, remote, model-facing, and user-facing capabilities</td></tr>
+      <tr><td>Transactional tools with bounded overlap</td><td>Policy and durable commit remain ordered while safe external work overlaps</td><td>Head-of-line blocking, classification metadata, two scheduler scopes, and more cancellation states</td><td>A tool overstates concurrency safety, changes definition after classification, or a local cap is mistaken for global admission control</td><td>I/O-heavy tool batches whose authoritative history must remain deterministic</td></tr>
+      <tr><td>Layered approval, guards, and file policy</td><td>One-shot escalation and monotonic vetoes constrain selected mutations without hard-coding one UI</td><td>Operators must distinguish visibility, standing policy, approval, guard, runner, and filesystem observation</td><td>A convenience preset is treated as enforcement, or file-effect confinement is described as general isolation</td><td>Trusted local operation with explicit capability selection and reviewable escalation</td></tr>
+      <tr><td>Compaction as a logged surface replacement</td><td>Context cost can shrink without deleting the canonical event history</td><td>Extra token accounting, a summarizer call, legal-cut rules, and possible semantic loss</td><td>Validation ownership is bypassed so an invalid cut or stale summary reaches commit, a close failure leaves a detectable lock, or a summary is mistaken for durable knowledge</td><td>Long conversations where bounded model context and exact audit history are both required</td></tr>
+      <tr><td>Layer-specific recovery protocols</td><td>Retries, cancellation, crash repair, and the DeepSeek provider's last-good configuration preserve explicit uncertainty</td><td>More barriers, error vocabularies, drain phases, and latency before side effects</td><td>Unknown external outcomes are rewritten as success, or an uncooperative body outlives cancellation</td><td>Stateful executions where false certainty is worse than delayed completion</td></tr>
+      <tr><td>Composable delegation and workflow</td><td>One-shot, continuable, forked, scripted, and iterative work can reuse Agent and Session primitives</td><td>Several ownership, settlement, result, and persistence models coexist</td><td>Delegation is mistaken for a global scheduler, durable job queue, shared team state, or automatic reducer</td><td>Decomposable work with explicit parent aggregation and bounded child budgets</td></tr>
+      <tr><td>Typed API and a second browser plugin tree</td><td>Carriers, business objects, UI slots, and React bindings can evolve at separate seams</td><td>Reconnect generations, lazy residency, gap repair, scope pruning, and client boot all need agreement</td><td>Transport reachability is treated as authentication, or one wedged dependency blocks a consistent whole-page boot</td><td>First-party product surfaces shipped with the Host and backed by replayable sessions</td></tr>
+      <tr><td>Multiple observability planes</td><td>Durable facts, operational logs, projections, query, and opt-in telemetry answer different questions</td><td>No single universal trace; privacy, retention, and correlation must be decided per plane</td><td>A partial UI window becomes a whole-session claim, or uploaded content is assumed to be automatically redacted</td><td>Deployments willing to label evidence scope and configure disclosure deliberately</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">Evaluation rule</div><p>Count an abstraction as an asset only when its owner, commit point, failure vocabulary, and replacement boundary can be named. Package count and interface count are not benefits by themselves.</p></div>
+  <aside class="caveat"><strong>Final reconciliation:</strong> Chapters 31 and 32 are now verified. Their direct evidence confirms two limits used throughout this matrix: the sandbox seam governs declared file effects rather than general isolation, and coverage is one evidence tier rather than semantic proof.<evidence id="SEC-SANDBOX-SEAM"></evidence><evidence id="TINV-POLICY"></evidence></aside>
+</section>
+
+<section>
+  <h2>2. Plugin composition: one variability language, one larger operational surface</h2>
+  <p>The effective tree is assembled from ordered bundle, profile, home, command-line, launcher, and telemetry layers. Stable row identity determines replacement, not textual proximity. Boot prepares the Host, mounts the tree, waits for Loader settlement, audits activation, and disposes a partial root on failure.<evidence id="PROFILE-COMPOSE"></evidence><evidence id="BOOT-TRANSACTION"></evidence></p>
+  <p>Live updates reread mutable layers and replace a generation while protecting inputs from reference contamination. Scope layers make the context of registration determine both who can see a contribution and which fiber must retract it.<evidence id="PROFILE-LIVE"></evidence><evidence id="DESIGN-SCOPED-LAYERS"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Tradeoff assessment</div><p>The strength is real deployment-level substitution rather than a compile-time interface around one fixed product. The cost is that configuration becomes executable architecture. This is justified when profiles and session capabilities genuinely vary; it is excessive for a single immutable composition whose operators cannot inspect the effective tree or diagnose activation and disposal.</p></div>
+</section>
+
+<section>
+  <h2>3. Stable Loop: policy modularity moves complexity into ordering semantics</h2>
+  <p>The default Loop owns Turn and Step boundaries, claim timing, request dispatch, tool continuation, cancellation, and final closure. Its runtime invariant independently reconstructs messages and the request header before a marked request leaves the process.<evidence id="LOOP-TURN-STATE"></evidence><evidence id="LOOP-REQUEST-INVARIANT"></evidence></p>
+  <p>Prompt assembly merges scope, variables, tools, sections, contexts, and a final waterfall, then reapplies completeness and suppression constraints. Provider routes use an all-or-nothing registry, while adapter selection and iteration failures become terminal protocol chunks rather than arbitrary thrown shapes.<evidence id="PROMPT-ASSEMBLY-PIPELINE"></evidence><evidence id="LLM-ADAPTER-REGISTRY"></evidence><evidence id="LLM-FAILURE-BOUNDARY"></evidence></p>
+  <div class="claim inference"><div class="claim-label">Inference</div><p>A small Loop reduces the number of competing orchestration paths, not the total semantic surface. Correctness migrates into event mode, listener order, scope, and “before versus after next” contracts. The design pays off when policy owners need independent release and teardown; it becomes hard to operate when no generated map or composition test shows which listener can alter one request.</p></div>
+</section>
+
+<section>
+  <h2>4. Durable facts and derived state: replayability costs continuous bookkeeping</h2>
+  <p>Session append snapshots and freezes a candidate, validates its Surface effect, runs synchronous precommit dispatch, and treats insertion into the log as the commit point; later observer failures are contained. A projection checkpoint explicitly declares itself a fold shortcut rather than authority.<evidence id="SESSION-APPEND-COMMIT"></evidence><evidence id="PROJ-AUTHORITY-LAYERS"></evidence></p>
+  <p>Checkpoint policy flushes the preceding Step at each <code>agent/pre-step</code>, wraps <code>llm/stream</code> so the complete request prefix is flushed before downstream model-stream construction and adapter dispatch, and flushes before each top-level tool body. Projection-cache restore uses watermarks and falls back to a full read when identity or range claims are unsafe.<evidence id="LOG-CHECKPOINT-POLICY"></evidence><evidence id="PROJ-CACHE-LADDER"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Tradeoff assessment</div><p>The architecture buys explainable model history, cold resume, and multiple derived views. It also turns every model-visible mutation into compatibility work: event vocabulary, provenance, cut semantics, checkpoints, and client stitching must evolve together. The decisive failure mode is authority inversion—letting a faster cache, projection, or resident object overwrite the durable facts it was meant to summarize.</p></div>
+</section>
+
+<section>
+  <h2>5. Specialized contracts: refusing a universal facade preserves meaning</h2>
+  <p>Plan selection commits immediately when no Turn is open; during an open Turn it waits for the next accepted in-turn pre-Step. Goal mutation checks an exact live reference, synchronously commits <code>goal/change</code> to the log, synchronizes the cache, and only then publishes <code>goal/changed</code>. Todo owns a narrower list invariant. They share Session events but do not share one lifetime, authority, or driver.<evidence id="PLANSTATE-PLAN-BOUNDARY"></evidence><evidence id="PLANSTATE-GOAL-COMMIT"></evidence><evidence id="PLANSTATE-TODO-INVARIANT"></evidence></p>
+  <p>The same pattern appears in extension surfaces. MCP bridges only selected external tool semantics and documents lossy or provider-owned boundaries, while native, code, and both modes change model presentation without creating three equivalent execution engines.<evidence id="CAP-MCP-LIMITS"></evidence><evidence id="CODEMODE-MODES"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Tradeoff assessment</div><p>Preserving different contracts prevents a lowest-common-denominator abstraction from hiding authority and durability. The price is conceptual load: users must learn why two objects that look similar do not resume, authorize, schedule, or present results the same way. This is justified when the differences affect safety or reconstruction; it is debt when distinctions survive only as naming and package boundaries.</p></div>
+</section>
+
+<section>
+  <h2>6. Tool execution and parallelism: overlap the body, serialize authority</h2>
+  <p>ToolRuntime is an ordered transaction from pre-policy through monotonic guards, around execution, post-policy, normalization, finalization, and an immutable result.<evidence id="TOOL-PIPELINE"></evidence> The Loop groups calls in model order, uses exclusive calls as complete barriers, and runs a rolling pool whose bodies may overlap while finalization and durable commit advance only through a contiguous model-order prefix.<evidence id="PARALLEL-GROUPING"></evidence><evidence id="PARALLEL-ROLLING-POOL"></evidence></p>
+  <p>Every committed <code>tool/result</code> for a started call points back to its exact call sequence; a started call can remain without a result if the scheduler itself fails.<evidence id="PARALLEL-DURABLE-PAIRING"></evidence><evidence id="PARALLEL-SCHEDULER-FAILURE"></evidence> Live registry replacement can reclassify unstarted calls.<evidence id="PARALLEL-RECLASS-TESTS"></evidence> The source trace exposes a separate premise: classification, ordered prepare, and later body dispatch occur at different moments.<evidence id="PARALLEL-GROUPING"></evidence><evidence id="PARALLEL-PREPARE"></evidence><evidence id="PARALLEL-DISPATCH"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Tradeoff assessment</div><p>This favors deterministic policy and replay over minimum tail latency. A fast later result may wait behind a slow earlier call, and a unary “safe with any sibling” declaration cannot express resource relationships. It fits I/O-heavy, mostly independent calls; mutating tools, shared quotas, and definition hot-swap require conservative classification or admission control outside this local scheduler.</p></div>
+</section>
+
+<section>
+  <h2>7. Authorization and sandboxing: layered vetoes are useful only with precise claims</h2>
+  <p>A guard can deny or abstain but cannot allow, so later policy cannot use the guard layer to reverse an earlier veto. Approval requests settle into a closed one-shot outcome vocabulary rather than a reusable ambient grant.<evidence id="APPROVAL-GUARD-CONTRACT"></evidence><evidence id="APPROVAL-OUTCOMES"></evidence></p>
+  <p>The sandbox contract explicitly governs file effects, not network, process, syscall, device, or credential isolation. Filesystem observation protects freshness for specific tool reads, but it does not survive resume, does not observe direct filesystem service reads, and does not prove that the complete file was viewed.<evidence id="SANDBOX-DOC-BOUNDARY"></evidence><evidence id="SANDBOX-OBSERVATION-LIMITS"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Tradeoff assessment</div><p>The strength is composable least authority for selected mutation paths. The failure mode is semantic overclaim: calling a preset “safe” or a file policy “a sandbox” without naming what remains trusted. The design is appropriate for a trusted operator governing model-initiated actions; it is not evidence of isolation against every code path, plugin, process, or external service.</p></div>
+</section>
+
+<section>
+  <h2>8. Compaction and memory: lower model cost without rewriting canonical history</h2>
+  <p>The range selector retains a priced tail and moves only to a tool-pair-balanced cut, returning no range when the head cannot be compacted safely. Compaction records a start lock, summarizes a snapshot, rechecks stability, and either commits a strictly smaller replacement or attempts one error close; if that close itself fails, a detectable unmatched start remains.<evidence id="COMPACT-RANGE"></evidence><evidence id="COMPACT-TRANSACTION"></evidence><evidence id="COMPACT-COMMIT"></evidence></p>
+  <p>Token-meter shadow pricing is intentionally bounded and may degrade to zero when historical context is insufficient. External memory examples are opt-in integrations whose providers own storage, models, embeddings, and recall semantics.<evidence id="COMPACT-SHADOW-PRICE"></evidence><evidence id="MEMORY-MCP-BOUNDARY"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Tradeoff assessment</div><p>Keeping replacement events beside the original log cleanly separates canonical history from the model's current Surface. The cost is another model call and a lossy artifact whose validity is structural, not semantic completeness. This fits long sessions with audit retention; it does not turn summaries into verified memory or guarantee that an external memory provider preserves the same provenance.</p></div>
+</section>
+
+<section>
+  <h2>9. Recovery: preserve uncertainty instead of manufacturing success</h2>
+  <p>The request header and required context are appended before a frozen provider request is returned. Crash repair distinguishes a tool that never started from one whose outcome is unknown, and closes incomplete protocol brackets without inventing a successful effect.<evidence id="FAILURE-CHECKPOINT-REQUEST-PREFIX"></evidence><evidence id="FAILURE-CRASH-REPAIR"></evidence></p>
+  <p>Retry records its decision before waiting and drains active recovery on disposal. Tool-batch abort stops replenishment, waits for started work, commits attributable outcomes in order, and synthesizes results only for calls known not to have started.<evidence id="FAILURE-RETRY-EXECUTOR"></evidence><evidence id="FAILURE-TOOL-DRAIN"></evidence></p>
+  <p>DeepSeek provider configuration blocks initial registration when the complete candidate is invalid, while a later invalid live snapshot retains the complete last-good generation rather than mixing fields across generations.<evidence id="FAILURE-CONFIG-RESOLUTION"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Tradeoff assessment</div><p>The benefit is honest convergence: replay can distinguish “failed,” “cancelled,” “not started,” and “outcome unknown.” The cost is latency and an obligation to carry uncertainty into higher-layer compensation or idempotency. This is valuable whenever external effects matter; for disposable stateless work, the same protocol depth may be more expensive than simply restarting the whole operation.</p></div>
+</section>
+
+<section>
+  <h2>10. Orchestration: reusable child lifecycles are not a complete team runtime</h2>
+  <p>A continuable child is not published until identity, descriptor, policy, seed, child materialization, and inbox acceptance succeed. Each one-shot run or continuable residency epoch emits paired lifecycle edges with a distinct run identity, while cold inspection uses bounded read concurrency.<evidence id="MULTIAGENT-CONTINUABLE-START"></evidence><evidence id="MULTIAGENT-LIFECYCLE"></evidence><evidence id="MULTIAGENT-LIST-CONCURRENCY"></evidence></p>
+  <p>Workflow validates before publication, pairs its terminal event with result settlement, and exposes separate ceilings for concurrent children, total children, combinator size, synchronous slices, and disposal grace. Ralph then validates its terminal claim again at the TypeScript boundary.<evidence id="WORKFLOW-LIFECYCLE"></evidence><evidence id="WORKFLOW-CAPS"></evidence><evidence id="RALPH-DOUBLE-VALIDATION"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Tradeoff assessment</div><p>The system offers credible building blocks for delegation with explicit ownership and settlement. It deliberately leaves aggregation policy with the parent and capacity with several local owners. This is a good fit when tasks decompose and the caller can define success; it is a poor fit if the expected product is an implicit global scheduler, durable distributed queue, shared mutable team memory, or automatic consensus.</p></div>
+</section>
+
+<section>
+  <h2>11. API and Web UI: independent seams improve substitution and multiply consistency work</h2>
+  <p>The browser RPC layer validates the outer message envelope and then lets each method validate its payload. Its Host/Origin fence rejects mismatched browser requests but explicitly does not claim user authentication.<evidence id="API-RPC-SCHEMAS"></evidence><evidence id="API-TRUST-FENCE"></evidence></p>
+  <p>The browser manifest separates module delivery from plugin activation. Connection uses generations and shared backoff, but an unbounded describe call can wedge convergence; Session repair buffers forward gaps and repulls history instead of accepting discontinuity. Slot disposal recursively retracts the subtree an entry declared.<evidence id="WEBUI-MANIFEST-CONTRACT"></evidence><evidence id="WEBUI-CONNECTION-GENERATION"></evidence><evidence id="WEBUI-SESSION-GAP-REPAIR"></evidence><evidence id="WEBUI-SLOT-CASCADE"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Tradeoff assessment</div><p>Separating carrier, business object, UI composition, and React binding prevents the component tree from becoming the runtime. The recurring cost is state reconciliation across Host facts, resident client objects, projections, and render scopes. It pays off for a first-party extensible surface; a smaller single-page client without live plugin replacement or session replay would not need the same protocol depth.</p></div>
+</section>
+
+<section>
+  <h2>12. Observability: richer evidence creates a disclosure and interpretation budget</h2>
+  <p>Telemetry defaults to disabled; full capture and feedback-triggered release have distinct admission rules. The documented upload surface includes prompts, messages, tools, file and command content, compaction, feedback, and working-directory context, with no built-in redaction rule.<evidence id="OBS-TELEMETRY-MODES"></evidence><evidence id="OBS-PRIVACY-BOUNDARY"></evidence></p>
+  <p>Current-session query deliberately caps one search range before the latest Step boundary and re-authorizes its result. The browser keeps only a contiguous loaded window, dropping or repairing discontinuities rather than claiming it holds the whole log.<evidence id="OBS-QUERY-CURRENT-BOUNDARY"></evidence><evidence id="OBS-HISTORY-CLIENT"></evidence></p>
+  <div class="claim assessment"><div class="claim-label">Tradeoff assessment</div><p>The design offers several precise views instead of one misleading “trace.” That supports diagnosis only when every answer names its plane and cut. The failure modes are privacy overreach and evidence overreach: exporting more than intended, or drawing whole-session conclusions from a bounded projection. Use the richer planes when operators can govern retention and disclosure; otherwise keep collection narrow and local.</p></div>
+</section>
+
+<section>
+  <h2>13. Interaction effects: the choices cannot be evaluated independently</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Combination</th><th>Positive interaction</th><th>Compounding risk</th></tr></thead>
+    <tbody>
+      <tr><td>Plugin effects × scoped registries</td><td>Hot replacement and per-session composition retract exact contributions</td><td>One incorrectly owned listener or provider survives into a new generation</td></tr>
+      <tr><td>Durable log × checkpoint policy</td><td>Replay has an intent prefix before model and top-level tool effects</td><td>Extra flush boundaries add latency and still cannot prove an external outcome</td></tr>
+      <tr><td>Parallel tools × ordered commit</td><td>External latency overlaps without changing model-visible order</td><td>Head-of-line blocking and hidden shared-resource races move to metadata and providers</td></tr>
+      <tr><td>Compaction × immutable history</td><td>Context shrinks while audit history remains available</td><td>Consumers may confuse a lossy Surface replacement with deletion or knowledge</td></tr>
+      <tr><td>Delegation × Session persistence</td><td>Continuable children can survive residency changes</td><td>One-shot providers and Jobs still have different durability and result contracts</td></tr>
+      <tr><td>Rich logs × telemetry</td><td>Failures can be correlated from request through tool and product projection</td><td>The same fidelity increases retention and disclosure impact</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim inference"><div class="claim-label">Portfolio inference</div><p>The architecture's value comes from aligned pairs, not isolated mechanisms. Plugins need effect ownership; replay needs commit points; concurrency needs an ordered authority lane; telemetry needs explicit disclosure. Removing one half often leaves the cost of the other without its guarantee.</p></div>
+</section>
+
+<section>
+  <h2>14. Where the complexity is earned—and where it remains debt</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Earned complexity signal</th><th>Debt signal</th></tr></thead>
+    <tbody>
+      <tr><td>One named authority and one observable commit point</td><td>Two mutable copies reconcile by timing or convention</td></tr>
+      <tr><td>Replacement retracts the exact resource it published</td><td>Reload depends on process restart or leaked global mutation</td></tr>
+      <tr><td>Failure preserves machine-routable uncertainty</td><td>A generic success/error string erases whether work started or committed</td></tr>
+      <tr><td>A boundary validates the complete value it owns</td><td>Schema visibility, UI filtering, or documentation is treated as enforcement</td></tr>
+      <tr><td>A local limit is labeled with its true scope</td><td>A per-Step or per-run pool is advertised as global capacity control</td></tr>
+      <tr><td>Generated maps and invariants expose distributed semantics</td><td>Operators must reverse-engineer listener order and configuration closure after failure</td></tr>
+      <tr><td>Provider differences stay explicit where they change meaning</td><td>A universal facade hides asymmetric errors, usage, durability, or trust</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">Overall judgment</div><p>The strongest parts of DeepSeek Harness turn variability into explicit protocols with commit, teardown, and replay semantics. The weakest pattern is not modularity itself but an unclosed seam: a live definition read twice, a local cap mistaken for a global one, a partial policy described too broadly, or a projection consumed without its cut. The best next work is therefore usually to close and test a named boundary, not to add another general manager around it.</p></div>
+</section>
+
+<section>
+  <h2>15. Adoption guidance: choose the obligations together</h2>
+  <div class="claim assessment"><div class="claim-label">Good fit</div><p>Adopt this style when deployments genuinely vary by provider and product surface; sessions must resume and remain explainable; tools need layered policy and durable outcomes; and operators can maintain configuration closure, lifecycle tests, projection repair, and evidence-scoped diagnostics.</p></div>
+  <div class="claim assessment"><div class="claim-label">Simplification boundary</div><p>Prefer a smaller direct architecture when work is short-lived and stateless, one provider and one UI are fixed, hot replacement is unnecessary, and a whole operation can be safely restarted. Copying the plugin, event, projection, and workflow layers without their replacement or recovery requirements would retain the cognitive cost while discarding the reason they exist.</p></div>
+</section>
+
+<section>
+  <h2>Chapter verification checklist</h2>
+  <ul class="audit-list">
+    <li>Used only evidence already present in the public catalog and cited by verified Chapters 01–32.</li>
+    <li>Added no new evidence record; after Chapters 31 and 32 passed audit, added direct reconciliation citations for sandbox scope and proof tiers.</li>
+    <li>Separated source-backed facts from cross-chapter inference and design assessment.</li>
+    <li>For every named tradeoff, stated the strength, recurring cost, failure mode, and conditions under which it is justified.</li>
+    <li>Kept local scheduler, sandbox, projection, transport, and telemetry guarantees within their verified scope.</li>
+    <li>Completed the second reconciliation pass after Chapters 31 and 32 passed audit.</li>
+  </ul>
+</section>
