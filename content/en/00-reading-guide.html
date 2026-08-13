@@ -1,0 +1,51 @@
+<section class="hero-panel">
+  <p class="eyebrow">Developer Preview source archaeology · pinned baseline</p>
+  <h2>Not a feature list, but a verifiable map of system semantics</h2>
+  <p class="lede">DeepSeek Harness looks like a coding-agent product. The more interesting subject is its attempt to decompose an Agent product into a network of composable, disposable, and replayable capabilities. This report starts from real entry points, mutations, failure branches, and persistence boundaries to explain how it actually runs.</p>
+  <div class="baseline-card">
+    <span>Analysis baseline</span>
+    <code>47f943859bef60e4160492346772ded9b24f765a</code>
+    <a href="https://github.com/deepseek-ai/deepseek-harness/tree/47f943859bef60e4160492346772ded9b24f765a">Open the pinned source</a>
+  </div>
+</section>
+
+<section>
+  <h2>What this dissection must answer</h2>
+  <div class="question-grid">
+    <article><h3>Runtime</h3><p>How does the plugin tree start? Who drives Agents, turns, steps, model requests, and tool batches? At exactly which points are events appended?</p></article>
+    <article><h3>Context</h3><p>How do the system prompt, tool schemas, dynamic context, message history, Skills, and compaction summaries jointly determine what the model sees?</p></article>
+    <article><h3>Durability</h3><p>What does an internal session actually store? What do JSONL, SQLite, projection caches, checkpoints, forks, resume, and replay each guarantee?</p></article>
+    <article><h3>Execution and governance</h3><p>Which interception layers does a tool cross between schema and execution? How do parallelism, approval, monotonic guards, sandboxes, file observation, and timeouts compose?</p></article>
+    <article><h3>Orchestration</h3><p>How do multi-Agent providers, continuation, background jobs, workflow workers, and the Ralph loop share underlying primitives?</p></article>
+    <article><h3>Tradeoffs</h3><p>What does “everything is a plugin” actually solve, and what cognitive, configuration, validation, and compatibility costs does it create?</p></article>
+  </div>
+</section>
+
+<section>
+  <h2>Start with three invariants</h2>
+  <div class="claim fact"><div class="claim-label">Source fact</div><p>Model adapters, the tool registry, the session log, and the agent loop all mount as plugins on a shared Cordis context. The repository explicitly says there is no privileged core that extensions must patch. <evidence id="ARCH-PLUGIN-CORE"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">Source fact</div><p>Anything that truly enters a model request must be reconstructable from the session log. The log therefore serves not only UI rendering, but also model context, recovery, forking, telemetry, and replay as a shared source of truth. <evidence id="ARCH-LOG"></evidence></p></div>
+  <div class="claim inference"><div class="claim-label">Mechanism-level deduction</div><p>The effective “core” of DeepSeek Harness is not one immutable loop class. It is a set of harder-to-replace invariants: scope, event ordering, reversible registration, logging of model-visible input, and closure among capability definitions, providers, and consumers. Plugins are replaceable; these composition semantics are the de facto architectural constitution.</p></div>
+</section>
+
+<section>
+  <h2>Suggested reading paths</h2>
+  <ol class="reading-path">
+    <li><strong>First pass:</strong> Design Philosophy → Turn/Step/Loop → Prompt Assembly → Session Events → Tool Pipeline.</li>
+    <li><strong>Agent-platform focus:</strong> Persistence → Checkpoints → Compaction → Plan/Goal/Todo → Multi-Agent → Workflow.</li>
+    <li><strong>Secure-execution focus:</strong> Tool Primitives → Permission and Approval → Sandbox/FS → Shell/Terminal/Jobs → Security Model.</li>
+    <li><strong>Engineering-quality focus:</strong> Observability and Replay → API/SDK/ACP → Tests and Invariants → Tradeoffs.</li>
+  </ol>
+</section>
+
+<section>
+  <h2>How to interpret chapter status</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Status</th><th>Meaning</th><th>Safe to cite as a conclusion?</th></tr></thead>
+    <tbody>
+      <tr><td><span class="status queued">Queued</span></td><td>The scope is mapped, but the body may still be only a question list.</td><td>No</td></tr>
+      <tr><td><span class="status drafting">In progress</span></td><td>Some source facts and deductions exist, but the coverage audit is incomplete.</td><td>Only local facts with pinned evidence</td></tr>
+      <tr><td><span class="status verified">Verified</span></td><td>Entry points, control flow, state, failures, persistence, and key tests have passed targeted or exhaustive review.</td><td>Yes, with the pinned baseline attached</td></tr>
+    </tbody>
+  </table></div>
+</section>

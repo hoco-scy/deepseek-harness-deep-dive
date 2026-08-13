@@ -1,0 +1,43 @@
+<section>
+  <h2>Why the commit must be pinned</h2>
+  <div class="claim fact"><div class="claim-label">Repository policy</div><p>DeepSeek Harness explicitly describes itself as pre-first-tag software: sound foundations take precedence over compatibility shims; the SQLite schema moves monotonically, while the session format remains version 0 without a compatibility promise. <evidence id="ROOT-PREVIEW"></evidence></p></div>
+  <p>“How current master works” is therefore a high-drift statement. Every fact in this report is bound to a complete SHA. A future update will add a baseline-diff edition instead of silently replacing an old conclusion with a new implementation.</p>
+</section>
+
+<section>
+  <h2>Evidence strength</h2>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>Production source and effective configuration</h3><p>The strongest evidence. Construction, callers, mutations, failures, and disposal all matter.</p></div>
+    <div><span>2</span><h3>Behavioral tests and snapshots</h3><p>They prove observable behavior for particular inputs, but only after verifying that the fixture traverses the production assembly path.</p></div>
+    <div><span>3</span><h3>Generated documentation</h3><p>Source-gated tool catalogs, module graphs, and event diagrams are excellent coverage maps, but they do not replace detailed control-flow analysis.</p></div>
+    <div><span>4</span><h3>Manually maintained documentation</h3><p>Useful for intent and vocabulary. When it conflicts with code, the pinned source baseline wins.</p></div>
+    <div><span>5</span><h3>Plans and discussions</h3><p>Evidence of direction and problem awareness, not proof of implemented runtime behavior.</p></div>
+  </div>
+</section>
+
+<section>
+  <h2>Keep three kinds of statements separate</h2>
+  <div class="claim fact"><div class="claim-label">Source fact</div><p>Example: “A tool call is appended as <code>tool/call</code> before execution, and the final result is appended as <code>tool/result</code>.” Production control flow and the generated sequence can prove this directly. <evidence id="TURN-SEQUENCE"></evidence></p></div>
+  <div class="claim inference"><div class="claim-label">Mechanism-level deduction</div><p>Example: “The UI may show a pending tool card before completion, while final model history still derives from durable events.” This conclusion joins event ordering, presentation events, and history derivation.</p></div>
+  <div class="claim assessment"><div class="claim-label">Design assessment</div><p>Example: “Event sourcing reduces divergence among product surfaces but moves compatibility pressure into event vocabulary and projections.” This is an evaluation and must state benefits, costs, and assumptions together.</p></div>
+</section>
+
+<section>
+  <h2>The standard dissection template</h2>
+  <ol class="audit-list">
+    <li><strong>Product role:</strong> Which user or runtime need does this module own?</li>
+    <li><strong>Entry and assembly:</strong> Which bundle/profile mounts it, and which services does it require?</li>
+    <li><strong>Types and data:</strong> Public interfaces, events, schemas, branded IDs, and durable representations.</li>
+    <li><strong>Real control flow:</strong> Happy path, branch conditions, and exact mutation points.</li>
+    <li><strong>Concurrency and lifecycle:</strong> Scope, owner, cancellation, disposal, cleanup, and races.</li>
+    <li><strong>Error semantics:</strong> Who classifies, retries, degrades, and preserves the original error?</li>
+    <li><strong>Replay and observability:</strong> Which facts are durable, which are live-only, and how recovery works.</li>
+    <li><strong>Verification:</strong> Unit, integration, snapshot, runtime invariant, and remaining evidence gaps.</li>
+    <li><strong>Assessment:</strong> Benefits, costs, constraints, operating boundaries, and transferable principles.</li>
+  </ol>
+</section>
+
+<section>
+  <h2>Completion gate for a chapter</h2>
+  <p>A chapter moves from In progress to Verified only after it covers the entry point, core types, principal state machine, durable facts, error paths, and key tests, followed by at least one end-to-end review from entry to side effect. Failure to find a counterexample is not completion. Broad claims without direct evidence remain explicit open questions.</p>
+</section>

@@ -1,0 +1,143 @@
+<section>
+  <h2>Conclusion: the launcher evaluates a configuration program</h2>
+  <div class="thesis"><p>The primary product of a <code>dsh</code> launch is not a hard-coded Application object. It is a plugin tree evaluated from an empty root, ordered patch layers, service dependencies, and Cordis lifecycle semantics.</p></div>
+  <p>This distinction matters. A Profile chooses bundles; bundles provide large capability sets; user and command-line overlays modify the result; Loader activates plugins as their required services become available. Configuration is not merely a collection of startup parameters here—it is the product architecture.</p>
+</section>
+
+<section>
+  <h2>1. The CLI owns a deliberately narrow boundary</h2>
+  <div class="claim fact"><div class="claim-label">Production control flow</div><p><code>apps/cli/src/bin.ts</code> parses argv into three modes and dynamically imports the corresponding implementation: normal profile launch, plugin package management, or configuration dump. The profile branch passes only a frozen environment snapshot, the profile name, <code>--patch</code> files in argv order, and remaining application arguments. <evidence id="CLI-PROFILE-DISPATCH"></evidence></p></div>
+  <p>“CLI arguments” are intentionally split into two ownership classes:</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Input</th><th>Owner</th><th>How it enters the tree</th><th>Recomputed during live updates?</th></tr></thead>
+    <tbody>
+      <tr><td><code>--profile</code>, <code>--patch</code></td><td>Outer launcher</td><td>Select a profile and form patch layers</td><td>Patch contents are reread; the file list is fixed</td></tr>
+      <tr><td>Remaining arguments</td><td>Plugins inside the tree</td><td>Provided through <code>cmdlineArgs</code>, not encoded into patches</td><td>No; they live for this invocation</td></tr>
+      <tr><td>Environment</td><td>Launcher freezes provenance</td><td>Environment snapshot is provided before mounting; <code>!!js</code> may also read process environment</td><td>The launch-time snapshot is fixed</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim inference"><div class="claim-label">Mechanism-level deduction</div><p>Command-line product behavior does not invade generic boot. Web, headless, and future surfaces can mount their argument interpreters as ordinary providers. The launcher owns only “which configuration program” and “how the process terminates safely.”</p></div>
+</section>
+
+<section>
+  <h2>2. A Profile is a writable composition workspace</h2>
+  <div class="claim fact"><div class="claim-label">Production source</div><p>A Profile name must be one path segment and cannot be <code>.</code>, <code>..</code>, or <code>node_modules</code>. On first use, the built-in <code>web</code> template initializes as <code>base + web-app</code>, while <code>headless</code> initializes as <code>base + headless</code>. Initialization creates only missing <code>package.json</code>, <code>cordis.patch.yml</code>, and <code>pnpm-workspace.yaml</code> files and never overwrites existing user data. <evidence id="PROFILE-TEMPLATES"></evidence></p></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Profile file</th><th>Responsibility</th><th>Mutability and risk</th></tr></thead>
+    <tbody>
+      <tr><td><code>package.json</code></td><td>Declares the ordered <code>dsh.profile.bundles</code> list and profile-private plugin dependencies</td><td>Changes both the product capability set and module-resolution closure</td></tr>
+      <tr><td><code>cordis.patch.yml</code></td><td>User override layer for this profile</td><td>Watched live; may configure, disable, or insert plugins</td></tr>
+      <tr><td><code>pnpm-workspace.yaml</code></td><td>Fixes the hoisted linker and peer policy needed by out-of-tree plugins</td><td>Lets a profile install plugins while sharing Cordis and service-definition instances</td></tr>
+      <tr><td><code>cordis.yml</code></td><td>A real include anchor required by Loader</td><td>Rewritten to an empty list on every launch; not user-maintained</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Empty-root invariant</div><p>The launcher rewrites <code>cordis.yml</code> to an empty entry list on every launch. This prevents a Loader write-back of the current runtime tree from being combined again with bundle inserts on the next launch. The file exists only to anchor resolution at the Profile directory. <evidence id="PROFILE-ROOT"></evidence></p></div>
+</section>
+
+<section>
+  <h2>3. The exact six-level precedence stack</h2>
+  <p>The final entry list starts empty and applies the following layers. Later layers have higher precedence:</p>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>Bundle patches</h3><p>Concatenated strictly in <code>dsh.profile.bundles</code> manifest order—normally base followed by a surface bundle.</p></div>
+    <div><span>2</span><h3>Profile user patch</h3><p><code>$DSH_HOME/profiles/&lt;name&gt;/cordis.patch.yml</code>, scoped to one Profile.</p></div>
+    <div><span>3</span><h3>Home user patch</h3><p><code>$DSH_HOME/cordis.patch.yml</code>, a machine-level preference across Profiles, so it outranks the Profile layer.</p></div>
+    <div><span>4</span><h3>CLI overlays</h3><p>All <code>--patch</code> files in their argv order.</p></div>
+    <div><span>5</span><h3>Launcher assembly overlay</h3><p>If an <code>agent-presets</code> row exists, the launcher injects the read-only preset root shipped with the installation.</p></div>
+    <div><span>6</span><h3>Telemetry hard-disable</h3><p>Any non-empty <code>DSH_TELEMETRY_DISABLED</code> value adds a final overlay that disables the row. A privacy switch prefers accidental off over accidental on.</p></div>
+  </div>
+  <div class="claim fact"><div class="claim-label">Production control flow</div><p><code>allPatches()</code> flattens bundle, profile, home, and launcher overlays. <code>composeProfile()</code> first indexes rows from the initial user-selectable layers, then appends the preset and telemetry overrides whose semantics belong exclusively to the launcher. <evidence id="PROFILE-COMPOSE"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">Isomorphic composition</div><p>Configuration dump, flag derivation, and real boot all share the same <code>applyEntryPatches([], ...)</code> semantics. A listed package without a <code>dsh.bundle.patch</code> declaration fails immediately instead of becoming a silent empty layer. <evidence id="PROFILE-LOAD"></evidence><evidence id="PROFILE-ORDER-TEST"></evidence></p></div>
+</section>
+
+<section>
+  <h2>4. Patch semantics: address a row, replace config wholesale</h2>
+  <div class="claim fact"><div class="claim-label">Configuration fact</div><p><code>dsh-base</code> performs one large <code>insert</code> over the empty root. Later patches address rows by <code>id</code>, with the last write winning. On a matching row, <code>config</code> is replaced wholesale rather than recursively deep-merged. File order does not encode load order; service availability drives activation. <evidence id="BASE-BUNDLE-SEMANTICS"></evidence></p></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Operation</th><th>Effect</th><th>Frequent misreading</th></tr></thead>
+    <tbody>
+      <tr><td><code>{ id, config }</code></td><td>Replace the target row's complete <code>config</code></td><td>Writing one field does not retain other base fields</td></tr>
+      <tr><td><code>{ id, disabled }</code></td><td>Change whether the row may mount</td><td>Disable is not deletion; a later layer may explicitly override it</td></tr>
+      <tr><td><code>{ insert: [...] }</code></td><td>Add new plugin rows</td><td>Insertion position helps readers but is not a dependency-order mechanism</td></tr>
+      <tr><td>Target a missing <code>id</code></td><td>Loader emits a skipped-patch warning</td><td>This permits cross-surface overlays, but a misspelled ID may also remain only a warning</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">Design assessment</div><p>Wholesale replacement makes ownership and the final shape of one row deterministic, avoiding implicit rules for merging arrays, deleting fields, or combining expressions. The cost is repetition: an upper layer must restate the complete configuration. It fits small deployment overrides better than huge, fast-evolving nested objects exposed directly to ordinary users.</p></div>
+</section>
+
+<section>
+  <h2>5. Module resolution: installation first, Profile extension second</h2>
+  <div class="claim fact"><div class="claim-label">Production source</div><p>Bundle resolution tries the dsh installation anchor before the Profile's own <code>package.json</code>. Before launch, a breadth-first traversal of the application's <code>dependencies + peerDependencies</code> closure creates flat links under <code>$DSH_HOME/profiles/node_modules</code>. Node's parent-directory fallback from a Profile-private <code>node_modules</code> can then find installation-owned packages. <evidence id="PROFILE-MODULE-FALLBACK"></evidence></p></div>
+  <p>This produces two coexisting resolution worlds:</p>
+  <div class="principle-grid">
+    <div><strong>Installation-owned</strong><span>official bundles / providers / definitions</span></div>
+    <div><strong>Profile-owned</strong><span>user-installed out-of-tree plugins</span></div>
+  </div>
+  <div class="claim inference"><div class="claim-label">Mechanism-level deduction</div><p>The flat fallback does more than make packages discoverable. It helps an out-of-tree plugin and official packages resolve the same Cordis and service-definition instances. If each side loads its own framework copy, types may look identical while runtime context keys and registry identity no longer meet.</p></div>
+</section>
+
+<section>
+  <h2>6. Boot is a commit protocol, not best-effort mounting</h2>
+  <div class="claim fact"><div class="claim-label">Production control flow</div><p><code>boot()</code> creates the root Context, provides the dsh home, installs Loader, and runs host <code>prepare</code>. It then mounts the root Include, waits for Loader settlement, and audits that every entry activated. Any failure first disposes the partial root and then throws a diagnostic containing the phase, wrapper chain, and deepest plugin stack. <evidence id="BOOT-TRANSACTION"></evidence></p></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Stage</th><th>Visible state</th><th>Failure ownership</th></tr></thead>
+    <tbody>
+      <tr><td>Context + Loader</td><td>No configuration-tree plugins exist yet</td><td>Reported as host preparation failure</td></tr>
+      <tr><td>Host prepare</td><td>Frozen environment and argv facts have been provided</td><td>A failure disposes the entire root</td></tr>
+      <tr><td>Include mount / settle</td><td>Plugins activate progressively as dependencies resolve</td><td>Transactional Loader wraps the failure; the root rolls back uniformly</td></tr>
+      <tr><td>Activation audit</td><td>Only a settled, live tree may return</td><td>Missing fibers and never-activating entries reject startup</td></tr>
+      <tr><td>Runtime</td><td>A signal or surface may dispose the root</td><td>Single-shot root-fiber disposal retracts effects</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">Design assessment</div><p>This protocol separates “declared in configuration” from “actually available at runtime.” The commit point is Loader completion plus the activation audit. Partial-service startup flexibility is traded for refusing to serve from a silently half-mounted tree.</p></div>
+</section>
+
+<section>
+  <h2>7. Live configuration preserves the last valid tree</h2>
+  <div class="claim fact"><div class="claim-label">Production control flow</div><p>When either Profile or home patch changes, the launcher rereads both user files in the same generation and recomposes them between fixed bundles and higher-priority overlays. Every generation receives a new deep clone so Include's in-place mutation of inserted rows cannot contaminate the next composition. The result is applied transactionally through the root Include's <code>entry.update()</code>. <evidence id="PROFILE-LIVE"></evidence><evidence id="BOOT-HMR"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">Failure-path test</div><p>An integration-level test writes a valid configuration, a plugin-startup failure, a syntax error, a recovered configuration, and finally removes the file. Both failures broadcast an error and retain the previous valid tree; recovery applies the new tree, and deletion restores the application-owned layer. <evidence id="PROFILE-HMR-TEST"></evidence></p></div>
+  <p>The Web bundle currently disables shared module HMR, but the launcher does not let the configuration hot-reload contract disappear. If no HMR service exists, it mounts a timer and a watch-only HMR instance with no module roots solely for the two user patch files.</p>
+</section>
+
+<section>
+  <h2>8. Base, Headless, and Web: one spine, different product planes</h2>
+  <div class="claim fact"><div class="claim-label">Base</div><p>The base bundle directly assembles the shared spine: LLM registry, sessions, Typert API, Agent service, jobs, retry, settings, credentials, multiple provider adapters, and JSONL persistence. Later rows continue with tools, compaction, multi-Agent capabilities, and the loop. <evidence id="BASE-BUNDLE-SPINE"></evidence></p></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Surface</th><th>Additions over base</th><th>Agent-capability ownership</th><th>Lifecycle</th></tr></thead>
+    <tbody>
+      <tr><td>Headless</td><td>Code runtime, launch-argument provider, and one-shot runner; no Host, HTTP, Web, or browser</td><td>Process-level Agent plane from base</td><td>Requests bounded exit when the task finishes</td></tr>
+      <tr><td>Web</td><td>Host, storage, projection cache, HTTP/API, browser module roster, and UI</td><td>Disables per-Agent base rows and remounts them inside each session's preset realm</td><td>Long-lived, with concurrent sessions</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Headless evidence</div><p>The headless bundle explicitly mounts no Web or HTTP surface. An ordinary provider interprets the positional task, and its runner creates an Agent through the core registry. <evidence id="HEADLESS-BUNDLE"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">Web evidence</div><p>Web disables base rows belonging to one Agent—tools, prompt contributors, compaction, and delegation—and rebuilds them through per-session presets. Cross-session registries or services read by host RPC, including jobs, goals, token metering, and subagent state, remain in the host plane. <evidence id="WEB-AGENT-PLANE"></evidence></p></div>
+  <div class="claim inference"><div class="claim-label">Ownership deduction</div><p>Whether a capability belongs in a preset cannot be inferred from its name. One must trace its readers, whether a registry spans sessions, whether provider names are globally unique, and which context a host RPC uses to resolve the service. The long Web-patch commentary is effectively a struct-lifetime audit: process state misplaced in session scope produces missing browser services, broken cross-session queries, or duplicate registration collisions.</p></div>
+</section>
+
+<section>
+  <h2>9. Benefits, costs, and concrete risks</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Design choice</th><th>What it buys</th><th>What it costs</th></tr></thead>
+    <tbody>
+      <tr><td>Empty root + patch composition</td><td>An exportable, overridable, live-updatable tree without hard-coded products</td><td>Configuration is code and can affect any plugin lifecycle</td></tr>
+      <tr><td>Wholesale replacement by ID</td><td>Deterministic override results and simple deletion semantics</td><td>Upper configurations can drift when they fail to restate newly added fields</td></tr>
+      <tr><td>Service-driven activation</td><td>Declaration order decouples from dependency order</td><td>YAML alone does not reveal the actual activation topology</td></tr>
+      <tr><td>Two-anchor resolution</td><td>Official installation and user plugins can compose into one Profile</td><td>Peer identity, symlinks, and package-manager behavior become runtime correctness concerns</td></tr>
+      <tr><td>Transactional boot/HMR</td><td>No half-valid tree; failures retain the last known-good state</td><td>Loader and effect disposal must be exceptionally reliable, and diagnostics become deeper</td></tr>
+      <tr><td>Web per-session presets</td><td>Capability and trust configuration can be isolated per session</td><td>The host/session ownership boundary is complex and every new plugin requires another audit</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">Chapter assessment</div><p>DeepSeek Harness unifies deployment, product surfaces, Agent capabilities, and user extension under one patchable plugin-tree language. That unity is powerful: configuration dump, boot, hot reload, and per-session presets share underlying semantics. It does not remove complexity; it concentrates complexity in stable entry IDs, scope ownership, service dependencies, module identity, and transactional lifecycle. The design stays maintainable only when runtime invariants, composition tests, and observable effective configuration accompany it.</p></div>
+</section>
+
+<section>
+  <h2>Chapter verification checklist</h2>
+  <ul class="audit-list">
+    <li>Traced CLI profile dispatch through <code>runProfile()</code>.</li>
+    <li>Verified the actual order of bundle, profile, home, CLI, and launcher overlays.</li>
+    <li>Verified wholesale config replacement and service-driven rather than row-driven activation.</li>
+    <li>Verified installation and Profile anchors plus the breadth-first module fallback.</li>
+    <li>Traced boot commit points, failure cleanup, signal handling, and exit races.</li>
+    <li>Used failure/recovery tests to verify last-known-good HMR semantics.</li>
+    <li>Audited base, headless, Web, and the host/Agent-plane ownership boundary separately.</li>
+  </ul>
+</section>

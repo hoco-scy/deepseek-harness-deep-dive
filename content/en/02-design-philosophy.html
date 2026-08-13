@@ -1,0 +1,59 @@
+<section>
+  <h2>One-sentence conclusion</h2>
+  <div class="thesis"><p>The central philosophy of DeepSeek Harness is not to give the Agent more built-in powers, but to decompose the product into a network of capabilities that are <strong>composition-configurable, scope-isolated, reversibly mounted, and event-traceable</strong>. Complex features should remain plugins outside the loop and participate through stable service and event seams.</p></div>
+  <p>That sentence mixes facts with synthesis. This chapter separates them.</p>
+</section>
+
+<section>
+  <h2>Principle 1: no privileged core, but an architectural constitution</h2>
+  <div class="claim fact"><div class="claim-label">Source fact</div><p>A Cordis context accepts services, typed events, and reversible effects. Model adapters, tool registries, session logs, and even the agent loop are assembled as plugins; extensions mount peer plugins instead of patching a privileged core. <evidence id="ARCH-PLUGIN-CORE"></evidence></p></div>
+  <div class="claim inference"><div class="claim-label">Mechanism-level deduction</div><p>“No privileged core” does not mean “no core.” What cannot be casually replaced is the composition protocol: context scopes, event order, effect disposal, waterfall delegation, session-event compatibility, and the definition/provider/consumer relationship. Replacement implementations must still obey this protocol.</p></div>
+  <div class="claim assessment"><div class="claim-label">Design assessment</div><p>The benefit is that features need not continuously inject branches into one giant loop, and profiles or per-Agent presets can compose plugins. The cost is that correctness moves from local class logic into the global properties of a plugin graph, event ordering, and configuration layers.</p></div>
+</section>
+
+<section>
+  <h2>Principle 2: registration is a reversible lifecycle effect</h2>
+  <div class="claim fact"><div class="claim-label">Repository policy</div><p>Contributions must register through <code>ctx.effect()</code> or <code>ctx.on()</code>, registry <code>register()</code> calls return disposers, and a waterfall listener must explicitly call <code>next()</code> to yield control downstream. <evidence id="ROOT-EFFECTS"></evidence></p></div>
+  <div class="claim inference"><div class="claim-label">Mechanism-level deduction</div><p>A plugin's presence is not a permanent process fact; it is a lease bound to a Cordis scope. Disposing that scope must retract services, tools, listeners, and providers. This enables per-session and per-Agent composition plus runtime self-modification, while making every side-channel registration an architectural violation.</p></div>
+</section>
+
+<section>
+  <h2>Principle 3: composition over hidden defaults</h2>
+  <div class="claim fact"><div class="claim-label">Source fact</div><p>A running dsh tree begins as an empty entry list and applies bundles, the profile patch, the home-level patch, and command-line overlays in order. Patches address rows by ID and replace the row's entire config or insert a new row. <evidence id="ARCH-LAYERS"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">Repository policy</div><p>Cross-package defaults must be resolved explicitly by the implementation that owns the semantics. Deployment tunables become validated configuration, and invalid configuration should fail at the earliest decidable point. <evidence id="ROOT-BOUNDARIES"></evidence></p></div>
+  <div class="claim assessment"><div class="claim-label">Design assessment</div><p>Explicit layers make the effective runtime tree printable, overridable, and auditable. Yet wholesale config replacement is not deep merge: an upper patch must understand the complete lower configuration shape or risk dropping fields while changing only one value. Predictability is purchased with author discipline.</p></div>
+</section>
+
+<section>
+  <h2>Principle 4: what the model sees must become a durable fact</h2>
+  <div class="claim fact"><div class="claim-label">Source fact</div><p>The session log is the source of truth for model history, and <code>deriveMessages()</code> projects model messages from events. Raw <code>assistant/chunk</code> events remain available for replay and UI fidelity. Any newly model-visible input requires a session event and is checked by runtime invariants. <evidence id="ARCH-LOG"></evidence><evidence id="ROOT-MODEL-LOGGED"></evidence></p></div>
+  <div class="claim inference"><div class="claim-label">Mechanism-level deduction</div><p>This rule turns prompt engineering into event modeling. A plugin cannot secretly concatenate a string immediately before dispatch; if content affects model behavior, the log must reconstruct it. Resume, fork, telemetry, snapshots, and UI state no longer need independent stories for “what the model saw.”</p></div>
+  <div class="claim assessment"><div class="claim-label">Design assessment</div><p>This is one of the most valuable and expensive constraints in the design. It greatly improves audit and replay, but every dynamic context source needs event semantics, compatible readers, and derivation rules instead of one-off middleware state.</p></div>
+</section>
+
+<section>
+  <h2>Principle 5: a capability is a closed three-role seam, not merely an interface</h2>
+  <div class="claim fact"><div class="claim-label">Source fact</div><p>The repository describes a replaceable capability through three roles: a Service Definition declares the contract, a Service Provider implements it, and a Consumer uses it—often through a model-visible tool. A single role does not form a complete seam. <evidence id="ARCH-LOG"></evidence></p></div>
+  <p>This prevents the presence of an interface from being mistaken for replaceable architecture. Filesystem capability requires not only <code>ctx.fs</code>, but also local/sandbox/E2B providers, model-facing consumers, observation policy, an error vocabulary, and consistency with the process execution world.</p>
+</section>
+
+<section>
+  <h2>Principle 6: simplify inside trusted static boundaries; validate real trust boundaries</h2>
+  <div class="claim fact"><div class="claim-label">Repository policy</div><p>Same-process values already constrained by static types are not repeatedly subjected to hostile runtime checks. Parsed configuration, queued data, model/tool JSON, persisted files, workers, processes, and wire protocols must be validated. Cross-boundary IDs use branded types rather than plain strings. <evidence id="ROOT-TYPED-TRUST"></evidence></p></div>
+  <div class="claim assessment"><div class="claim-label">Design assessment</div><p>The principle is not “more validation is always safer,” but “spend validation effort where a value may be forged, drifted, or distorted.” Internal code stays readable; the risk is that misclassifying external data as a trusted typed value removes a defense entirely.</p></div>
+</section>
+
+<section>
+  <h2>Working model of the philosophy</h2>
+  <div class="principle-grid">
+    <div><strong>Composition unit</strong><span>Plugin</span></div>
+    <div><strong>Capability boundary</strong><span>Service seam</span></div>
+    <div><strong>Coordination</strong><span>Typed events / waterfall</span></div>
+    <div><strong>Lifecycle</strong><span>Scope + reversible effects</span></div>
+    <div><strong>Source of truth</strong><span>Append-only session log</span></div>
+    <div><strong>Product assembly</strong><span>Profile + bundle + patch layers</span></div>
+    <div><strong>Safety posture</strong><span>Boundary validation + fail loud</span></div>
+    <div><strong>Extension strategy</strong><span>Plugins, not loop changes</span></div>
+  </div>
+  <aside class="caveat"><strong>Not final:</strong> this is the first synthesis from architecture documents and repository policy. Later chapters test whether these principles remain consistent in prompts, tool parallelism, compaction, checkpoints, multi-Agent orchestration, workflows, and the UI. Counterexamples will revise this model rather than be hidden to preserve theoretical neatness.</aside>
+</section>

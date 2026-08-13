@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="zh-CN" data-root="">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="description" content="如何阅读、当前进度、全量问题域">
+  <link rel="canonical" href="https://hoco-scy.github.io/dpsk-harness-analysis/zh/"><link rel="alternate" hreflang="en" href="https://hoco-scy.github.io/dpsk-harness-analysis/"><link rel="alternate" hreflang="x-default" href="https://hoco-scy.github.io/dpsk-harness-analysis/">
+  <link rel="stylesheet" href="../assets/site.css"><title>阅读入口与研究地图 · DeepSeek Harness 系统拆解</title></head>
+<body data-page="reading-guide" data-baseline="47f943859bef60e4160492346772ded9b24f765a" data-lang="zh">
+  <header class="topbar"><button class="icon-button nav-toggle" type="button" data-nav-toggle aria-label="打开章节目录" aria-expanded="false">☰</button>
+    <a class="brand" href="index.html"><span class="brand-mark">DS</span><span>Harness 系统拆解</span></a>
+    <span class="topbar-meta">固定基线 47f943859b · 2 已复核 / 3 撰写中 / 36 章</span>
+    <div class="topbar-actions"><a class="language-switch" href="../index.html" lang="en" aria-label="阅读本章英文版">English</a><button class="icon-button" type="button" data-theme-toggle aria-label="切换明暗主题">◐</button></div></header>
+  <div class="layout"><aside class="sidebar" data-sidebar aria-label="章节目录"><input class="filter" data-chapter-filter type="search" placeholder="筛选章节……" aria-label="筛选章节"><section class="nav-part" data-part><h2 class="part-title">导论</h2>
+    <a class="chapter-link current" data-chapter-item href="pages/reading-guide.html">
+      <span class="chapter-number">00</span><span>阅读入口与研究地图</span><span class="status-dot drafting" title="撰写中"></span></a><a class="chapter-link" data-chapter-item href="pages/methodology.html">
+      <span class="chapter-number">01</span><span>基线、方法与证据规则</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link" data-chapter-item href="pages/design-philosophy.html">
+      <span class="chapter-number">02</span><span>设计哲学总论</span><span class="status-dot drafting" title="撰写中"></span></a><a class="chapter-link" data-chapter-item href="pages/module-atlas.html">
+      <span class="chapter-number">03</span><span>219 个包的模块地图</span><span class="status-dot drafting" title="撰写中"></span></a></section><section class="nav-part" data-part><h2 class="part-title">核心运行时</h2>
+    <a class="chapter-link" data-chapter-item href="pages/boot-profiles-bundles.html">
+      <span class="chapter-number">04</span><span>启动、Profile、Bundle 与配置叠层</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link" data-chapter-item href="pages/agent-object-lifecycle.html">
+      <span class="chapter-number">05</span><span>Agent 对象、注册表与生命周期</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="pages/turn-step-loop.html">
+      <span class="chapter-number">06</span><span>Turn / Step / Loop 状态机</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="pages/prompt-context.html">
+      <span class="chapter-number">07</span><span>提示词组装与上下文注入</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="pages/llm-adapters.html">
+      <span class="chapter-number">08</span><span>LLM Adapter 与会话协议转换</span><span class="status-dot queued" title="待研究"></span></a></section><section class="nav-part" data-part><h2 class="part-title">会话与持久化</h2>
+    <a class="chapter-link" data-chapter-item href="pages/session-event-model.html">
+      <span class="chapter-number">09</span><span>内部会话结构与事件模型</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="pages/log-replay.html">
+      <span class="chapter-number">10</span><span>日志、派生历史、重放与 Fork</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="pages/persistence-database.html">
+      <span class="chapter-number">11</span><span>持久化与数据库设计</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="pages/projections-checkpoints.html">
+      <span class="chapter-number">12</span><span>Projection、Checkpoint 与冷启动</span><span class="status-dot queued" title="待研究"></span></a></section><section class="nav-part" data-part><h2 class="part-title">上下文治理</h2>
+    <a class="chapter-link" data-chapter-item href="pages/compaction.html">
+      <span class="chapter-number">13</span><span>压缩体系与上下文压力</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="pages/memory-knowledge.html">
+      <span class="chapter-number">14</span><span>记忆与知识：有何能力、又刻意没有什么</span><span class="status-dot queued" title="待研究"></span></a></section><section class="nav-part" data-part><h2 class="part-title">协作状态</h2>
+    <a class="chapter-link" data-chapter-item href="pages/plan-goal-todo.html">
+      <span class="chapter-number">15</span><span>Plan、Goal 与 Todo</span><span class="status-dot queued" title="待研究"></span></a></section><section class="nav-part" data-part><h2 class="part-title">工具系统</h2>
+    <a class="chapter-link" data-chapter-item href="pages/tool-primitives.html">
+      <span class="chapter-number">16</span><span>工具定义原语与执行管线</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="pages/tool-catalog.html">
+      <span class="chapter-number">17</span><span>工具全集与能力分类</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="pages/tool-parallelism.html">
+      <span class="chapter-number">18</span><span>工具并行器与结果顺序</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="pages/permission-approval.html">
+      <span class="chapter-number">19</span><span>权限分析、审批与单调 Guard</span><span class="status-dot queued" title="待研究"></span></a></section><section class="nav-part" data-part><h2 class="part-title">执行环境</h2>
+    <a class="chapter-link" data-chapter-item href="pages/sandbox-filesystem.html">
+      <span class="chapter-number">20</span><span>Sandbox、Filesystem 与观察策略</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="pages/shell-terminal-jobs.html">
+      <span class="chapter-number">21</span><span>Shell、PTY、Terminal 与后台作业</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="pages/web-lsp-mcp-skill.html">
+      <span class="chapter-number">22</span><span>Web、LSP、MCP 与 Skill</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="pages/code-mode-self-modification.html">
+      <span class="chapter-number">23</span><span>Code Mode、自修改与动态插件</span><span class="status-dot queued" title="待研究"></span></a></section><section class="nav-part" data-part><h2 class="part-title">编排</h2>
+    <a class="chapter-link" data-chapter-item href="pages/multi-agent.html">
+      <span class="chapter-number">24</span><span>多 Agent 协同</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="pages/workflow-ralph.html">
+      <span class="chapter-number">25</span><span>Workflow 与 Ralph</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="pages/inbox-steering-continuation.html">
+      <span class="chapter-number">26</span><span>Inbox、Steering 与 Continuation</span><span class="status-dot queued" title="待研究"></span></a></section><section class="nav-part" data-part><h2 class="part-title">可靠性与产品面</h2>
+    <a class="chapter-link" data-chapter-item href="pages/failure-recovery.html">
+      <span class="chapter-number">27</span><span>重试、错误、取消与恢复</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="pages/observability.html">
+      <span class="chapter-number">28</span><span>可观测、Telemetry 与轨迹</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="pages/api-sdk-acp.html">
+      <span class="chapter-number">29</span><span>API、SDK、JSON-RPC 与 ACP</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="pages/web-ui.html">
+      <span class="chapter-number">30</span><span>Web UI 插件架构</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="pages/security-trust.html">
+      <span class="chapter-number">31</span><span>安全模型与信任边界</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="pages/testing-invariants.html">
+      <span class="chapter-number">32</span><span>测试、快照与运行时不变量</span><span class="status-dot queued" title="待研究"></span></a></section><section class="nav-part" data-part><h2 class="part-title">综合结论</h2>
+    <a class="chapter-link" data-chapter-item href="pages/tradeoffs.html">
+      <span class="chapter-number">33</span><span>优势、代价与设计取舍</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="pages/open-questions.html">
+      <span class="chapter-number">34</span><span>缺口、限制与待验证问题</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="pages/glossary-evidence.html">
+      <span class="chapter-number">35</span><span>术语、证据目录与源码索引</span><span class="status-dot queued" title="待研究"></span></a></section></aside>
+    <main class="main"><div class="page-shell"><article class="article" data-article><header><div class="page-kicker"><span>导论</span><span>·</span><span>第 00 章</span></div>
+      <h1>阅读入口与研究地图</h1><p class="subtitle">如何阅读、当前进度、全量问题域</p><div class="page-meta"><span class="status drafting">撰写中</span><span>上游 47f943859b</span><span>范围: 给出全站结构、完成定义、阅读路径与阶段边界。</span></div></header>
+      <section class="hero-panel">
+  <p class="eyebrow">Developer Preview 源码考古 · 固定基线</p>
+  <h2>不是功能清单，而是一张可验证的系统语义地图</h2>
+  <p class="lede">DeepSeek Harness 的表面是一套 coding agent；更值得研究的是，它试图把 Agent 产品拆成可组合、可卸载、可重放的能力网络。本报告从实际入口、状态变化、失败分支和持久化落点出发，逐层回答“它真的怎样运行”。</p>
+  <div class="baseline-card">
+    <span>分析基线</span>
+    <code>47f943859bef60e4160492346772ded9b24f765a</code>
+    <a href="https://github.com/deepseek-ai/deepseek-harness/tree/47f943859bef60e4160492346772ded9b24f765a">查看固定源码</a>
+  </div>
+</section>
+
+<section>
+  <h2>这份拆解要回答什么</h2>
+  <div class="question-grid">
+    <article><h3>运行时</h3><p>插件树怎样启动？Agent、turn、step、模型请求和工具批次由谁驱动？各类事件何时写入？</p></article>
+    <article><h3>上下文</h3><p>系统提示词、工具 schema、动态上下文、历史消息、Skill、压缩摘要如何共同决定模型所见？</p></article>
+    <article><h3>持久性</h3><p>内部会话究竟保存什么？JSONL、SQLite、projection cache、checkpoint、fork、resume 和 replay 各自保证什么？</p></article>
+    <article><h3>执行与治理</h3><p>工具从 schema 到执行经历哪些拦截层？并行、审批、单调 guard、沙箱、文件观察和超时怎样组合？</p></article>
+    <article><h3>编排</h3><p>多 Agent provider、continuation、后台 job、workflow worker 和 Ralph loop 如何共享一套底层原语？</p></article>
+    <article><h3>设计取舍</h3><p>“Everything is a plugin”解决了什么，又引入了哪些认知、配置、验证与兼容成本？</p></article>
+  </div>
+</section>
+
+<section>
+  <h2>先掌握三个不变量</h2>
+  <div class="claim fact">
+    <div class="claim-label">源码事实</div>
+    <p>模型 adapter、工具注册表、session log、agent loop 都作为插件挂入共享 Cordis context；仓库明确宣称不存在必须被 patch 的特权核心。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/docs/architecture.md#L9-L13" title="Cordis 与无特权核心: 全部产品部件都是插件；通过共享 context 的 service、typed event 和 reversible effect 组合。" aria-label="证据 ARCH-PLUGIN-CORE">ARCH-PLUGIN-CORE</a></p>
+  </div>
+  <div class="claim fact">
+    <div class="claim-label">源码事实</div>
+    <p>任何真正进入模型请求的内容都必须能从 session log 重建。日志因此不仅服务 UI 展示，也是模型上下文、恢复、fork、遥测和重放的共同事实源。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/docs/architecture.md#L92-L102" title="Session log 与 capability seam: 日志是模型上下文事实源；model-visible 必须可从日志重建；seam 包含定义、提供者与消费者。" aria-label="证据 ARCH-LOG">ARCH-LOG</a></p>
+  </div>
+  <div class="claim inference">
+    <div class="claim-label">机制推导</div>
+    <p>DeepSeek Harness 的“核心”不是某个稳定不变的循环类，而是一组更难被替换的系统不变量：作用域、事件顺序、可逆注册、模型可见输入的日志化，以及能力定义/提供者/消费者三方闭合。具体插件可替换，但这些组合语义构成了事实上的架构宪法。</p>
+  </div>
+</section>
+
+<section>
+  <h2>推荐阅读路径</h2>
+  <ol class="reading-path">
+    <li><strong>第一次阅读：</strong>设计哲学 → Turn/Step/Loop → 提示词 → 会话事件 → 工具管线。</li>
+    <li><strong>关注 Agent 平台：</strong>持久化 → checkpoint → 压缩 → Plan/Goal/Todo → 多 Agent → Workflow。</li>
+    <li><strong>关注安全执行：</strong>工具原语 → 权限审批 → Sandbox/FS → Shell/Terminal/Jobs → 安全模型。</li>
+    <li><strong>关注工程质量：</strong>可观测与重放 → API/SDK/ACP → 测试与不变量 → 设计取舍。</li>
+  </ol>
+</section>
+
+<section>
+  <h2>完成状态怎么读</h2>
+  <table>
+    <thead><tr><th>状态</th><th>含义</th><th>能否当作结论引用</th></tr></thead>
+    <tbody>
+      <tr><td><span class="status queued">待研究</span></td><td>范围已列入，正文可能只是问题清单。</td><td>不能</td></tr>
+      <tr><td><span class="status drafting">撰写中</span></td><td>已有部分源码事实和推导，覆盖审计尚未完成。</td><td>只能引用带固定源码证据的局部事实</td></tr>
+      <tr><td><span class="status verified">已复核</span></td><td>入口、控制流、状态、失败面、持久化和关键测试均完成抽样或全量复核。</td><td>可以，仍须附带本页固定基线</td></tr>
+    </tbody>
+  </table>
+</section>
+<section class="learning-notes" aria-labelledby="learning-notes-title"><h2 id="learning-notes-title">我的学习体会</h2>
+    <p class="privacy">内容仅自动保存到当前浏览器，不上传、不进入仓库。你可以导出 Markdown 自行归档。</p><textarea data-learning-notes aria-label="我的学习体会" placeholder="记录你的理解、疑问、反例和可迁移原则……"></textarea>
+    <div class="note-footer"><span data-note-saved>本地草稿</span><button type="button" data-note-export>导出 Markdown</button>
+    <button type="button" class="danger" data-note-clear>清空</button><span data-note-count>0 字符</span></div></section><nav class="pagination" aria-label="章节翻页"><span class="disabled"><small>← 上一章</small><strong>已经是第一章</strong></span><a class="next" href="pages/methodology.html"><small>下一章 · 01 →</small><strong>基线、方法与证据规则</strong></a></nav></article>
+      <aside class="right-rail" aria-label="本页目录"><h2 class="rail-title">本页目录</h2><nav class="toc" data-toc></nav><label class="jump-label" for="chapter-jump">跳转章节</label><select class="jump-select" id="chapter-jump" data-chapter-jump><option value="reading-guide" selected>00 · 阅读入口与研究地图</option><option value="methodology">01 · 基线、方法与证据规则</option><option value="design-philosophy">02 · 设计哲学总论</option><option value="module-atlas">03 · 219 个包的模块地图</option><option value="boot-profiles-bundles">04 · 启动、Profile、Bundle 与配置叠层</option><option value="agent-object-lifecycle">05 · Agent 对象、注册表与生命周期</option><option value="turn-step-loop">06 · Turn / Step / Loop 状态机</option><option value="prompt-context">07 · 提示词组装与上下文注入</option><option value="llm-adapters">08 · LLM Adapter 与会话协议转换</option><option value="session-event-model">09 · 内部会话结构与事件模型</option><option value="log-replay">10 · 日志、派生历史、重放与 Fork</option><option value="persistence-database">11 · 持久化与数据库设计</option><option value="projections-checkpoints">12 · Projection、Checkpoint 与冷启动</option><option value="compaction">13 · 压缩体系与上下文压力</option><option value="memory-knowledge">14 · 记忆与知识：有何能力、又刻意没有什么</option><option value="plan-goal-todo">15 · Plan、Goal 与 Todo</option><option value="tool-primitives">16 · 工具定义原语与执行管线</option><option value="tool-catalog">17 · 工具全集与能力分类</option><option value="tool-parallelism">18 · 工具并行器与结果顺序</option><option value="permission-approval">19 · 权限分析、审批与单调 Guard</option><option value="sandbox-filesystem">20 · Sandbox、Filesystem 与观察策略</option><option value="shell-terminal-jobs">21 · Shell、PTY、Terminal 与后台作业</option><option value="web-lsp-mcp-skill">22 · Web、LSP、MCP 与 Skill</option><option value="code-mode-self-modification">23 · Code Mode、自修改与动态插件</option><option value="multi-agent">24 · 多 Agent 协同</option><option value="workflow-ralph">25 · Workflow 与 Ralph</option><option value="inbox-steering-continuation">26 · Inbox、Steering 与 Continuation</option><option value="failure-recovery">27 · 重试、错误、取消与恢复</option><option value="observability">28 · 可观测、Telemetry 与轨迹</option><option value="api-sdk-acp">29 · API、SDK、JSON-RPC 与 ACP</option><option value="web-ui">30 · Web UI 插件架构</option><option value="security-trust">31 · 安全模型与信任边界</option><option value="testing-invariants">32 · 测试、快照与运行时不变量</option><option value="tradeoffs">33 · 优势、代价与设计取舍</option><option value="open-questions">34 · 缺口、限制与待验证问题</option><option value="glossary-evidence">35 · 术语、证据目录与源码索引</option></select></aside></div>
+      <footer class="footer">独立研究 · 固定基线 47f943859bef60e4160492346772ded9b24f765a · 学习笔记默认仅保存在浏览器本地</footer></main></div>
+  <script src="../assets/site.js" defer></script></body></html>

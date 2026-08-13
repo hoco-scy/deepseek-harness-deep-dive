@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="zh-CN" data-root="../">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="description" content="运行中的 dsh 如何由有序插件树组合出来">
+  <link rel="canonical" href="https://hoco-scy.github.io/dpsk-harness-analysis/zh/pages/boot-profiles-bundles.html"><link rel="alternate" hreflang="en" href="https://hoco-scy.github.io/dpsk-harness-analysis/pages/boot-profiles-bundles.html"><link rel="alternate" hreflang="x-default" href="https://hoco-scy.github.io/dpsk-harness-analysis/pages/boot-profiles-bundles.html">
+  <link rel="stylesheet" href="../../assets/site.css"><title>启动、Profile、Bundle 与配置叠层 · DeepSeek Harness 系统拆解</title></head>
+<body data-page="boot-profiles-bundles" data-baseline="47f943859bef60e4160492346772ded9b24f765a" data-lang="zh">
+  <header class="topbar"><button class="icon-button nav-toggle" type="button" data-nav-toggle aria-label="打开章节目录" aria-expanded="false">☰</button>
+    <a class="brand" href="../index.html"><span class="brand-mark">DS</span><span>Harness 系统拆解</span></a>
+    <span class="topbar-meta">固定基线 47f943859b · 2 已复核 / 3 撰写中 / 36 章</span>
+    <div class="topbar-actions"><a class="language-switch" href="../../pages/boot-profiles-bundles.html" lang="en" aria-label="阅读本章英文版">English</a><button class="icon-button" type="button" data-theme-toggle aria-label="切换明暗主题">◐</button></div></header>
+  <div class="layout"><aside class="sidebar" data-sidebar aria-label="章节目录"><input class="filter" data-chapter-filter type="search" placeholder="筛选章节……" aria-label="筛选章节"><section class="nav-part" data-part><h2 class="part-title">导论</h2>
+    <a class="chapter-link" data-chapter-item href="../pages/reading-guide.html">
+      <span class="chapter-number">00</span><span>阅读入口与研究地图</span><span class="status-dot drafting" title="撰写中"></span></a><a class="chapter-link" data-chapter-item href="../pages/methodology.html">
+      <span class="chapter-number">01</span><span>基线、方法与证据规则</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link" data-chapter-item href="../pages/design-philosophy.html">
+      <span class="chapter-number">02</span><span>设计哲学总论</span><span class="status-dot drafting" title="撰写中"></span></a><a class="chapter-link" data-chapter-item href="../pages/module-atlas.html">
+      <span class="chapter-number">03</span><span>219 个包的模块地图</span><span class="status-dot drafting" title="撰写中"></span></a></section><section class="nav-part" data-part><h2 class="part-title">核心运行时</h2>
+    <a class="chapter-link current" data-chapter-item href="../pages/boot-profiles-bundles.html">
+      <span class="chapter-number">04</span><span>启动、Profile、Bundle 与配置叠层</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link" data-chapter-item href="../pages/agent-object-lifecycle.html">
+      <span class="chapter-number">05</span><span>Agent 对象、注册表与生命周期</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/turn-step-loop.html">
+      <span class="chapter-number">06</span><span>Turn / Step / Loop 状态机</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/prompt-context.html">
+      <span class="chapter-number">07</span><span>提示词组装与上下文注入</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/llm-adapters.html">
+      <span class="chapter-number">08</span><span>LLM Adapter 与会话协议转换</span><span class="status-dot queued" title="待研究"></span></a></section><section class="nav-part" data-part><h2 class="part-title">会话与持久化</h2>
+    <a class="chapter-link" data-chapter-item href="../pages/session-event-model.html">
+      <span class="chapter-number">09</span><span>内部会话结构与事件模型</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/log-replay.html">
+      <span class="chapter-number">10</span><span>日志、派生历史、重放与 Fork</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/persistence-database.html">
+      <span class="chapter-number">11</span><span>持久化与数据库设计</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/projections-checkpoints.html">
+      <span class="chapter-number">12</span><span>Projection、Checkpoint 与冷启动</span><span class="status-dot queued" title="待研究"></span></a></section><section class="nav-part" data-part><h2 class="part-title">上下文治理</h2>
+    <a class="chapter-link" data-chapter-item href="../pages/compaction.html">
+      <span class="chapter-number">13</span><span>压缩体系与上下文压力</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/memory-knowledge.html">
+      <span class="chapter-number">14</span><span>记忆与知识：有何能力、又刻意没有什么</span><span class="status-dot queued" title="待研究"></span></a></section><section class="nav-part" data-part><h2 class="part-title">协作状态</h2>
+    <a class="chapter-link" data-chapter-item href="../pages/plan-goal-todo.html">
+      <span class="chapter-number">15</span><span>Plan、Goal 与 Todo</span><span class="status-dot queued" title="待研究"></span></a></section><section class="nav-part" data-part><h2 class="part-title">工具系统</h2>
+    <a class="chapter-link" data-chapter-item href="../pages/tool-primitives.html">
+      <span class="chapter-number">16</span><span>工具定义原语与执行管线</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/tool-catalog.html">
+      <span class="chapter-number">17</span><span>工具全集与能力分类</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/tool-parallelism.html">
+      <span class="chapter-number">18</span><span>工具并行器与结果顺序</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/permission-approval.html">
+      <span class="chapter-number">19</span><span>权限分析、审批与单调 Guard</span><span class="status-dot queued" title="待研究"></span></a></section><section class="nav-part" data-part><h2 class="part-title">执行环境</h2>
+    <a class="chapter-link" data-chapter-item href="../pages/sandbox-filesystem.html">
+      <span class="chapter-number">20</span><span>Sandbox、Filesystem 与观察策略</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/shell-terminal-jobs.html">
+      <span class="chapter-number">21</span><span>Shell、PTY、Terminal 与后台作业</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/web-lsp-mcp-skill.html">
+      <span class="chapter-number">22</span><span>Web、LSP、MCP 与 Skill</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/code-mode-self-modification.html">
+      <span class="chapter-number">23</span><span>Code Mode、自修改与动态插件</span><span class="status-dot queued" title="待研究"></span></a></section><section class="nav-part" data-part><h2 class="part-title">编排</h2>
+    <a class="chapter-link" data-chapter-item href="../pages/multi-agent.html">
+      <span class="chapter-number">24</span><span>多 Agent 协同</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/workflow-ralph.html">
+      <span class="chapter-number">25</span><span>Workflow 与 Ralph</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/inbox-steering-continuation.html">
+      <span class="chapter-number">26</span><span>Inbox、Steering 与 Continuation</span><span class="status-dot queued" title="待研究"></span></a></section><section class="nav-part" data-part><h2 class="part-title">可靠性与产品面</h2>
+    <a class="chapter-link" data-chapter-item href="../pages/failure-recovery.html">
+      <span class="chapter-number">27</span><span>重试、错误、取消与恢复</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/observability.html">
+      <span class="chapter-number">28</span><span>可观测、Telemetry 与轨迹</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/api-sdk-acp.html">
+      <span class="chapter-number">29</span><span>API、SDK、JSON-RPC 与 ACP</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/web-ui.html">
+      <span class="chapter-number">30</span><span>Web UI 插件架构</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/security-trust.html">
+      <span class="chapter-number">31</span><span>安全模型与信任边界</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/testing-invariants.html">
+      <span class="chapter-number">32</span><span>测试、快照与运行时不变量</span><span class="status-dot queued" title="待研究"></span></a></section><section class="nav-part" data-part><h2 class="part-title">综合结论</h2>
+    <a class="chapter-link" data-chapter-item href="../pages/tradeoffs.html">
+      <span class="chapter-number">33</span><span>优势、代价与设计取舍</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/open-questions.html">
+      <span class="chapter-number">34</span><span>缺口、限制与待验证问题</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/glossary-evidence.html">
+      <span class="chapter-number">35</span><span>术语、证据目录与源码索引</span><span class="status-dot queued" title="待研究"></span></a></section></aside>
+    <main class="main"><div class="page-shell"><article class="article" data-article><header><div class="page-kicker"><span>核心运行时</span><span>·</span><span>第 04 章</span></div>
+      <h1>启动、Profile、Bundle 与配置叠层</h1><p class="subtitle">运行中的 dsh 如何由有序插件树组合出来</p><div class="page-meta"><span class="status verified">已复核</span><span>上游 47f943859b</span><span>范围: 追踪 CLI 到 Loader、profile/bundle patch 顺序、隔离域、配置替换语义和卸载。</span></div></header>
+      <section>
+  <h2>结论：启动器不是“创建应用”，而是求值一份配置程序</h2>
+  <div class="thesis">
+    <p>一次 <code>dsh</code> 启动的核心产物，不是某个预先写死的 Application 对象，而是一棵由空根、有序 patch 层、服务依赖和 Cordis 生命周期共同求值出来的插件树。</p>
+  </div>
+  <p>这一区分非常关键。Profile 决定“采用哪些 bundle”，bundle 给出大块产品能力，用户和命令行 overlay 修改最终配置；Loader 再根据服务是否可用驱动插件激活。配置在这里不是启动参数的集合，而是产品架构本身。</p>
+</section>
+
+<section>
+  <h2>1. CLI 的职责边界很窄</h2>
+  <div class="claim fact"><div class="claim-label">生产控制流</div><p><code>apps/cli/src/bin.ts</code> 先把 argv 解析成三种模式，再动态导入对应实现：普通 profile 启动、插件包管理、配置导出。profile 分支只传入冻结的环境快照、profile 名、按 argv 顺序保留的 <code>--patch</code> 文件和剩余应用参数。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/apps/cli/src/bin.ts#L27-L52" title="CLI 启动模式分派: CLI 解析后仅分派 profile、plugin 与 dump-config；profile 路径传入环境快照、profile、patch 与内部参数。" aria-label="证据 CLI-PROFILE-DISPATCH">CLI-PROFILE-DISPATCH</a></p></div>
+  <p>因此，“CLI 参数”被刻意拆成两类：</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>输入</th><th>所有者</th><th>进入配置树的方式</th><th>在线重组时是否重算</th></tr></thead>
+    <tbody>
+      <tr><td><code>--profile</code>、<code>--patch</code></td><td>外层 launcher</td><td>选择 profile 并形成 patch 层</td><td>patch 文件内容重读；文件列表不变</td></tr>
+      <tr><td>剩余参数</td><td>树内应用插件</td><td>由 <code>cmdlineArgs</code> service 提供，不写进 patch</td><td>不重算，随本次 invocation 存活</td></tr>
+      <tr><td>环境变量</td><td>launcher 冻结 provenance</td><td>挂树之前提供环境快照；<code>!!js</code> 也可读取进程环境</td><td>launch-time 快照不变</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim inference"><div class="claim-label">机制推导</div><p>命令行驱动能力没有侵入通用 boot。Web、headless 或未来的新 surface 可以把自己的 argv 解释器作为普通 provider 装入树；launcher 只拥有“选哪份配置程序”以及“如何安全结束进程”。</p></div>
+</section>
+
+<section>
+  <h2>2. Profile 是可写的组合工作区</h2>
+  <div class="claim fact"><div class="claim-label">生产源码</div><p>Profile 名必须是单一路径段，且不能是 <code>.</code>、<code>..</code> 或 <code>node_modules</code>。首次使用内置模板时，<code>web</code> 初始化为 <code>base + web-app</code>，<code>headless</code> 初始化为 <code>base + headless</code>；初始化只补齐不存在的 <code>package.json</code>、<code>cordis.patch.yml</code> 和 <code>pnpm-workspace.yaml</code>，不会覆盖用户已有文件。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/boot/app-boot/src/profile.ts#L104-L168" title="Profile 目录与内置模板: profile 名校验、web/headless bundle 模板、默认 base bundle，以及幂等初始化的三个文件。" aria-label="证据 PROFILE-TEMPLATES">PROFILE-TEMPLATES</a></p></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Profile 文件</th><th>职责</th><th>可写性与风险</th></tr></thead>
+    <tbody>
+      <tr><td><code>package.json</code></td><td><code>dsh.profile.bundles</code> 声明 bundle 的有序列表，同时容纳 profile 私有插件依赖</td><td>改变产品能力集合与解析闭包</td></tr>
+      <tr><td><code>cordis.patch.yml</code></td><td>该 profile 的用户覆盖层</td><td>在线监听；可改配置、disable 或 insert 插件</td></tr>
+      <tr><td><code>pnpm-workspace.yaml</code></td><td>为 out-of-tree 插件固定 hoisted linker 与 peer 策略</td><td>支持 profile 自己安装插件，同时共享 Cordis/service definition 实例</td></tr>
+      <tr><td><code>cordis.yml</code></td><td>Loader 所需的真实 include 锚点</td><td>每次启动重写为空数组；不应由用户维护</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">空根不变量</div><p>launcher 每次启动都会重写 <code>cordis.yml</code> 为空 entry list。这样即使 Loader 曾将运行树写回配置，也不会在下次启动把已经组合的 row 与 bundle insert 重复叠加；该文件只负责提供 profile 目录的解析锚点。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/apps/cli/src/profile-boot.ts#L59-L103" title="空根配置与 Profile 准备: 每次启动重写空根 cordis.yml，实际树完全由 patch 层构成，并避免 Loader write-back 烘焙组合结果。" aria-label="证据 PROFILE-ROOT">PROFILE-ROOT</a></p></div>
+</section>
+
+<section>
+  <h2>3. 精确的六层优先级</h2>
+  <p>最终 entry list 从空数组开始，按下列顺序应用。越靠后优先级越高：</p>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>Bundle patches</h3><p>严格按 <code>dsh.profile.bundles</code> 的 manifest 顺序串接；通常先 base，再 surface bundle。</p></div>
+    <div><span>2</span><h3>Profile user patch</h3><p><code>$DSH_HOME/profiles/&lt;name&gt;/cordis.patch.yml</code>，只影响当前 profile。</p></div>
+    <div><span>3</span><h3>Home user patch</h3><p><code>$DSH_HOME/cordis.patch.yml</code>，是跨 profile 的机器级偏好，因此覆盖 profile 层。</p></div>
+    <div><span>4</span><h3>CLI overlays</h3><p>所有 <code>--patch</code> 文件，按 argv 中的出现顺序应用。</p></div>
+    <div><span>5</span><h3>Launcher assembly overlay</h3><p>若存在 <code>agent-presets</code> row，launcher 注入随安装发布的只读 preset root。</p></div>
+    <div><span>6</span><h3>Telemetry hard-disable</h3><p><code>DSH_TELEMETRY_DISABLED</code> 为任意非空值时，以最终 overlay 强制禁用对应 row；隐私开关宁可误关，不可误开。</p></div>
+  </div>
+  <div class="claim fact"><div class="claim-label">生产控制流</div><p><code>allPatches()</code> 将 bundle、profile、home 和 launcher overlays 展平；<code>composeProfile()</code> 先用前四层建立 row 索引，再追加 preset 与 telemetry 两个由 launcher 独占语义的覆盖层。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/apps/cli/src/profile-boot.ts#L121-L170" title="Profile patch 的实际组合顺序: bundle、profile、home、CLI overlay、启动器 preset 与 telemetry overlay 的应用顺序以及行索引构建。" aria-label="证据 PROFILE-COMPOSE">PROFILE-COMPOSE</a></p></div>
+  <div class="claim fact"><div class="claim-label">同构证明</div><p>配置导出、flag 推导和真实启动都调用同一套 <code>applyEntryPatches([], ...)</code> 语义；列出的 bundle 如果没有在 manifest 中声明 <code>dsh.bundle.patch</code> 会直接失败，而不是被当作空层忽略。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/boot/app-boot/src/profile.ts#L357-L420" title="Bundle 解析与同构组合: 按 manifest 顺序解析 bundle 声明，缺失 dsh.bundle 时失败，并用与启动相同的 applyEntryPatches 在空根上组合。" aria-label="证据 PROFILE-LOAD">PROFILE-LOAD</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/boot/app-boot/tests/profile.spec.ts#L121-L143" title="Bundle 与用户层顺序测试: 测试验证 bundle manifest 顺序、后层整块配置覆盖以及无用户层的空组合。" aria-label="证据 PROFILE-ORDER-TEST">PROFILE-ORDER-TEST</a></p></div>
+</section>
+
+<section>
+  <h2>4. Patch 语义：按 row 定位，但 config 整块替换</h2>
+  <div class="claim fact"><div class="claim-label">配置事实</div><p><code>dsh-base</code> 在空根上执行一次大 <code>insert</code>，后续 patch 按 <code>id</code> 命中 row，最后写入者获胜。命中 row 时，<code>config</code> 是整体替换而非递归深合并；entry 在文件中的先后也不代表加载时序，激活由 service availability 驱动。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/bundle/base/cordis.patch.yml#L1-L24" title="Base bundle 的 patch 与激活语义: base 是空根上的一次 insert；后层按 id 最后写入；config 整体替换；行顺序不承载加载语义。" aria-label="证据 BASE-BUNDLE-SEMANTICS">BASE-BUNDLE-SEMANTICS</a></p></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>操作</th><th>效果</th><th>常见误区</th></tr></thead>
+    <tbody>
+      <tr><td><code>{ id, config }</code></td><td>替换目标 row 的完整 <code>config</code></td><td>只写一个字段不会保留 base 中的其他字段</td></tr>
+      <tr><td><code>{ id, disabled }</code></td><td>改变该 row 的挂载资格</td><td>disable 并非从配置中删除；后续层仍能明确覆盖</td></tr>
+      <tr><td><code>{ insert: [...] }</code></td><td>加入新的插件 rows</td><td>插入位置主要帮助阅读，不是依赖排序机制</td></tr>
+      <tr><td>命中不存在的 <code>id</code></td><td>Loader 给出 skipped-patch warning</td><td>允许共享 overlay 跨 surface 使用，但拼错 id 也可能只表现为警告</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">设计评价</div><p>“整块替换”让单个 row 的归属和最终形状可预测，避免深合并数组、删除字段与表达式时出现隐式规则；代价是上层作者必须复述完整配置。它适合少量部署覆盖，不适合把巨大、频繁演进的嵌套对象直接暴露给普通用户。</p></div>
+</section>
+
+<section>
+  <h2>5. 模块解析：安装层优先，Profile 层扩展</h2>
+  <div class="claim fact"><div class="claim-label">生产源码</div><p>bundle 解析依次尝试 dsh 安装锚点与 profile 自身的 <code>package.json</code>。启动前还会对应用的 <code>dependencies + peerDependencies</code> 闭包做 BFS，把可解析包扁平链接到 <code>$DSH_HOME/profiles/node_modules</code>；Node 从 profile 私有 <code>node_modules</code> 向父目录回退时即可找到安装自带包。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/boot/app-boot/src/profile.ts#L204-L255" title="Profile 的扁平模块 fallback: 对 dependencies 与 peerDependencies 做 BFS，从安装位置建立 profiles/node_modules 符号链接闭包。" aria-label="证据 PROFILE-MODULE-FALLBACK">PROFILE-MODULE-FALLBACK</a></p></div>
+  <p>这形成两个同时存在的解析世界：</p>
+  <div class="principle-grid">
+    <div><strong>Installation-owned</strong><span>官方 bundle / provider / definition</span></div>
+    <div><strong>Profile-owned</strong><span>用户安装的 out-of-tree plugin</span></div>
+  </div>
+  <div class="claim inference"><div class="claim-label">机制推导</div><p>扁平 fallback 不只是方便找到包；它还尽量保证 out-of-tree 插件与官方包解析到同一个 Cordis 和同一组 service-definition 实例。若两边各带一份框架实例，类型看似相同，运行时 context key 和 registry identity 却可能彻底断裂。</p></div>
+</section>
+
+<section>
+  <h2>6. Boot 是提交式事务，不是 best-effort 挂载</h2>
+  <div class="claim fact"><div class="claim-label">生产控制流</div><p><code>boot()</code> 先创建根 Context、提供 dsh home、安装 Loader，再执行 host <code>prepare</code>；之后挂载根 Include、等待 Loader settle，并检查每个 entry 已激活。任一步失败都会先 dispose 部分根，再把阶段、包装链和最深层插件错误栈一并抛出。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/boot/app-boot/src/index.ts#L757-L801" title="事务化启动与失败清理: host prepare 先于树挂载，Loader settle 后检查激活；任意失败先处置部分根并保留最深层错误栈。" aria-label="证据 BOOT-TRANSACTION">BOOT-TRANSACTION</a></p></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>阶段</th><th>可见状态</th><th>失败所有权</th></tr></thead>
+    <tbody>
+      <tr><td>Context + Loader</td><td>尚无配置树插件</td><td>标记为 host preparation failure</td></tr>
+      <tr><td>Host prepare</td><td>环境、argv 等冻结事实已提供</td><td>失败时处置整个根</td></tr>
+      <tr><td>Include mount / settle</td><td>插件按依赖逐步激活</td><td>事务性 Loader 包装失败；根统一回滚</td></tr>
+      <tr><td>Activation audit</td><td>只有已结算且存活的树可返回</td><td>缺 fiber / 永不激活都拒绝启动</td></tr>
+      <tr><td>运行期</td><td>signal 或 surface 可处置根</td><td>根 fiber 的单次 disposal 统一撤销 effects</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">设计评价</div><p>这种启动协议把“插件声明存在”与“运行时真的可用”分开：只有 Loader 完成和 activation audit 通过才是提交点。它牺牲部分容错启动能力，换取不让半棵插件树悄悄服务请求。</p></div>
+</section>
+
+<section>
+  <h2>7. 在线配置刷新保留最后一棵有效树</h2>
+  <div class="claim fact"><div class="claim-label">生产控制流</div><p>profile patch 或 home patch 变化时，launcher 会在每一代同时重新读取两个用户文件，并重新叠加固定 bundle 和更高优先级 overlays；每代使用新的深克隆，防止 Include 对 insert row 的原位修改污染下一次组合。刷新最终通过根 Include 的 <code>entry.update()</code> 事务化应用。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/apps/cli/src/profile-boot.ts#L227-L299" title="用户 patch 的在线重组: 每代重新读取两个用户层、克隆 patch 防止引用污染，并在缺少 HMR 时挂载只监听配置的实例。" aria-label="证据 PROFILE-LIVE">PROFILE-LIVE</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/boot/app-boot/src/index.ts#L225-L265" title="事务化用户配置刷新: HMR 精确监听用户 patch，重新生成完整 patch 列表并通过 entry.update 事务化替换；退出竞态返回空 disposer。" aria-label="证据 BOOT-HMR">BOOT-HMR</a></p></div>
+  <div class="claim fact"><div class="claim-label">失败路径测试</div><p>集成级测试依次写入有效配置、插件启动失败配置、语法错误配置、恢复配置并删除文件。两种失败都广播错误且继续保留上一棵有效树；恢复后应用新树，删除后退回应用自有层。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/boot/app-boot/tests/user-patches.spec.ts#L315-L371" title="HMR 保留最后成功配置测试: 测试覆盖新增、应用失败、解析失败、恢复与删除，失败候选不会替换上一棵有效插件树。" aria-label="证据 PROFILE-HMR-TEST">PROFILE-HMR-TEST</a></p></div>
+  <p>Web bundle 暂时关闭共享模块 HMR，但 launcher 不允许配置热更新合同随之消失：若树中没有 HMR，它会临时挂载 timer 和一个无模块根的 watch-only HMR，只负责两个用户 patch 文件。</p>
+</section>
+
+<section>
+  <h2>8. Base、Headless 与 Web：同一骨架，不同产品面</h2>
+  <div class="claim fact"><div class="claim-label">Base</div><p>base bundle 直接装配 LLM registry、session、Typert API、Agent、jobs、retry、settings、credentials、多 provider adapter 与 JSONL persistence 等共享骨架，后面还继续加入工具、压缩、多 Agent 和 loop。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/bundle/base/cordis.patch.yml#L24-L100" title="Base bundle 的运行时骨架: base 直接装配 LLM、session、API、agent、jobs、retry、settings、credentials、adapter 与 JSONL persistence 等共享服务。" aria-label="证据 BASE-BUNDLE-SPINE">BASE-BUNDLE-SPINE</a></p></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Surface</th><th>在 base 之上增加什么</th><th>Agent 能力归属</th><th>生命周期</th></tr></thead>
+    <tbody>
+      <tr><td>Headless</td><td>Code runtime、启动参数 provider、一次性 runner；不挂 Host/HTTP/Web/browser</td><td>base 中的进程级 Agent plane</td><td>任务结束后请求有界退出</td></tr>
+      <tr><td>Web</td><td>Host、storage、projection cache、HTTP/API、浏览器 module roster 与 UI</td><td>禁用 base 的 per-Agent rows，改由每个 session preset realm 挂载</td><td>长驻，多会话并存</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Headless 证据</div><p>headless bundle 明确声明不挂载 Web/HTTP，并让普通 provider 解释 task positional，runner 再通过 core registry 创建 Agent。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/bundle/headless/cordis.patch.yml#L1-L35" title="Headless 产品面: headless 不挂载 Host、HTTP、Web 或浏览器插件，只增加代码运行时、启动参数 provider 与一次性 Agent driver。" aria-label="证据 HEADLESS-BUNDLE">HEADLESS-BUNDLE</a></p></div>
+  <div class="claim fact"><div class="claim-label">Web 证据</div><p>Web 逐项禁用 base 中属于单个 Agent 的工具、prompt、压缩与 delegation rows，让 preset 在会话域内重建这些能力；而 jobs、goal、token meter、subagent 等跨会话 registry 或被 host RPC 读取的服务保留在 host plane。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/bundle/web-app/cordis.patch.yml#L276-L408" title="Web 的 host plane 与 agent plane 分界: Web 禁用 base 中每 Agent 能力行，由每会话 preset 挂载；跨会话 registry 与 host API 依赖服务保留在 host plane。" aria-label="证据 WEB-AGENT-PLANE">WEB-AGENT-PLANE</a></p></div>
+  <div class="claim inference"><div class="claim-label">所有权推导</div><p>“某能力是否应该进入 preset”不能凭功能名称判断，而要追踪谁读取它、registry 是否跨会话、provider 名是否全局唯一，以及 host RPC 从哪个 context resolve service。Web patch 中的大段注释本质上是一份 struct-lifetime audit：把进程级状态误放进 session scope，会导致浏览器 API 找不到服务、跨 session 查询断裂或重复注册碰撞。</p></div>
+</section>
+
+<section>
+  <h2>9. 设计收益、代价与真实风险</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>设计选择</th><th>得到什么</th><th>付出什么</th></tr></thead>
+    <tbody>
+      <tr><td>空根 + patch composition</td><td>最终树可导出、覆盖、热更新；产品无需硬编码</td><td>配置即代码，错误可触及任意插件生命周期</td></tr>
+      <tr><td>按 id 整块替换</td><td>覆盖结果确定、删除语义简单</td><td>上层配置容易因未复述字段而随版本漂移</td></tr>
+      <tr><td>service-driven activation</td><td>声明顺序与依赖顺序解耦</td><td>只读 YAML 无法直观看出真实启动拓扑</td></tr>
+      <tr><td>两锚点模块解析</td><td>官方安装与用户插件可共同组成 profile</td><td>peer identity、符号链接与包管理器行为成为运行时正确性的一部分</td></tr>
+      <tr><td>事务 boot/HMR</td><td>不暴露半有效树，失败保留最后好状态</td><td>Loader 与 effect disposal 必须非常可靠，诊断链更复杂</td></tr>
+      <tr><td>Web per-session presets</td><td>每会话能力和信任配置可隔离</td><td>host/session plane 的所有权判断复杂，新增插件必须重新审计</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">本章评价</div><p>DeepSeek Harness 选择把“部署、产品 surface、Agent 能力和用户扩展”统一成一种 patchable plugin-tree 语言。这种统一性很强：配置导出、启动、热更新和 per-session preset 可以共享底层语义。但它并没有消除复杂度，而是把复杂度集中到 entry id 稳定性、scope 所有权、service dependency、模块 identity 和事务化生命周期。只有同时拥有 invariant、组合测试与可观测配置树，这一设计才真正可维护。</p></div>
+</section>
+
+<section>
+  <h2>本章复核清单</h2>
+  <ul class="audit-list">
+    <li>已追踪 CLI profile dispatch 到 <code>runProfile()</code>。</li>
+    <li>已逐层确认 bundle、profile、home、CLI 与 launcher overlays 的实际顺序。</li>
+    <li>已确认 config 整块替换、row order 不承载激活语义。</li>
+    <li>已确认安装锚点、profile 锚点和 BFS module fallback。</li>
+    <li>已追踪 boot commit point、失败清理、signal/退出竞态。</li>
+    <li>已用失败/恢复测试验证 HMR 的 last-known-good 语义。</li>
+    <li>已分别审计 base、headless、web 及 host/agent plane 所有权。</li>
+  </ul>
+</section>
+<section class="learning-notes" aria-labelledby="learning-notes-title"><h2 id="learning-notes-title">我的学习体会</h2>
+    <p class="privacy">内容仅自动保存到当前浏览器，不上传、不进入仓库。你可以导出 Markdown 自行归档。</p><textarea data-learning-notes aria-label="我的学习体会" placeholder="记录你的理解、疑问、反例和可迁移原则……"></textarea>
+    <div class="note-footer"><span data-note-saved>本地草稿</span><button type="button" data-note-export>导出 Markdown</button>
+    <button type="button" class="danger" data-note-clear>清空</button><span data-note-count>0 字符</span></div></section><nav class="pagination" aria-label="章节翻页"><a href="../pages/module-atlas.html"><small>← 上一章 · 03</small><strong>219 个包的模块地图</strong></a><a class="next" href="../pages/agent-object-lifecycle.html"><small>下一章 · 05 →</small><strong>Agent 对象、注册表与生命周期</strong></a></nav></article>
+      <aside class="right-rail" aria-label="本页目录"><h2 class="rail-title">本页目录</h2><nav class="toc" data-toc></nav><label class="jump-label" for="chapter-jump">跳转章节</label><select class="jump-select" id="chapter-jump" data-chapter-jump><option value="reading-guide">00 · 阅读入口与研究地图</option><option value="methodology">01 · 基线、方法与证据规则</option><option value="design-philosophy">02 · 设计哲学总论</option><option value="module-atlas">03 · 219 个包的模块地图</option><option value="boot-profiles-bundles" selected>04 · 启动、Profile、Bundle 与配置叠层</option><option value="agent-object-lifecycle">05 · Agent 对象、注册表与生命周期</option><option value="turn-step-loop">06 · Turn / Step / Loop 状态机</option><option value="prompt-context">07 · 提示词组装与上下文注入</option><option value="llm-adapters">08 · LLM Adapter 与会话协议转换</option><option value="session-event-model">09 · 内部会话结构与事件模型</option><option value="log-replay">10 · 日志、派生历史、重放与 Fork</option><option value="persistence-database">11 · 持久化与数据库设计</option><option value="projections-checkpoints">12 · Projection、Checkpoint 与冷启动</option><option value="compaction">13 · 压缩体系与上下文压力</option><option value="memory-knowledge">14 · 记忆与知识：有何能力、又刻意没有什么</option><option value="plan-goal-todo">15 · Plan、Goal 与 Todo</option><option value="tool-primitives">16 · 工具定义原语与执行管线</option><option value="tool-catalog">17 · 工具全集与能力分类</option><option value="tool-parallelism">18 · 工具并行器与结果顺序</option><option value="permission-approval">19 · 权限分析、审批与单调 Guard</option><option value="sandbox-filesystem">20 · Sandbox、Filesystem 与观察策略</option><option value="shell-terminal-jobs">21 · Shell、PTY、Terminal 与后台作业</option><option value="web-lsp-mcp-skill">22 · Web、LSP、MCP 与 Skill</option><option value="code-mode-self-modification">23 · Code Mode、自修改与动态插件</option><option value="multi-agent">24 · 多 Agent 协同</option><option value="workflow-ralph">25 · Workflow 与 Ralph</option><option value="inbox-steering-continuation">26 · Inbox、Steering 与 Continuation</option><option value="failure-recovery">27 · 重试、错误、取消与恢复</option><option value="observability">28 · 可观测、Telemetry 与轨迹</option><option value="api-sdk-acp">29 · API、SDK、JSON-RPC 与 ACP</option><option value="web-ui">30 · Web UI 插件架构</option><option value="security-trust">31 · 安全模型与信任边界</option><option value="testing-invariants">32 · 测试、快照与运行时不变量</option><option value="tradeoffs">33 · 优势、代价与设计取舍</option><option value="open-questions">34 · 缺口、限制与待验证问题</option><option value="glossary-evidence">35 · 术语、证据目录与源码索引</option></select></aside></div>
+      <footer class="footer">独立研究 · 固定基线 47f943859bef60e4160492346772ded9b24f765a · 学习笔记默认仅保存在浏览器本地</footer></main></div>
+  <script src="../../assets/site.js" defer></script></body></html>
