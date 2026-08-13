@@ -4,10 +4,10 @@
   "inputDigests": {
     "catalog": "a91fc23ebe42b46546ee0c3f75db857b068a333ddad3dd110ade5acb3457e648",
     "inventory": "7c10ce37614a8890799c9ee1afc3f29cd9392d18732d2baacc0d0aa03913b26a",
-    "manifestEn": "f715a0dbf04c742a38e70869c7da50c76bef634898024d466e9133e841e5b40f",
-    "manifestZh": "9b0bc2d33f083a04e1f873a49b83dfe5e858ff2e8089990ab3958831fb689450",
+    "manifestEn": "9943a8307d5c6d7d77426465d43abf077427b958e886816c98ceb493eb8f1418",
+    "manifestZh": "e447996f6ee487c89129a9f5ef9afab97fc4e0fcb3645aa19aa208b8ff9a0c17",
     "glossary": "8831cda967df103392aa39b55456913d71e9ff46df7c8bede78f5164c7aad137",
-    "eligibleEvidenceState": "85c7b63e6b707bfe6e79050d6d9bd9f4d0b3808c95ac6b7eb2a2d939b7b177b1"
+    "eligibleEvidenceState": "b1338ed484dc46c2dbca9d73bcad6d15c7ed27533bf7274d511b086d6816b0a7"
   },
   "definition": {
     "eligibleChapterRange": "00-34",
@@ -35,7 +35,7 @@
     {
       "id": "00",
       "slug": "reading-guide",
-      "status": "drafting",
+      "status": "verified",
       "title": {
         "en": "Reading Guide and Research Map",
         "zh": "阅读入口与研究地图"
@@ -43,7 +43,7 @@
       "hasEn": true,
       "hasZh": true,
       "publishedSubstantive": true,
-      "verified": false,
+      "verified": true,
       "evidenceIds": [
         "ARCH-PLUGIN-CORE",
         "ARCH-LOG"
@@ -6518,6 +6518,7 @@
     "verified": {
       "name": "verified",
       "chapterIds": [
+        "00",
         "01",
         "02",
         "03",
@@ -6553,12 +6554,12 @@
         "33",
         "34"
       ],
-      "chapterCount": 34,
+      "chapterCount": 35,
       "catalogItems": 1094,
-      "evidenceOccurrences": 1348,
+      "evidenceOccurrences": 1350,
       "uniqueCitedItems": 1092,
-      "reusedItems": 200,
-      "reuseOccurrences": 256,
+      "reusedItems": 201,
+      "reuseOccurrences": 258,
       "uncitedItems": 2,
       "catalogReach": "99.8%",
       "catalogPaths": 533,
@@ -6615,9 +6616,9 @@
         }
       ],
       "occurrenceCountByEvidence": {
-        "ARCH-PLUGIN-CORE": 1,
+        "ARCH-PLUGIN-CORE": 2,
         "ARCH-TURN": 2,
-        "ARCH-LOG": 3,
+        "ARCH-LOG": 4,
         "ROOT-PREVIEW": 2,
         "ROOT-EFFECTS": 1,
         "ROOT-MODEL-LOGGED": 2,
@@ -7710,6 +7711,7 @@
       },
       "citationChaptersByEvidence": {
         "ARCH-PLUGIN-CORE": [
+          "00",
           "02"
         ],
         "ARCH-TURN": [
@@ -7717,6 +7719,7 @@
           "06"
         ],
         "ARCH-LOG": [
+          "00",
           "02",
           "12"
         ],
