@@ -7,6 +7,5 @@
   "defaultBranch": "master",
   "license": "MIT",
   "capturedAt": "2026-08-13T00:00:00-07:00",
-  "sourcePath": "/home/scy/Code/deepseek-harness",
-  "notes": "Local sourcePath is research-environment metadata only and is not rendered into the public site."
+  "notes": "Source verification uses an explicit upstream root or the sibling deepseek-harness checkout."
 }

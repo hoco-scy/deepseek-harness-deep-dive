@@ -4,7 +4,7 @@ import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const analysisRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const upstreamRoot = resolve(process.argv[2] || "/home/scy/Code/deepseek-harness");
+const upstreamRoot = resolve(process.argv[2] || resolve(analysisRoot, "..", "deepseek-harness"));
 const baseline = JSON.parse(readFileSync(join(analysisRoot, "research", "baseline.json"), "utf8"));
 const head = execFileSync("git", ["rev-parse", "HEAD"], { cwd: upstreamRoot, encoding: "utf8" }).trim();
 
@@ -14,11 +14,11 @@ if (head !== baseline.commit) {
 
 function walkFiles(directory) {
   let files = [];
-  for (const entry of readdirSync(directory)) {
-    const path = join(directory, entry);
-    const stat = statSync(path);
-    if (stat.isDirectory()) files = files.concat(walkFiles(path));
-    else files.push(path);
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    if (entry.name === "node_modules" || entry.isSymbolicLink()) continue;
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) files = files.concat(walkFiles(path));
+    else if (entry.isFile()) files.push(path);
   }
   return files;
 }

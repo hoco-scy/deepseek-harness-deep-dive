@@ -15,9 +15,13 @@ const evidence = JSON.parse(readFileSync(join(root, "evidence", "catalog.json"),
 const errors = [];
 function assert(condition, message) { if (!condition) errors.push(message); }
 
+const markdownFiles = ["DEEPSEEK-HARNESS-ANALYSIS.md", "DEEPSEEK-HARNESS-ANALYSIS.zh-CN.md"];
+for (const filename of markdownFiles) assert(existsSync(join(root, filename)), `missing generated Markdown report ${filename}`);
+
 assert(existsSync(join(docs, "index.html")), "missing default English docs/index.html");
 assert(existsSync(join(docs, "zh", "index.html")), "missing Chinese docs/zh/index.html");
 assert(baseline.commit === evidence.baseline, "baseline mismatch");
+assert(!Object.hasOwn(baseline, "sourcePath"), "research baseline must not contain a machine-local sourcePath");
 
 const enShape = manifests.en.chapters.map(({ id, slug, status }) => ({ id, slug, status }));
 const zhShape = manifests.zh.chapters.map(({ id, slug, status }) => ({ id, slug, status }));
@@ -69,9 +73,25 @@ const readme = readFileSync(join(root, "README.md"), "utf8");
 assert(readme.indexOf("<a id=\"english\"") >= 0, "README: missing English anchor");
 assert(readme.indexOf("<a id=\"中文\"") > readme.indexOf("<a id=\"english\""), "README: English must be the default first section");
 
+for (const filename of markdownFiles) {
+  if (!existsSync(join(root, filename))) continue;
+  const markdown = readFileSync(join(root, filename), "utf8");
+  const englishLink = markdown.indexOf("(./DEEPSEEK-HARNESS-ANALYSIS.md)");
+  const chineseLink = markdown.indexOf("(./DEEPSEEK-HARNESS-ANALYSIS.zh-CN.md)");
+  assert(englishLink >= 0 && chineseLink > englishLink, `${filename}: missing English-first language switch`);
+  assert(markdown.includes(baseline.commit), `${filename}: missing pinned baseline`);
+  assert(!markdown.includes("<evidence"), `${filename}: unresolved evidence tag`);
+}
+
 const publicFiles = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard", "-z"], { cwd: root }).toString("utf8").split("\0").filter(Boolean);
 const textExtensions = new Set(["", ".css", ".html", ".js", ".json", ".md", ".mjs", ".yml", ".yaml"]);
-const forbidden = [new RegExp(["insight", "flow"].join("[ -]?"), "i"), new RegExp(["go", "claw"].join(""), "i")];
+const forbidden = [
+  new RegExp(["insight", "flow"].join("[ -]?"), "i"),
+  new RegExp(["go", "claw"].join(""), "i"),
+  new RegExp(["/home", "scy"].join("/"), "i"),
+  new RegExp(["cy", "shen@"].join("_"), "i"),
+  new RegExp(["next", "level", "builder"].join(""), "i"),
+];
 for (const relative of publicFiles) {
   if (!textExtensions.has(extname(relative))) continue;
   const path = join(root, relative);

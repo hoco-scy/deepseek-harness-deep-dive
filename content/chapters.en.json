@@ -2,7 +2,7 @@
   "title": "DeepSeek Harness: A Systems Dissection",
   "description": "A source-pinned, module-by-module architectural study of DeepSeek Harness",
   "chapters": [
-    {"id":"00","slug":"reading-guide","part":"Introduction","title":"Reading Guide and Research Map","subtitle":"How to navigate the study, current progress, and the complete question space","status":"drafting","scope":"Define the site structure, completion criteria, reading paths, and research boundaries."},
+    {"id":"00","slug":"reading-guide","part":"Introduction","title":"Reading Guide and Research Map","subtitle":"How to navigate the completed study and its evidence indexes","status":"verified","scope":"Define the final report structure, completion criteria, reading paths, and research boundaries."},
     {"id":"01","slug":"methodology","part":"Introduction","title":"Baseline, Method, and Evidence Rules","subtitle":"Separating source facts, mechanism-level deductions, and design assessments","status":"verified","scope":"Pin the upstream commit and define evidence strength, stable citations, and completion gates."},
     {"id":"02","slug":"design-philosophy","part":"Introduction","title":"Design Philosophy","subtitle":"The runtime worldview behind “everything is a plugin”","status":"verified","scope":"Analyze the replaceable core, reversible effects, composition-first design, explicit boundaries, and event sourcing."},
     {"id":"03","slug":"module-atlas","part":"Introduction","title":"An Atlas of 219 Packages","subtitle":"Package groups, roles, dependency direction, and runtime placement","status":"verified","scope":"Enumerate every workspace package and classify definitions, providers, consumers, surfaces, and infrastructure."},

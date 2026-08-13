@@ -10,6 +10,8 @@ This repository is an independent, evidence-driven, module-by-module source stud
 
 **Read the live report:** [English (default)](https://hoco-scy.github.io/dpsk-harness-analysis/) · [中文](https://hoco-scy.github.io/dpsk-harness-analysis/zh/)
 
+**Read as one Markdown document:** [English (default)](./DEEPSEEK-HARNESS-ANALYSIS.md) · [简体中文](./DEEPSEEK-HARNESS-ANALYSIS.zh-CN.md)
+
 The study is pinned to upstream commit [`47f943859bef60e4160492346772ded9b24f765a`](https://github.com/deepseek-ai/deepseek-harness/tree/47f943859bef60e4160492346772ded9b24f765a). DeepSeek Harness is still in Developer Preview, so later upstream changes will never silently rewrite the factual baseline of this report.
 
 ### Scope
@@ -32,11 +34,13 @@ npm run check
 python3 -m http.server 8080 --directory docs
 ```
 
+Strict source-range validation uses a sibling `../deepseek-harness` checkout by default. For another location, run `node scripts/build-markdown.mjs --check --source-check required --upstream-root PATH`.
+
 Open `http://127.0.0.1:8080/` for English or `http://127.0.0.1:8080/zh/` for Chinese. The site is fully static. “My Learning Notes” is saved only to this browser's `localStorage`; it is never committed or sent to a server.
 
 ### Research status
 
-This is a staged, continuously published study. The home page shows the live status of every chapter. A `Queued` chapter is part of the research map, not a completed conclusion. Only chapters marked `Verified` have passed the source-level review gate described in the methodology.
+This pinned snapshot is complete: all 36 chapters are marked `Verified`. Chapter 35 publishes the glossary, evidence catalog, source indexes, and the exact interpretation boundaries for its coverage figures. Future upstream changes require a new pinned baseline; they do not silently rewrite this snapshot.
 
 ### Boundary
 
@@ -51,6 +55,8 @@ This public repository contains only an independent analysis of publicly availab
 本仓库是对 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的独立、证据驱动、逐模块源码研究。
 
 **在线阅读：**[English（默认）](https://hoco-scy.github.io/dpsk-harness-analysis/) · [中文](https://hoco-scy.github.io/dpsk-harness-analysis/zh/)
+
+**单篇 Markdown：**[English（默认）](./DEEPSEEK-HARNESS-ANALYSIS.md) · [简体中文](./DEEPSEEK-HARNESS-ANALYSIS.zh-CN.md)
 
 研究固定在上游 commit [`47f943859bef60e4160492346772ded9b24f765a`](https://github.com/deepseek-ai/deepseek-harness/tree/47f943859bef60e4160492346772ded9b24f765a)。DeepSeek Harness 尚处于 Developer Preview，后续上游变化不会静默改写本报告中的事实基线。
 
@@ -74,11 +80,13 @@ npm run check
 python3 -m http.server 8080 --directory docs
 ```
 
+严格源码行号验证默认读取同级 `../deepseek-harness` checkout；如位于其他目录，运行 `node scripts/build-markdown.mjs --check --source-check required --upstream-root PATH`。
+
 英文版打开 `http://127.0.0.1:8080/`，中文版打开 `http://127.0.0.1:8080/zh/`。站点是纯静态文件；每页的“我的学习体会”只保存在当前浏览器的 `localStorage`，不会提交到仓库或发送到服务器。
 
 ### 研究状态
 
-这是持续分阶段发布的研究。网页首页展示各章节的实时状态；`待研究` 章节只是研究清单，不代表结论已经完成。只有标记为 `已复核` 的章节才经过方法论规定的源码复核门槛。
+这份固定快照已经完成：36 章全部标记为`已复核`。第 35 章发布术语表、证据目录、源码索引，以及覆盖数字的精确解释边界。后续上游变化需要建立新的固定基线，不会静默改写本快照。
 
 ### 边界
 
