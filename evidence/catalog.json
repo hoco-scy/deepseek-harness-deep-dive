@@ -12,6 +12,8 @@
     {"id":"ROOT-BOUNDARIES","kind":"repository-policy","path":"AGENTS.md","lines":"107-116","title":"显式边界与快速失败","supports":"跨包默认值显式 resolve，部署参数可配置，错误配置尽早失败，外部 ID 使用 branded 类型。"},
     {"id":"ROOT-TYPED-TRUST","kind":"repository-policy","path":"AGENTS.md","lines":"115-117","title":"静态边界和运行时边界的验证哲学","supports":"同进程静态类型边界信任 TypeScript；解析、模型 JSON、持久化、进程、worker 与 wire 边界做运行时验证。"},
     {"id":"TOOL-PIPELINE","kind":"generated-doc","path":"docs/tool-execution-pipeline.md","lines":"4-60","title":"工具执行管线","supports":"pre、单调 guard、around execute、post、normalization、finalize 和 immutable result 的完整顺序。"},
-    {"id":"TURN-SEQUENCE","kind":"generated-doc","path":"docs/agent-lifecycle.md","lines":"19-80","title":"Agent turn/step 时序","supports":"输入认领、durable events、并行工具结算、停止点和 SDK 事件面的时序。"}
+    {"id":"TURN-SEQUENCE","kind":"generated-doc","path":"docs/agent-lifecycle.md","lines":"19-80","title":"Agent turn/step 时序","supports":"输入认领、durable events、并行工具结算、停止点和 SDK 事件面的时序。"},
+    {"id":"PKG-HIERARCHY","kind":"official-doc","path":"packages/README.md","lines":"5-67","title":"包分组与依赖方向","supports":"49 个 package group 的职责、发布预期以及 extension 只依赖 service definition 的方向规则。"},
+    {"id":"PKG-INVARIANTS","kind":"repository-policy","path":"packages/AGENTS.md","lines":"5-18","title":"Package 生命周期与不变量规则","supports":"插件导出、组合测试、owner、commit point、disposal 和每包 invariant 的约束。"}
   ]
 }

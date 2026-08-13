@@ -1,0 +1,31 @@
+<section>
+  <h2>先纠正一个尺度错觉</h2>
+  <p>仓库根目录的架构图只列出几十个关键 service，但固定基线下的 <code>packages/</code> 实际包含 <strong>49 个 group、219 个 npm workspace package</strong>。它们并非 219 个彼此平级的“业务模块”：有些声明 service，有些实现 provider，有些只把能力暴露为模型工具，还有大量 host/client/UI、组合 bundle、测试支撑和零依赖 utility。</p>
+  <div class="claim fact"><div class="claim-label">源码事实</div><p>官方包地图要求扩展插件依赖 Service Definition 而不是具体 provider；能力在定义、提供者和消费者需要独立演进时拆包，UI、hook 与工具依赖抽象的 agent service，而不依赖具体 agent loop。<evidence id="PKG-HIERARCHY"></evidence></p></div>
+  <div class="claim inference"><div class="claim-label">机制推导</div><p>因此，理解 DeepSeek Harness 不能按目录逐个孤立阅读。更有效的单位是“能力闭环”：定义包 → 一个或多个 provider → 模型/宿主 consumer → bundle 装配 → session event / UI projection → invariant 与真实组合测试。</p></div>
+</section>
+
+<section>
+  <h2>六个研究平面</h2>
+  <div class="question-grid">
+    <article><h3>产品主干</h3><p><code>core</code>、<code>llm</code>、<code>session</code>、<code>context</code>、<code>compaction</code>：定义 Agent 一步真正怎样发生。</p></article>
+    <article><h3>执行世界</h3><p><code>subprocess</code>、<code>shell</code>、<code>terminal</code>、<code>fs</code>、<code>sandbox</code>、<code>code-runtime</code>、<code>lsp</code>、<code>web</code>、<code>e2b</code>：把工具落到本地或远端执行环境。</p></article>
+    <article><h3>协作与编排</h3><p><code>interaction</code>、<code>plan</code>、<code>goal</code>、<code>todo</code>、<code>jobs</code>、<code>subagent</code>、<code>workflow</code>、<code>skill</code>、<code>mcp</code>：管理人与 Agent、Agent 与 Agent 的协作状态。</p></article>
+    <article><h3>组合与数据</h3><p><code>boot</code>、<code>bundle</code>、<code>preset</code>、<code>settings</code>、<code>credentials</code>、<code>storage</code>、<code>workspace</code>、<code>attachment</code>：决定运行树和非会话数据归属。</p></article>
+    <article><h3>产品界面</h3><p><code>api</code>、<code>typert</code>、<code>sdk</code>、<code>acp</code>、<code>host</code>、<code>client</code>：让同一运行时被 Web、stdio JSON-RPC 和自动化协议消费。</p></article>
+    <article><h3>证明与支撑</h3><p><code>runtime-diagnostics</code>、<code>test-support</code>、<code>guard</code>、<code>session-query</code>、<code>feedback</code>、<code>util</code>、<code>examples</code>：提供不变量、测试装配、诊断与低层原语。</p></article>
+  </div>
+  <aside class="caveat"><strong>分类说明：</strong>这六个平面是本报告为了阅读而做的交叉切片，不是上游正式层级；单个 group 可能跨越多个平面。</aside>
+</section>
+
+<section>
+  <h2>为何每个 package 都有 invariant</h2>
+  <div class="claim fact"><div class="claim-label">仓库政策</div><p>每个 package 必须拥有 <code>./invariant</code>：有运行时关系时注册可检查的事件/数据关系；纯安装类包则给出 package-specific 的空检查理由。Registry contribution 还必须通过处置测试证明 fiber 卸载后贡献消失。<evidence id="PKG-INVARIANTS"></evidence></p></div>
+  <div class="claim assessment"><div class="claim-label">设计评价</div><p>这是对插件架构常见弱点的直接回应：类型检查只能证明单个包的局部接口，不能证明最终配置真的挂载了唯一 provider、consumer 和事件关系。每包 invariant 把“组合后仍成立”的一部分语义移到运行时；代价是 219 个包都要维护额外安装器和关系断言。</p></div>
+</section>
+
+<section>
+  <h2>固定基线的完整 package 清单</h2>
+  <p>下面的数据由仓库内脚本直接读取固定 commit 下的每个 <code>packages/*/*/package.json</code> 与文件树生成。计数只覆盖 package 内的 TypeScript/TSX 源码和测试文件，不把行数或文件数误当作复杂度指标；包描述是上游 manifest 的自述，后续模块页会再用控制流验证。</p>
+  <package-atlas></package-atlas>
+</section>

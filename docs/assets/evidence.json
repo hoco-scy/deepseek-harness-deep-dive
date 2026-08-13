@@ -89,12 +89,30 @@
       "lines": "19-80",
       "title": "Agent turn/step 时序",
       "supports": "输入认领、durable events、并行工具结算、停止点和 SDK 事件面的时序。"
+    },
+    {
+      "id": "PKG-HIERARCHY",
+      "kind": "official-doc",
+      "path": "packages/README.md",
+      "lines": "5-67",
+      "title": "包分组与依赖方向",
+      "supports": "49 个 package group 的职责、发布预期以及 extension 只依赖 service definition 的方向规则。"
+    },
+    {
+      "id": "PKG-INVARIANTS",
+      "kind": "repository-policy",
+      "path": "packages/AGENTS.md",
+      "lines": "5-18",
+      "title": "Package 生命周期与不变量规则",
+      "supports": "插件导出、组合测试、owner、commit point、disposal 和每包 invariant 的约束。"
     }
   ],
   "usage": {
     "ARCH-LAYERS": 1,
     "ARCH-LOG": 3,
     "ARCH-PLUGIN-CORE": 2,
+    "PKG-HIERARCHY": 1,
+    "PKG-INVARIANTS": 1,
     "ROOT-BOUNDARIES": 1,
     "ROOT-EFFECTS": 1,
     "ROOT-MODEL-LOGGED": 1,

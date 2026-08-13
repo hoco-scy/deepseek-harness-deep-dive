@@ -9,6 +9,7 @@ const sourceDir = join(root, "src");
 const manifest = JSON.parse(readFileSync(join(contentDir, "chapters.json"), "utf8"));
 const baseline = JSON.parse(readFileSync(join(root, "research", "baseline.json"), "utf8"));
 const evidenceCatalog = JSON.parse(readFileSync(join(root, "evidence", "catalog.json"), "utf8"));
+const packageInventory = JSON.parse(readFileSync(join(root, "research", "package-inventory.json"), "utf8"));
 const allowedStatuses = new Set(["queued", "drafting", "verified"]);
 const statusLabels = { queued: "待研究", drafting: "撰写中", verified: "已复核" };
 
@@ -30,6 +31,7 @@ function cleanText(value) {
 }
 
 if (baseline.commit !== evidenceCatalog.baseline) fail("baseline mismatch between research and evidence catalog");
+if (baseline.commit !== packageInventory.baseline) fail("baseline mismatch between research and package inventory");
 
 const chapterIds = new Set();
 const chapterSlugs = new Set();
@@ -60,6 +62,46 @@ function replaceEvidence(html, usage) {
     usage.set(id, (usage.get(id) || 0) + 1);
     return `<a class="evidence" href="${escapeHtml(sourceUrl(item))}" title="${escapeHtml(`${item.title}：${item.supports}`)}" aria-label="证据 ${escapeHtml(id)}">${escapeHtml(id)}</a>`;
   });
+}
+
+function renderPackageAtlas() {
+  const packagesByGroup = Object.groupBy(packageInventory.packages, (pkg) => pkg.group);
+  const summary = `<div class="atlas-summary">
+    <div><strong>${packageInventory.counts.groups}</strong><span>package groups</span></div>
+    <div><strong>${packageInventory.counts.packages}</strong><span>workspace packages</span></div>
+    <div><strong>${packageInventory.counts.sourceFiles}</strong><span>TS / TSX 源文件</span></div>
+    <div><strong>${packageInventory.counts.testFiles}</strong><span>测试文件</span></div>
+    <div><strong>${packageInventory.counts.invariantPackages}</strong><span>带 invariant 的包</span></div>
+  </div>`;
+  const groups = packageInventory.groups.map((group) => {
+    const packages = packagesByGroup[group.name];
+    const rows = packages.map((pkg) => {
+      const url = `${evidenceCatalog.repository}/tree/${baseline.commit}/${pkg.path}`;
+      const flags = [
+        pkg.hasCordisPatch ? "bundle patch" : "",
+        pkg.private ? "private" : "published"
+      ].filter(Boolean).join(" · ");
+      return `<tr>
+        <td><a href="${escapeHtml(url)}"><code>${escapeHtml(pkg.leaf)}</code></a><small>${escapeHtml(pkg.name)}</small></td>
+        <td>${escapeHtml(pkg.description || "上游 manifest 未填写描述")}</td>
+        <td>${pkg.sourceFiles}</td>
+        <td>${pkg.testFiles}</td>
+        <td><small>${escapeHtml(flags)}</small></td>
+      </tr>`;
+    }).join("");
+    return `<details class="package-group">
+      <summary><strong>${escapeHtml(group.name)}</strong><span>${group.packageCount} 包 · ${group.sourceFiles} 源文件 · ${group.testFiles} 测试</span></summary>
+      <div class="table-scroll"><table class="package-table">
+        <thead><tr><th>Package</th><th>上游 manifest 描述</th><th>源文件</th><th>测试</th><th>发布面</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+    </details>`;
+  }).join("");
+  return summary + groups;
+}
+
+function replaceComponents(html) {
+  return html.replace("<package-atlas></package-atlas>", renderPackageAtlas());
 }
 
 function placeholder(chapter) {
@@ -206,7 +248,7 @@ const searchIndex = [];
 for (const [index, chapter] of manifest.chapters.entries()) {
   const source = join(contentDir, `${chapter.id}-${chapter.slug}.html`);
   const raw = existsSync(source) ? readFileSync(source, "utf8") : placeholder(chapter);
-  const content = replaceEvidence(raw, evidenceUsage);
+  const content = replaceEvidence(replaceComponents(raw), evidenceUsage);
   const output = renderPage(chapter, index, content, "../", `pages/${chapter.slug}.html`);
   writeFileSync(join(outDir, "pages", `${chapter.slug}.html`), cleanText(output));
   searchIndex.push({
