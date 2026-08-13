@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build-site.mjs",
-    "check": "node scripts/check-site.mjs"
+    "check": "node scripts/check-site.mjs && node scripts/check-ch35.mjs --analysis-root . --output-root .",
+    "check:index": "node scripts/generate-ch35.mjs --check --analysis-root . --upstream-root ../deepseek-harness --output-root ."
   },
   "engines": {
     "node": ">=22"

@@ -223,6 +223,16 @@ mkdirSync(join(outDir, "pages"), { recursive: true });
 mkdirSync(join(outDir, "zh", "pages"), { recursive: true });
 cpSync(join(sourceDir, "site.css"), join(outDir, "assets", "site.css"));
 cpSync(join(sourceDir, "site.js"), join(outDir, "assets", "site.js"));
+const chapter35 = manifests.en.chapters.find(chapter => chapter.id === "35");
+const chapter35Published = chapter35 !== undefined && chapter35.status !== "queued";
+for (const asset of ["glossary", "evidence-coverage", "source-index"]) {
+  const source = join(root, "research", `${asset}.json`);
+  if (!existsSync(source)) {
+    if (chapter35Published) fail(`Chapter 35 is published but research/${asset}.json has not been generated`);
+    continue;
+  }
+  cpSync(source, join(outDir, "assets", `${asset}.json`));
+}
 writeFileSync(join(outDir, ".nojekyll"), "");
 
 const evidenceUsage = new Map();

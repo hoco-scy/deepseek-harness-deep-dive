@@ -1,0 +1,586 @@
+{
+  "schemaVersion": 1,
+  "baseline": "47f943859bef60e4160492346772ded9b24f765a",
+  "scope": {
+    "en": "Curated terms used by Chapters 00–34. firstDefinitionChapter is an editorial pointer, not an automatically inferred first word occurrence.",
+    "zh": "第 00–34 章使用的策展术语。firstDefinitionChapter 是编辑性入口，不是按词面自动推断的首次出现位置。"
+  },
+  "terms": [
+    {
+      "id": "plugin",
+      "label": { "en": "Plugin", "zh": "插件" },
+      "aliases": { "en": ["Cordis plugin"], "zh": ["Cordis 插件"] },
+      "definition": {
+        "en": "A composable runtime contribution mounted into a context and owned by a lifecycle scope; it may publish services, listeners, and reversible effects.",
+        "zh": "挂载到 Context、由生命周期 Scope 持有的可组合运行时贡献；它可以发布 Service、监听器和可逆 Effect。"
+      },
+      "firstDefinitionChapter": "02",
+      "relatedChapters": ["03", "04", "23", "30"],
+      "evidenceIds": ["ARCH-PLUGIN-CORE", "DESIGN-CORDIS-SEMANTICS"]
+    },
+    {
+      "id": "service",
+      "label": { "en": "Service", "zh": "服务" },
+      "aliases": { "en": ["context service"], "zh": ["Context 服务"] },
+      "definition": {
+        "en": "A typed capability published under a context key and consumed through scope-aware lookup rather than direct global ownership.",
+        "zh": "发布在 Context 键下、通过 Scope 感知查找使用的类型化能力，而不是由全局对象直接持有。"
+      },
+      "firstDefinitionChapter": "02",
+      "relatedChapters": ["03", "16", "22", "23"],
+      "evidenceIds": ["DESIGN-CORDIS-SEMANTICS", "DESIGN-SCOPED-LAYERS"]
+    },
+    {
+      "id": "typed-event",
+      "label": { "en": "Typed event", "zh": "类型化事件" },
+      "aliases": { "en": ["Cordis event"], "zh": ["Cordis 事件"] },
+      "definition": {
+        "en": "A named live-bus contract whose TypeScript signature and dispatch mode constrain producers and listeners; it is distinct from a durable Session log record.",
+        "zh": "由 TypeScript 签名和派发模式约束生产者与监听器的命名实时总线契约；它不同于持久化 Session 日志记录。"
+      },
+      "firstDefinitionChapter": "02",
+      "relatedChapters": ["06", "09", "35"],
+      "evidenceIds": ["DESIGN-CORDIS-SEMANTICS", "SESSION-CORE-EVENTS"]
+    },
+    {
+      "id": "effect",
+      "label": { "en": "Reversible effect", "zh": "可逆 Effect" },
+      "aliases": { "en": ["effect"], "zh": ["副作用注册"] },
+      "definition": {
+        "en": "A side-effect registration paired with a disposer and owned by the current lifecycle fiber, so replacement can retract what it published.",
+        "zh": "与 Disposer 配对并由当前生命周期 Fiber 持有的副作用注册，使替换过程能够撤回自身发布的内容。"
+      },
+      "firstDefinitionChapter": "02",
+      "relatedChapters": ["04", "05", "23"],
+      "evidenceIds": ["ROOT-EFFECTS", "DESIGN-SCOPED-LAYERS"]
+    },
+    {
+      "id": "disposer",
+      "label": { "en": "Disposer", "zh": "释放函数" },
+      "aliases": { "en": ["cleanup handle"], "zh": ["清理句柄"] },
+      "definition": {
+        "en": "The callable cleanup handle returned by a registration; ownership and reverse teardown make it part of the runtime contract, not optional housekeeping.",
+        "zh": "注册操作返回的可调用清理句柄；所有权和逆序拆卸使它成为运行时契约的一部分，而非可选的收尾工作。"
+      },
+      "firstDefinitionChapter": "02",
+      "relatedChapters": ["04", "05", "27"],
+      "evidenceIds": ["ROOT-EFFECTS", "DESIGN-SCOPE-TEST"]
+    },
+    {
+      "id": "waterfall",
+      "label": { "en": "Waterfall", "zh": "Waterfall" },
+      "aliases": { "en": ["waterfall event"], "zh": ["瀑布式事件"] },
+      "definition": {
+        "en": "An ordered live-event mode in which a listener can transform a value and delegate to the next listener; before/after-next placement is semantic.",
+        "zh": "监听器可变换值并委托给下一个监听器的有序实时事件模式；逻辑位于 next 前后具有语义差异。"
+      },
+      "firstDefinitionChapter": "02",
+      "relatedChapters": ["06", "07", "16", "19"],
+      "evidenceIds": ["DESIGN-CORDIS-SEMANTICS", "PROMPT-ASSEMBLY-PIPELINE"]
+    },
+    {
+      "id": "scope",
+      "label": { "en": "Scope", "zh": "作用域" },
+      "aliases": { "en": ["context scope"], "zh": ["Context 作用域"] },
+      "definition": {
+        "en": "A visibility and ownership boundary that determines which contributions are observable and which lifecycle must retract them.",
+        "zh": "同时界定可见性和所有权的边界，决定哪些贡献可被观察，以及由哪个生命周期撤回。"
+      },
+      "firstDefinitionChapter": "02",
+      "relatedChapters": ["05", "16", "23", "30"],
+      "evidenceIds": ["DESIGN-SCOPED-LAYERS", "DESIGN-SCOPE-TEST"]
+    },
+    {
+      "id": "fiber",
+      "label": { "en": "Fiber", "zh": "Fiber" },
+      "aliases": { "en": ["plugin fiber"], "zh": ["插件 Fiber"] },
+      "definition": {
+        "en": "The runtime lifecycle node that owns a plugin activation and its effects; disposing it retracts its owned contribution graph.",
+        "zh": "持有插件激活及其 Effect 的运行时生命周期节点；释放它会撤回其拥有的贡献图。"
+      },
+      "firstDefinitionChapter": "02",
+      "relatedChapters": ["04", "05", "23"],
+      "evidenceIds": ["DESIGN-SCOPED-LAYERS", "ROOT-EFFECTS"]
+    },
+    {
+      "id": "profile",
+      "label": { "en": "Profile", "zh": "Profile" },
+      "aliases": { "en": ["launch profile"], "zh": ["启动 Profile"] },
+      "definition": {
+        "en": "A named launch composition that selects and layers bundles and patches into an effective plugin tree.",
+        "zh": "选择并叠加 Bundle 与 Patch、形成有效插件树的命名启动组合。"
+      },
+      "firstDefinitionChapter": "04",
+      "relatedChapters": ["03", "23", "31"],
+      "evidenceIds": ["PROFILE-COMPOSE", "PROFILE-LOAD"]
+    },
+    {
+      "id": "bundle",
+      "label": { "en": "Bundle", "zh": "Bundle" },
+      "aliases": { "en": ["product bundle"], "zh": ["产品 Bundle"] },
+      "definition": {
+        "en": "A reusable product-level configuration layer that assembles a coherent set of plugins and defaults.",
+        "zh": "组装一组相互协调的插件与默认值、可复用的产品级配置层。"
+      },
+      "firstDefinitionChapter": "04",
+      "relatedChapters": ["03", "17", "30"],
+      "evidenceIds": ["ARCH-LAYERS", "BASE-BUNDLE-SPINE"]
+    },
+    {
+      "id": "patch",
+      "label": { "en": "Patch", "zh": "Patch" },
+      "aliases": { "en": ["Cordis patch"], "zh": ["Cordis Patch"] },
+      "definition": {
+        "en": "A configuration-tree operation that adds, replaces, or removes a row by stable identity as composition layers are applied.",
+        "zh": "组合层叠加时按稳定身份添加、替换或删除配置行的配置树操作。"
+      },
+      "firstDefinitionChapter": "04",
+      "relatedChapters": ["03", "23"],
+      "evidenceIds": ["BASE-BUNDLE-SEMANTICS", "PROFILE-COMPOSE"]
+    },
+    {
+      "id": "row-identity",
+      "label": { "en": "Row identity", "zh": "配置行身份" },
+      "aliases": { "en": ["stable row identity"], "zh": ["稳定行身份"] },
+      "definition": {
+        "en": "The stable key used to decide which configuration row a later layer replaces; textual position alone is not identity.",
+        "zh": "用于判断后续配置层替换哪一行的稳定键；文本位置本身不是身份。"
+      },
+      "firstDefinitionChapter": "04",
+      "relatedChapters": ["23", "27"],
+      "evidenceIds": ["BASE-BUNDLE-SEMANTICS", "PROFILE-LIVE"]
+    },
+    {
+      "id": "agent",
+      "label": { "en": "Agent", "zh": "Agent" },
+      "aliases": { "en": ["agent handle"], "zh": ["Agent 句柄"] },
+      "definition": {
+        "en": "A runtime object with identity, scope, inbox, status, and a Session-backed execution lifecycle; it is published only after setup succeeds.",
+        "zh": "具备身份、Scope、Inbox、状态和 Session 支撑的执行生命周期的运行时对象；只有准备成功后才会发布。"
+      },
+      "firstDefinitionChapter": "05",
+      "relatedChapters": ["06", "24", "26"],
+      "evidenceIds": ["AGENT-PUBLIC-INTERFACE", "AGENT-PREPARE-PUBLISH"]
+    },
+    {
+      "id": "turn",
+      "label": { "en": "Turn", "zh": "Turn" },
+      "aliases": { "en": ["agent turn"], "zh": ["Agent 轮次"] },
+      "definition": {
+        "en": "A user- or system-triggered execution interval that may contain several Steps and ends with an explicit reason.",
+        "zh": "由用户或系统触发、可包含多个 Step，并以明确原因结束的执行区间。"
+      },
+      "firstDefinitionChapter": "06",
+      "relatedChapters": ["09", "15", "26"],
+      "evidenceIds": ["LOOP-TURN-STATE", "ARCH-TURN"]
+    },
+    {
+      "id": "step",
+      "label": { "en": "Step", "zh": "Step" },
+      "aliases": { "en": ["model step"], "zh": ["模型步骤"] },
+      "definition": {
+        "en": "One prompt assembly and model-request attempt inside a Turn, followed by either completion or a tool-continuation boundary.",
+        "zh": "Turn 内的一次提示词组装与模型请求尝试，随后进入完成或工具续跑边界。"
+      },
+      "firstDefinitionChapter": "06",
+      "relatedChapters": ["07", "08", "18"],
+      "evidenceIds": ["LOOP-STEP-STATE", "LOOP-REQUEST-BUILD"]
+    },
+    {
+      "id": "request-header",
+      "label": { "en": "Request header", "zh": "请求头快照" },
+      "aliases": { "en": ["request-header event"], "zh": ["request-header 事件"] },
+      "definition": {
+        "en": "The canonical logged snapshot of request-shaping context used to reconstruct and compare model requests.",
+        "zh": "用于重建并比较模型请求的、规范化记录下来的请求塑形上下文快照。"
+      },
+      "firstDefinitionChapter": "07",
+      "relatedChapters": ["08", "09", "27", "28"],
+      "evidenceIds": ["PROMPT-HEADER-CANONICAL", "LOOP-REQUEST-INVARIANT"]
+    },
+    {
+      "id": "session-event",
+      "label": { "en": "Session event", "zh": "Session 事件" },
+      "aliases": { "en": ["durable log record"], "zh": ["持久化日志记录"] },
+      "definition": {
+        "en": "An append-only typed record in a Session log with sequence, time, payload, and optional Surface metadata; it is not a live Cordis event.",
+        "zh": "Session 日志中带序号、时间、负载及可选 Surface 元数据的追加式类型记录；它不是实时 Cordis 事件。"
+      },
+      "firstDefinitionChapter": "09",
+      "relatedChapters": ["10", "11", "12", "35"],
+      "evidenceIds": ["SESSION-EVENT-ENVELOPE", "SESSION-CORE-EVENTS"]
+    },
+    {
+      "id": "commit-point",
+      "label": { "en": "Commit point", "zh": "提交点" },
+      "aliases": { "en": ["authoritative commit"], "zh": ["权威提交点"] },
+      "definition": {
+        "en": "The exact transition after which a candidate is authoritative; failures before it veto publication, while later observer failures cannot undo the fact.",
+        "zh": "候选值转为权威事实的精确转折点；此前失败可否决发布，此后观察者失败不能撤销该事实。"
+      },
+      "firstDefinitionChapter": "09",
+      "relatedChapters": ["11", "15", "16", "27"],
+      "evidenceIds": ["SESSION-APPEND-COMMIT", "DESIGN-PACKAGE-RULES"]
+    },
+    {
+      "id": "surface",
+      "label": { "en": "Surface", "zh": "Surface" },
+      "aliases": { "en": ["model-visible Surface"], "zh": ["模型可见 Surface"] },
+      "definition": {
+        "en": "The ordered model-visible message projection derived from eligible Session events; it is a view over the log rather than the canonical log itself.",
+        "zh": "从合格 Session 事件派生的有序模型可见消息投影；它是日志之上的视图，而不是规范日志本身。"
+      },
+      "firstDefinitionChapter": "09",
+      "relatedChapters": ["10", "12", "13"],
+      "evidenceIds": ["SESSION-SURFACE-PROJECTION", "ROOT-MODEL-LOGGED"]
+    },
+    {
+      "id": "surface-op",
+      "label": { "en": "Surface operation", "zh": "Surface 操作" },
+      "aliases": { "en": ["surfaceOp"], "zh": ["surfaceOp"] },
+      "definition": {
+        "en": "The append, replace, or delete operation carried by a Surface-eligible event to fold model-visible history deterministically.",
+        "zh": "由 Surface 合格事件携带的追加、替换或删除操作，用于确定性折叠模型可见历史。"
+      },
+      "firstDefinitionChapter": "09",
+      "relatedChapters": ["10", "13"],
+      "evidenceIds": ["SESSION-SURFACE-REPLACE", "SESSION-EVENT-ENVELOPE"]
+    },
+    {
+      "id": "replay",
+      "label": { "en": "Replay", "zh": "重放" },
+      "aliases": { "en": ["log replay"], "zh": ["日志重放"] },
+      "definition": {
+        "en": "Reconstructing derived runtime or model-visible state by folding durable facts in sequence order rather than trusting a resident cache.",
+        "zh": "按序折叠持久化事实来重建派生运行时状态或模型可见状态，而不是信任驻留缓存。"
+      },
+      "firstDefinitionChapter": "10",
+      "relatedChapters": ["09", "12", "13", "27"],
+      "evidenceIds": ["SESSION-DERIVED-ORACLE-TEST", "LOG-HISTORY-CUT"]
+    },
+    {
+      "id": "write-behind",
+      "label": { "en": "Write-behind", "zh": "延后写入" },
+      "aliases": { "en": ["write-behind queue"], "zh": ["延后写入队列"] },
+      "definition": {
+        "en": "Per-Session asynchronous persistence that preserves append order but needs an explicit flush barrier before selected external effects.",
+        "zh": "按 Session 维持追加顺序的异步持久化；在特定外部副作用前需要显式 Flush Barrier。"
+      },
+      "firstDefinitionChapter": "10",
+      "relatedChapters": ["11", "27"],
+      "evidenceIds": ["LOG-WRITE-BEHIND", "PERSIST-WRITE-BEHIND"]
+    },
+    {
+      "id": "durability-barrier",
+      "label": { "en": "Durability barrier", "zh": "持久化屏障" },
+      "aliases": { "en": ["checkpoint barrier", "flush barrier"], "zh": ["Checkpoint 屏障", "Flush 屏障"] },
+      "definition": {
+        "en": "An awaited boundary that makes the required log prefix durable before a model request, top-level tool body, or another selected side effect proceeds.",
+        "zh": "在模型请求、顶层工具主体或其他指定副作用继续前，等待所需日志前缀完成持久化的边界。"
+      },
+      "firstDefinitionChapter": "10",
+      "relatedChapters": ["11", "15", "27"],
+      "evidenceIds": ["LOG-CHECKPOINT-POLICY", "LLM-CHECKPOINT-BARRIER"]
+    },
+    {
+      "id": "projection",
+      "label": { "en": "Projection", "zh": "Projection" },
+      "aliases": { "en": ["derived view"], "zh": ["派生视图"] },
+      "definition": {
+        "en": "A fold or query-derived view over authoritative records; a projection can accelerate reads without becoming the source of truth.",
+        "zh": "基于权威记录折叠或查询得到的视图；Projection 可以加速读取，但不会因此成为事实来源。"
+      },
+      "firstDefinitionChapter": "12",
+      "relatedChapters": ["09", "10", "15", "30"],
+      "evidenceIds": ["PROJ-AUTHORITY-LAYERS", "PROJ-REGISTRY-DRIVE"]
+    },
+    {
+      "id": "watermark",
+      "label": { "en": "Watermark", "zh": "水位标记" },
+      "aliases": { "en": ["projection watermark"], "zh": ["Projection 水位"] },
+      "definition": {
+        "en": "The log position and identity metadata that bound what a cached projection has folded and whether tail replay is safe.",
+        "zh": "界定缓存 Projection 已折叠到何处、以及尾部重放是否安全的日志位置与身份元数据。"
+      },
+      "firstDefinitionChapter": "12",
+      "relatedChapters": ["10", "30"],
+      "evidenceIds": ["PROJ-CACHE-LADDER", "PROJ-CACHE-SCHEMA"]
+    },
+    {
+      "id": "compaction",
+      "label": { "en": "Compaction", "zh": "上下文压缩" },
+      "aliases": { "en": ["context compaction"], "zh": ["Compaction"] },
+      "definition": {
+        "en": "A logged Surface replacement that summarizes an eligible prefix to reduce future model context without deleting canonical history.",
+        "zh": "把合格前缀总结为一条已记录的 Surface 替换，以降低后续模型上下文成本，但不删除规范历史。"
+      },
+      "firstDefinitionChapter": "13",
+      "relatedChapters": ["09", "10", "28"],
+      "evidenceIds": ["COMPACT-TRANSACTION", "COMPACT-COMMIT"]
+    },
+    {
+      "id": "plan",
+      "label": { "en": "Plan", "zh": "Plan" },
+      "aliases": { "en": ["plan mode"], "zh": ["计划模式"] },
+      "definition": {
+        "en": "A selected interaction mode whose transition commits immediately when idle or at the next accepted in-Turn pre-Step boundary.",
+        "zh": "一种交互模式选择；空闲时立即提交，Turn 进行中则在下一个被接受的 pre-Step 边界提交。"
+      },
+      "firstDefinitionChapter": "15",
+      "relatedChapters": ["06", "19", "30"],
+      "evidenceIds": ["PLANSTATE-PLAN-BOUNDARY", "PLANSTATE-PLAN-STATE"]
+    },
+    {
+      "id": "goal",
+      "label": { "en": "Goal", "zh": "Goal" },
+      "aliases": { "en": ["goal state"], "zh": ["目标状态"] },
+      "definition": {
+        "en": "A revisioned, phase-bearing objective updated through exact-reference checks and a durable Session commit before live publication.",
+        "zh": "带修订号和阶段的目标；更新时先校验精确引用并完成持久化 Session 提交，再实时发布。"
+      },
+      "firstDefinitionChapter": "15",
+      "relatedChapters": ["24", "29", "30"],
+      "evidenceIds": ["PLANSTATE-GOAL-COMMIT", "PLANSTATE-GOAL-TYPES"]
+    },
+    {
+      "id": "todo",
+      "label": { "en": "Todo", "zh": "Todo" },
+      "aliases": { "en": ["todo list"], "zh": ["待办列表"] },
+      "definition": {
+        "en": "A whole-value list state with its own validation and projection contract; it does not inherit Goal or Plan authority semantics.",
+        "zh": "具有独立校验和 Projection 契约的整值列表状态；它不继承 Goal 或 Plan 的权威语义。"
+      },
+      "firstDefinitionChapter": "15",
+      "relatedChapters": ["16", "17", "30"],
+      "evidenceIds": ["PLANSTATE-TODO-TOOL", "PLANSTATE-TODO-INVARIANT"]
+    },
+    {
+      "id": "tool-runtime",
+      "label": { "en": "Tool runtime", "zh": "工具运行时" },
+      "aliases": { "en": ["tool transaction"], "zh": ["工具事务"] },
+      "definition": {
+        "en": "The ordered execution transaction spanning input materialization, policy, guards, around-dispatch, body execution, post-policy, finalization, and immutable result.",
+        "zh": "覆盖输入物化、策略、Guard、Around 派发、主体执行、后置策略、最终化和不可变结果的有序执行事务。"
+      },
+      "firstDefinitionChapter": "16",
+      "relatedChapters": ["17", "18", "19", "23"],
+      "evidenceIds": ["TOOL-PIPELINE", "TOOL-RUNTIME-INVARIANT"]
+    },
+    {
+      "id": "monotonic-guard",
+      "label": { "en": "Monotonic guard", "zh": "单调 Guard" },
+      "aliases": { "en": ["tool guard"], "zh": ["工具 Guard"] },
+      "definition": {
+        "en": "A policy hook that may deny or abstain but cannot grant authority, so a later guard cannot reverse an earlier veto.",
+        "zh": "只能拒绝或弃权、不能授予权限的策略 Hook，因此后续 Guard 无法推翻先前否决。"
+      },
+      "firstDefinitionChapter": "19",
+      "relatedChapters": ["16", "20", "23"],
+      "evidenceIds": ["APPROVAL-GUARD-CONTRACT", "TOOL-DECISIONS"]
+    },
+    {
+      "id": "approval",
+      "label": { "en": "Approval", "zh": "审批" },
+      "aliases": { "en": ["one-shot approval"], "zh": ["一次性审批"] },
+      "definition": {
+        "en": "A request-scoped human decision with a closed outcome vocabulary; approval is not a reusable ambient permission.",
+        "zh": "请求作用域内、具有封闭结果词汇的人类决定；一次审批不是可复用的环境权限。"
+      },
+      "firstDefinitionChapter": "19",
+      "relatedChapters": ["20", "21", "23", "29"],
+      "evidenceIds": ["APPROVAL-OUTCOMES", "APPROVAL-REQUEST-SHAPE"]
+    },
+    {
+      "id": "sandbox-policy",
+      "label": { "en": "Sandbox policy", "zh": "Sandbox 策略" },
+      "aliases": { "en": ["file-effect confinement"], "zh": ["文件副作用约束"] },
+      "definition": {
+        "en": "Per-call policy for declared process file effects and writable roots; its documented boundary is not general network, syscall, device, or credential isolation.",
+        "zh": "针对声明的进程文件副作用与可写根目录逐调用解析的策略；其文档边界不是通用网络、系统调用、设备或凭据隔离。"
+      },
+      "firstDefinitionChapter": "20",
+      "relatedChapters": ["19", "21", "23", "31"],
+      "evidenceIds": ["SANDBOX-DOC-BOUNDARY", "SANDBOX-POLICY"]
+    },
+    {
+      "id": "observation",
+      "label": { "en": "Filesystem observation", "zh": "文件系统观察" },
+      "aliases": { "en": ["read observation"], "zh": ["读取观察"] },
+      "definition": {
+        "en": "Session-owned freshness metadata recorded by selected filesystem tools; it is narrower than proof that every byte was read or every filesystem access was observed.",
+        "zh": "由特定文件系统工具记录、归 Session 所有的新鲜度元数据；它不等同于证明每个字节均被读取或所有文件访问均被观察。"
+      },
+      "firstDefinitionChapter": "20",
+      "relatedChapters": ["16", "31"],
+      "evidenceIds": ["SANDBOX-OBSERVATION", "SANDBOX-OBSERVATION-LIMITS"]
+    },
+    {
+      "id": "code-mode",
+      "label": { "en": "Code Mode", "zh": "Code Mode" },
+      "aliases": { "en": ["code presentation mode"], "zh": ["代码呈现模式"] },
+      "definition": {
+        "en": "A model-facing presentation and dispatch mode that exposes generated SDK bindings; it does not create a second, authority-free tool engine.",
+        "zh": "向模型暴露生成式 SDK Binding 的呈现与派发模式；它不会创建第二套不受权限约束的工具引擎。"
+      },
+      "firstDefinitionChapter": "23",
+      "relatedChapters": ["16", "18", "24"],
+      "evidenceIds": ["CODEMODE-MODES", "CODEMODE-SEAM"]
+    },
+    {
+      "id": "activation",
+      "label": { "en": "Activation", "zh": "激活" },
+      "aliases": { "en": ["dynamic activation"], "zh": ["动态激活"] },
+      "definition": {
+        "en": "The transition in which a validated contribution becomes visible in a scope; activation must have explicit ownership and disposal.",
+        "zh": "已校验贡献在某个 Scope 中变为可见的转折；激活必须具有明确所有权和释放路径。"
+      },
+      "firstDefinitionChapter": "23",
+      "relatedChapters": ["04", "05", "24"],
+      "evidenceIds": ["CODEMODE-ACTIVATION", "MULTIAGENT-ACTIVATION-OWNERSHIP"]
+    },
+    {
+      "id": "subagent",
+      "label": { "en": "Subagent", "zh": "子 Agent" },
+      "aliases": { "en": ["child agent"], "zh": ["子智能体"] },
+      "definition": {
+        "en": "A child execution created through a provider seam with explicit parent ownership, run identity, settlement, budgets, and optional continuation.",
+        "zh": "通过 Provider Seam 创建、具有明确父级所有权、运行身份、结算、预算和可选续跑能力的子执行。"
+      },
+      "firstDefinitionChapter": "24",
+      "relatedChapters": ["25", "26", "29"],
+      "evidenceIds": ["MULTIAGENT-SEAM", "MULTIAGENT-LIFECYCLE"]
+    },
+    {
+      "id": "continuable-child",
+      "label": { "en": "Continuable child", "zh": "可续跑子 Agent" },
+      "aliases": { "en": ["continuable"], "zh": ["Continuable"] },
+      "definition": {
+        "en": "A child whose stable descriptor and Session permit later follow-up epochs; publication occurs only after setup and inbox acceptance succeed.",
+        "zh": "依靠稳定 Descriptor 与 Session 支持后续 Follow-up Epoch 的子 Agent；仅在准备和 Inbox 接受成功后发布。"
+      },
+      "firstDefinitionChapter": "24",
+      "relatedChapters": ["26", "27"],
+      "evidenceIds": ["MULTIAGENT-CONTINUABLE-START", "MULTIAGENT-FOLLOWUP"]
+    },
+    {
+      "id": "workflow",
+      "label": { "en": "Workflow", "zh": "Workflow" },
+      "aliases": { "en": ["workflow run"], "zh": ["工作流运行"] },
+      "definition": {
+        "en": "A validated orchestration program that composes child runs and combinators under explicit concurrency, total-child, slice, and disposal ceilings.",
+        "zh": "在明确的并发、子任务总量、同步 Slice 与释放时限下组合子运行和 Combinator 的已校验编排程序。"
+      },
+      "firstDefinitionChapter": "25",
+      "relatedChapters": ["24", "27", "29"],
+      "evidenceIds": ["WORKFLOW-LIFECYCLE", "WORKFLOW-CAPS"]
+    },
+    {
+      "id": "inbox-claim",
+      "label": { "en": "Inbox claim", "zh": "Inbox 认领" },
+      "aliases": { "en": ["claim boundary"], "zh": ["认领边界"] },
+      "definition": {
+        "en": "The durable transition that assigns queued input to an execution boundary, preserving ordering and recovery semantics across cancellation or restart.",
+        "zh": "把排队输入分配给执行边界的持久化转折，跨取消或重启保留顺序与恢复语义。"
+      },
+      "firstDefinitionChapter": "26",
+      "relatedChapters": ["05", "06", "24", "27"],
+      "evidenceIds": ["INBOX-CLAIM-REPLAY", "AGENT-INBOX-COMMIT"]
+    },
+    {
+      "id": "json-rpc",
+      "label": { "en": "JSON-RPC", "zh": "JSON-RPC" },
+      "aliases": { "en": ["RPC envelope"], "zh": ["RPC 信封"] },
+      "definition": {
+        "en": "The typed request, response, and notification carrier used by API and ACP surfaces; envelope validation does not by itself establish user identity.",
+        "zh": "API 与 ACP 表面使用的类型化请求、响应和通知载体；信封校验本身不建立用户身份。"
+      },
+      "firstDefinitionChapter": "29",
+      "relatedChapters": ["24", "30", "31"],
+      "evidenceIds": ["API-RPC-SCHEMAS", "API-TRUST-FENCE"]
+    },
+    {
+      "id": "connection-generation",
+      "label": { "en": "Connection generation", "zh": "连接代次" },
+      "aliases": { "en": ["reconnect generation"], "zh": ["重连代次"] },
+      "definition": {
+        "en": "A monotonic client-side epoch that prevents stale work from an earlier transport from mutating the current connected state.",
+        "zh": "客户端单调递增的 Epoch，用于防止旧传输上的过期工作修改当前连接状态。"
+      },
+      "firstDefinitionChapter": "30",
+      "relatedChapters": ["27", "29"],
+      "evidenceIds": ["WEBUI-CONNECTION-GENERATION", "API-CONNECTION-LOOP"]
+    },
+    {
+      "id": "slot",
+      "label": { "en": "Slot", "zh": "Slot" },
+      "aliases": { "en": ["UI slot"], "zh": ["UI 插槽"] },
+      "definition": {
+        "en": "A scope-owned browser contribution point whose recursive disposal removes the subtree declared by an entry.",
+        "zh": "由 Scope 持有的浏览器贡献点；其递归释放会移除某个 Entry 声明的整个子树。"
+      },
+      "firstDefinitionChapter": "30",
+      "relatedChapters": ["02", "23"],
+      "evidenceIds": ["WEBUI-SLOT-CASCADE", "DESIGN-SCOPED-LAYERS"]
+    },
+    {
+      "id": "trust-boundary",
+      "label": { "en": "Trust boundary", "zh": "信任边界" },
+      "aliases": { "en": ["authority boundary"], "zh": ["权限边界"] },
+      "definition": {
+        "en": "A named transition where identity, authority, data origin, or side-effect capability changes and therefore requires explicit validation or policy.",
+        "zh": "身份、权限、数据来源或副作用能力发生变化、因而需要显式校验或策略的命名转折。"
+      },
+      "firstDefinitionChapter": "31",
+      "relatedChapters": ["19", "20", "29"],
+      "evidenceIds": ["ROOT-TYPED-TRUST", "API-TRUST-FENCE"]
+    },
+    {
+      "id": "runtime-invariant",
+      "label": { "en": "Runtime invariant", "zh": "运行时不变量" },
+      "aliases": { "en": ["invariant"], "zh": ["Invariant"] },
+      "definition": {
+        "en": "A package-owned executable check of a semantic property at runtime; it complements static types and tests rather than replacing either.",
+        "zh": "由 Package 持有、在运行时检查语义性质的可执行规则；它补充静态类型和测试，而不是替代它们。"
+      },
+      "firstDefinitionChapter": "32",
+      "relatedChapters": ["06", "09", "13", "16"],
+      "evidenceIds": ["DESIGN-INVARIANT-REGISTRY", "PKG-INVARIANTS"]
+    },
+    {
+      "id": "evidence-record",
+      "label": { "en": "Evidence record", "zh": "证据记录" },
+      "aliases": { "en": ["catalog item"], "zh": ["目录条目"] },
+      "definition": {
+        "en": "A stable catalog ID tied to one pinned repository path and line range, with bilingual statements of what that excerpt supports.",
+        "zh": "绑定到固定仓库路径与行号范围的稳定目录 ID，并以双语说明该摘录支持什么。"
+      },
+      "firstDefinitionChapter": "01",
+      "relatedChapters": ["00", "33", "34", "35"],
+      "evidenceIds": ["ROOT-BOUNDARIES"]
+    },
+    {
+      "id": "pinned-baseline",
+      "label": { "en": "Pinned baseline", "zh": "固定基线" },
+      "aliases": { "en": ["source baseline"], "zh": ["源码基线"] },
+      "definition": {
+        "en": "The exact upstream commit against which every path, line range, generated index, and architectural statement in this study is evaluated.",
+        "zh": "本研究中每个路径、行号范围、生成索引和架构陈述共同依赖的精确上游提交。"
+      },
+      "firstDefinitionChapter": "01",
+      "relatedChapters": ["00", "35"],
+      "evidenceIds": ["ROOT-PREVIEW"]
+    },
+    {
+      "id": "coverage-reach",
+      "label": { "en": "Catalog reach", "zh": "目录触达率" },
+      "aliases": { "en": ["evidence catalog reach"], "zh": ["证据目录触达"] },
+      "definition": {
+        "en": "The share of catalog IDs cited by an eligible chapter corpus, counting one bilingual chapter once; it is not claim coverage, source-file coverage, or proof quality.",
+        "zh": "合格章节语料引用过的目录 ID 占比；双语章节只计一次。它不是 Claim 覆盖、源码文件覆盖或证明质量。"
+      },
+      "firstDefinitionChapter": "35",
+      "relatedChapters": ["01", "32", "34"],
+      "evidenceIds": []
+    }
+  ]
+}

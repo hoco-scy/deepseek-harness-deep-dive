@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "baseline": "47f943859bef60e4160492346772ded9b24f765a",
+  "chapter": "35-glossary-evidence",
+  "items": [],
+  "usage": {},
+  "note": {
+    "en": "Chapter 35 renders reverse indexes with ordinary pinned links. It intentionally emits no evidence tags and is excluded from coverage calculations.",
+    "zh": "第 35 章使用普通固定链接渲染反向索引。它刻意不产生证据标签，并从覆盖统计中排除。"
+  }
+}

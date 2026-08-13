@@ -134,6 +134,14 @@ p { margin: 12px 0; }
 .package-group { margin: 10px 0; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); overflow: hidden; }
 .package-group summary { display: flex; justify-content: space-between; gap: 14px; padding: 12px 15px; cursor: pointer; }
 .package-group summary span { color: var(--muted); font-size: 12px; text-align: right; }
+.index-group { margin: 10px 0; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); overflow: hidden; }
+.index-group summary { padding: 12px 15px; cursor: pointer; font-weight: 700; }
+.index-group summary:hover { color: var(--accent); background: color-mix(in srgb, var(--accent-soft) 45%, transparent); }
+.index-group summary:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent); outline-offset: -3px; }
+.index-group[open] > summary { border-bottom: 1px solid var(--line); }
+.index-group .table-scroll { max-height: min(70vh, 760px); overflow: auto; }
+.index-group table { margin: 0; min-width: 920px; font-size: 12px; }
+.index-group th { position: sticky; top: 0; z-index: 1; background: var(--surface-strong); }
 .table-scroll { overflow-x: auto; }
 .package-table { margin: 0; min-width: 1080px; font-size: 12px; }
 .package-table td:first-child { min-width: 180px; }
@@ -194,6 +202,7 @@ th { background: var(--surface); }
   .hero-panel { padding: 21px; }
   .pagination { grid-template-columns: 1fr; }
   table { display: block; overflow-x: auto; }
+  .index-group table { display: table; }
 }
 
 @media print {
