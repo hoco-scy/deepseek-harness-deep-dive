@@ -6,7 +6,7 @@
 <body data-page="agent-object-lifecycle" data-baseline="47f943859bef60e4160492346772ded9b24f765a" data-lang="zh">
   <header class="topbar"><button class="icon-button nav-toggle" type="button" data-nav-toggle aria-label="打开章节目录" aria-expanded="false">☰</button>
     <a class="brand" href="../index.html"><span class="brand-mark">DS</span><span>Harness 系统拆解</span></a>
-    <span class="topbar-meta">固定基线 47f943859b · 2 已复核 / 3 撰写中 / 36 章</span>
+    <span class="topbar-meta">固定基线 47f943859b · 3 已复核 / 3 撰写中 / 36 章</span>
     <div class="topbar-actions"><a class="language-switch" href="../../pages/agent-object-lifecycle.html" lang="en" aria-label="阅读本章英文版">English</a><button class="icon-button" type="button" data-theme-toggle aria-label="切换明暗主题">◐</button></div></header>
   <div class="layout"><aside class="sidebar" data-sidebar aria-label="章节目录"><input class="filter" data-chapter-filter type="search" placeholder="筛选章节……" aria-label="筛选章节"><section class="nav-part" data-part><h2 class="part-title">导论</h2>
     <a class="chapter-link" data-chapter-item href="../pages/reading-guide.html">
@@ -16,7 +16,7 @@
       <span class="chapter-number">03</span><span>219 个包的模块地图</span><span class="status-dot drafting" title="撰写中"></span></a></section><section class="nav-part" data-part><h2 class="part-title">核心运行时</h2>
     <a class="chapter-link" data-chapter-item href="../pages/boot-profiles-bundles.html">
       <span class="chapter-number">04</span><span>启动、Profile、Bundle 与配置叠层</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link current" data-chapter-item href="../pages/agent-object-lifecycle.html">
-      <span class="chapter-number">05</span><span>Agent 对象、注册表与生命周期</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/turn-step-loop.html">
+      <span class="chapter-number">05</span><span>Agent 对象、注册表与生命周期</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link" data-chapter-item href="../pages/turn-step-loop.html">
       <span class="chapter-number">06</span><span>Turn / Step / Loop 状态机</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/prompt-context.html">
       <span class="chapter-number">07</span><span>提示词组装与上下文注入</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/llm-adapters.html">
       <span class="chapter-number">08</span><span>LLM Adapter 与会话协议转换</span><span class="status-dot queued" title="待研究"></span></a></section><section class="nav-part" data-part><h2 class="part-title">会话与持久化</h2>
@@ -56,10 +56,168 @@
       <span class="chapter-number">34</span><span>缺口、限制与待验证问题</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/glossary-evidence.html">
       <span class="chapter-number">35</span><span>术语、证据目录与源码索引</span><span class="status-dot queued" title="待研究"></span></a></section></aside>
     <main class="main"><div class="page-shell"><article class="article" data-article><header><div class="page-kicker"><span>核心运行时</span><span>·</span><span>第 05 章</span></div>
-      <h1>Agent 对象、注册表与生命周期</h1><p class="subtitle">创建、恢复、收件箱、状态和关闭</p><div class="page-meta"><span class="status queued">待研究</span><span>上游 47f943859b</span><span>范围: 追踪 Agent 接口、registry、create/resume、live handle、initiator 与取消语义。</span></div></header>
-      <section class="placeholder"><p class="eyebrow">研究队列</p><h2>本章尚未进入结论状态</h2>
-    <p><strong>当前范围:</strong> 追踪 Agent 接口、registry、create/resume、live handle、initiator 与取消语义。</p><p>页面已经纳入全量研究地图，但尚未完成源码控制流复核。以下是升级为“已复核”之前必须覆盖的检查面：</p>
-    <ul class="placeholder-checks"><li>实际 bundle / profile 装配入口</li><li>公开类型、事件与配置 schema</li><li>正常控制流与状态突变时机</li><li>并发、scope、所有权与 cleanup</li><li>错误、取消、重试和降级分支</li><li>持久化、projection 与 replay 语义</li><li>生产路径测试与运行时不变量</li><li>优势、代价、限制与待验证问题</li></ul></section><section class="learning-notes" aria-labelledby="learning-notes-title"><h2 id="learning-notes-title">我的学习体会</h2>
+      <h1>Agent 对象、注册表与生命周期</h1><p class="subtitle">创建、恢复、收件箱、状态和关闭</p><div class="page-meta"><span class="status verified">已复核</span><span>上游 47f943859b</span><span>范围: 追踪 Agent 接口、registry、create/resume、live handle、initiator 与取消语义。</span></div></header>
+      <section>
+  <h2>结论：Agent 是有作用域的活体执行能力，不是会话记录本身</h2>
+  <div class="thesis"><p><code>Session</code> 持有可持久化、可重放的事实；<code>Agent</code> 是当前进程里围绕该 Session 建立的 driver、Inbox、scope 与取消边界；<code>AgentHandle</code> 则是只有所有者持有的 teardown capability。</p></div>
+  <p>这三个对象不能互换。Session 可以在没有 live Agent 时存在；同一个持久化 Session 可以在下一次进程生命周期中恢复为新的 Agent；registry 中能查到 Agent 只说明它当前已发布，不代表查询者拥有关闭它的权力。</p>
+</section>
+
+<section>
+  <h2>1. 接口包刻意不知道具体 loop</h2>
+  <div class="claim fact"><div class="claim-label">包边界</div><p><code>@deepseek-ai/dsh-agent</code> 定义 Agent 接口、registry、inbox、initiator scope 和全部 <code>agent/*</code> live event；具体创建和驱动由 <code>dsh-agent-loop</code> 通过唯一 <code>AgentFactory</code> 注册槽提供。Registry 在每次 create/resume 时用调用者 context 重新 trace factory，使 lifecycle effect 归属于真正发起调用的 fiber。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent/src/index.ts#L360-L430" title="Registry 与具体 loop 之间的 factory seam: Registry effect-scoped 注册唯一 factory，并通过调用者 context 重新 trace create/resume，使所有权跟随真正消费者。" aria-label="证据 AGENT-FACTORY-SEAM">AGENT-FACTORY-SEAM</a></p></div>
+  <div class="claim inference"><div class="claim-label">机制推导</div><p>UI、ACP bridge、subagent provider 和测试可以只依赖 <code>ctx.agents</code>，而不导入默认 ReactLoopAgent。替换 loop 需要实现同一个 Agent/Factory 生命周期合同，却不要求消费者改写。这是“插件可替换”在核心对象层面的实际落点。</p></div>
+</section>
+
+<section>
+  <h2>2. Agent 对象的精确构成</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>成员</th><th>语义</th><th>是否耐久</th></tr></thead>
+    <tbody>
+      <tr><td><code>id</code></td><td>与 <code>session.id</code> 完全相同的 <code>SessionId</code>；不是另一套 Agent UUID</td><td>身份来自 Session</td></tr>
+      <tr><td><code>options</code></td><td>本实例的 provider、model 与可选正整数 <code>maxTokens</code></td><td>不是 Session log 的固有历史；恢复时可重新选择</td></tr>
+      <tr><td><code>session</code></td><td>append-only event log 与派生历史的事实源</td><td>是</td></tr>
+      <tr><td><code>inbox</code></td><td>由 durable splice 事件重建的 pending-work 投影</td><td>事件耐久，数组是 live projection</td></tr>
+      <tr><td><code>ctx</code></td><td>该 Agent 独占的 Cordis scope；工具、prompt section、listener 随 scope 一起卸载</td><td>否，resume 时重新构建</td></tr>
+      <tr><td><code>status</code></td><td>只暴露 <code>idle</code> / <code>running</code>；disposal 是离开 registry，不是第三种 status</td><td>live-only</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">公共合同</div><p>接口还提供 <code>send</code>、<code>followup</code>、<code>steer</code>、<code>inject</code>、<code>cancel</code>、<code>whenIdle</code> 与 <code>runMaintenance</code>。<code>running</code> 表示整个 driver drain 区间，而不严格等于“某个 turn 仍未关闭”。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent/src/runtime-types.ts#L23-L143" title="Agent 公共接口与状态语义: 定义 provider/model/maxTokens、idle/running、session/inbox/scoped context，以及 cancel、idle、maintenance 和四种输入操作。" aria-label="证据 AGENT-PUBLIC-INTERFACE">AGENT-PUBLIC-INTERFACE</a></p></div>
+</section>
+
+<section>
+  <h2>3. Live phase 比公开 status 更细</h2>
+  <div class="claim fact"><div class="claim-label">具体实现</div><p>ReactLoopAgent 内部有三类 phase：<code>idle(lastTurn)</code>、<code>maintenance(abort, wakeRequested)</code>、<code>running(abort, turn, step, wakeRequested)</code>。公开层把 idle 和 maintenance 都映射为 <code>idle</code>，只有 running 映射为 <code>running</code>；只有映射结果改变时才发 <code>agent/status</code>。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/agent.ts#L63-L140" title="具体 Agent 的 scope、phase 与输入映射: ReactLoopAgent 从日志恢复 turn 与 inbox，创建 agent scope，idle/maintenance 映射为 idle，followup/steer/inject 映射到两级 inbox，cancel 默认清空。" aria-label="证据 AGENT-RUNTIME-SCOPE">AGENT-RUNTIME-SCOPE</a></p></div>
+  <p><code>runMaintenance()</code> 从真正 idle phase 同步认领独占权，但不伪造一个模型 turn。期间到达的 waking input 只留在 Inbox，并在 maintenance 结算后唤醒 driver。<code>whenIdle()</code> 循环观察 <code>activityDone</code> 的 identity，因此会跟随当前活动退休前安排的 replacement work，而不是只等待调用瞬间那一个 Promise。</p>
+  <div class="claim assessment"><div class="claim-label">设计评价</div><p>公开状态保持简单，内部 phase 保留调度所需的精度。代价是 observer 不能把 <code>idle</code> 解读为“完全没有后台维护”，也不能把 <code>running</code> 解读为“模型正在生成”；真正的语义必须结合 turn/step durable events。</p></div>
+</section>
+
+<section>
+  <h2>4. 每个 Agent 都拥有一个可整体撤销的世界</h2>
+  <div class="claim fact"><div class="claim-label">生产源码</div><p>构造函数先从 Session 事件恢复最后 turn 和 Inbox，再以 Agent 本身作为 scope key 调用 <code>createScope()</code>，并让 <code>agent.ctx</code> 携带自己的 <code>agent</code> 属性。通过这个 context 注册的工具、prompt、变量、限制器和 listener 只对该 Agent 生效。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/agent.ts#L63-L140" title="具体 Agent 的 scope、phase 与输入映射: ReactLoopAgent 从日志恢复 turn 与 inbox，创建 agent scope，idle/maintenance 映射为 idle，followup/steer/inject 映射到两级 inbox，cancel 默认清空。" aria-label="证据 AGENT-RUNTIME-SCOPE">AGENT-RUNTIME-SCOPE</a></p></div>
+  <div class="claim fact"><div class="claim-label">Setup 合同</div><p>create/resume 的 <code>setup(agentCtx)</code> 在 Session 和 Agent 均未进入 registry 时运行，可以异步挂载 scoped plugins，并可返回一个同步 <code>commit()</code> 在发布边界再次验证可变资源。Setup 只能组合，不能驱动 Agent；抛错、commit 抛错或 owner 卸载都在未发布状态回滚。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent/src/index.ts#L52-L174" title="不可见 setup、commit 与 owned handle 合同: create/resume setup 在对象未发布时构建 scoped world，可返回同步 commit；AgentHandle 是拥有 teardown 权限的 capability。" aria-label="证据 AGENT-SETUP-CONTRACT">AGENT-SETUP-CONTRACT</a></p></div>
+  <p>这让“第一个模型请求之前，Agent 的能力世界必须已经完整”成为结构性保证，而不是依赖 <code>agent/created</code> listener 竞速补装。</p>
+</section>
+
+<section>
+  <h2>5. Create 与 Resume 汇合成同一条原子发布管线</h2>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>Acquire SessionPreparation</h3><p>Create 验证并快照新 session 的 seed/meta；Resume 从 persistence prepare 已有 Session。两者此时都未进入 live store。</p></div>
+    <div><span>2</span><h3>Prepare ReactLoopAgent</h3><p>创建 scope、Inbox 与 driver；在任何资源之前安装 caller signal、owner fiber 和 factory teardown 的融合取消。</p></div>
+    <div><span>3</span><h3>Await setup</h3><p>调用 <code>setup(agent.ctx)</code> 并允许它异步完成；对象仍不可被 registry 查询。</p></div>
+    <div><span>4</span><h3>Synchronous setup commit</h3><p>在所有 await 之后、任何发布之前执行最后一次不可让出的验证/提交。</p></div>
+    <div><span>5</span><h3>Enter both registries</h3><p>先 <code>sessions.enter(session)</code>，再 <code>agents.enter(agent, ownerCtx.agent)</code>；这里是同 ID 竞争的权威仲裁点。</p></div>
+    <div><span>6</span><h3>Announce in order</h3><p><code>session/created</code> → <code>agent/created</code> → 非 veto 的 <code>agent/session-start</code>，source 分别是 startup 或 resume。</p></div>
+    <div><span>7</span><h3>Return AgentHandle</h3><p>creation-only signal 已脱离未来控制；之后由 handle、Agent cancel 或结构性 owner 管理生命周期。</p></div>
+  </div>
+  <div class="claim fact"><div class="claim-label">生产控制流</div><p>新建和恢复最终都调用 <code>setupAndPublish()</code>；resume 的 persistence load 同样受 caller signal、owner unload 与 factory teardown 约束。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/index.ts#L606-L709" title="Create、setupAndPublish 与 resume 控制流: 新 session 与持久化 session 汇合到同一 prepare/setup/commit/publish 路径；resume load 也受 owner、caller 和 factory 取消约束。" aria-label="证据 AGENT-CREATE-RESUME">AGENT-CREATE-RESUME</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/index.ts#L453-L578" title="Agent 准备、发布与反向 teardown: 在资源创建前融合 caller/factory/owner 取消；发布顺序为 session enter、agent enter、session announce、agent announce、session-start；dispose 共享同一 quiescence。" aria-label="证据 AGENT-PREPARE-PUBLISH">AGENT-PREPARE-PUBLISH</a></p></div>
+  <div class="claim fact"><div class="claim-label">行为证明</div><p>测试在 async setup 的闸门前确认两个 registry 都不可见，并验证完整事件顺序；两个同 ID create 可以同时进入 setup，但最终只有一个成功发布，失败者不留下孤儿 Session；创建 signal 在 handle 返回后再 abort 不会终止 live Agent。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/tests/scope-lifecycle.spec.ts#L242-L365" title="原子发布、并发同 ID 与 creation-only signal 测试: 测试证明 setup 完成前两个 registry 均不可见、发布事件有序、并发准备仅一方进入，且 creation signal 不影响已返回 handle。" aria-label="证据 AGENT-ATOMIC-TEST">AGENT-ATOMIC-TEST</a></p></div>
+</section>
+
+<section>
+  <h2>6. Publication 被拆成 enter 与 announce</h2>
+  <div class="claim fact"><div class="claim-label">Registry 控制流</div><p><code>enter()</code> 先强制 <code>agent.id === agent.session.id</code>、检查 ID 冲突并插入一个带稳定 carrier 的精确 entry，但不发事件。<code>announce()</code> 只允许对当前 exact entry 调用一次，并在 dispatch 前标记 announced。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent/src/index.ts#L450-L617" title="AgentRegistry enter、announce 与精确 detach: enter 验证共享身份并仲裁冲突，announce 单次发布；重入 detach 延迟到 dispatch 结束，陈旧 closure 不能删除同 ID replacement。" aria-label="证据 AGENT-REGISTRY-LIFECYCLE">AGENT-REGISTRY-LIFECYCLE</a></p></div>
+  <p>拆分不是形式主义，而是为原子发布和重入 teardown 服务：</p>
+  <ul class="audit-list">
+    <li>Session 与 Agent 可以先同时进入 store，随后 listener 看到的是一致世界。</li>
+    <li><code>agent/created</code> listener 同步请求 detach 时，删除延迟到整个 dispatch 返回，所以后续 listener 仍看到同一个 live entry。</li>
+    <li>detach closure 捕获 entry object，不只捕获 ID；旧 closure 无法删除后来复用同一 ID 的 replacement。</li>
+    <li>从未 announce 的 entry 回滚时不发 <code>agent/disposed</code>，避免凭空制造生命周期边。</li>
+  </ul>
+  <div class="claim fact"><div class="claim-label">重入测试</div><p>Registry 单测验证 split publication、幂等 detach、stale capability 隔离，以及 created listener 中请求 detach 后所有 listener 仍观察到稳定 entry。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent/tests/agent.spec.ts#L258-L298" title="Registry split publication 与陈旧 detach 测试: 测试证明 enter 与 announce 分离、detach 幂等、旧 capability 不删除 replacement，以及 created listener 中 detach 延迟到全部 listener 返回。" aria-label="证据 AGENT-REGISTRY-TEST">AGENT-REGISTRY-TEST</a></p></div>
+</section>
+
+<section>
+  <h2>7. Teardown 有多个 owner，但只有一个 quiescence</h2>
+  <p>一个 programmatic Agent 同时有三类 lifecycle authority：</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Authority</th><th>为什么拥有它</th><th>可做什么</th></tr></thead>
+    <tbody>
+      <tr><td>Consumer 的 <code>AgentHandle</code></td><td>显式创建/恢复 Agent</td><td>调用 memoized <code>dispose()</code></td></tr>
+      <tr><td>调用者 fiber</td><td>结构化并发：子资源不能超出调用者插件生命周期</td><td>卸载时触发同一 dispose</td></tr>
+      <tr><td>AgentLoop factory fiber</td><td>live Agent 依赖该 provider 的实现与服务面</td><td>provider HMR/卸载时停止全部旧实例</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">实际逆序</div><p>所有 owner 竞争同一个 memoized Promise：先以 <code>{kind:'disposed'}</code> cancel driver，等待 <code>whenIdle()</code>，再 dispose Agent scope，随后精确 detach Agent、detach Session，最后清理 factory/owner bookkeeping。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/index.ts#L453-L578" title="Agent 准备、发布与反向 teardown: 在资源创建前融合 caller/factory/owner 取消；发布顺序为 session enter、agent enter、session announce、agent announce、session-start；dispose 共享同一 quiescence。" aria-label="证据 AGENT-PREPARE-PUBLISH">AGENT-PREPARE-PUBLISH</a></p></div>
+  <div class="claim fact"><div class="claim-label">重入发布测试</div><p>即使 <code>session/created</code> 或 <code>agent/created</code> listener 立刻卸载 owner，dispatch 中其他 observer 仍能看到完整双 registry；回滚的可观察顺序是 scope disposal，然后（如果已 announce）<code>agent/disposed</code>，最后 <code>session/disposed</code>。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/tests/scope-lifecycle.spec.ts#L623-L715" title="创建通知内重入 teardown 的顺序测试: 测试证明通知 dispatch 中 registry 对所有 listener 保持稳定；rollback 依次卸载 scope、发布 agent/disposed，再发布 session/disposed。" aria-label="证据 AGENT-TEARDOWN-TEST">AGENT-TEARDOWN-TEST</a></p></div>
+</section>
+
+<section>
+  <h2>8. Runtime owner、durable lineage 与 initiator 是三件事</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>关系</th><th>表示什么</th><th>存在哪里</th><th>能否授权</th></tr></thead>
+    <tbody>
+      <tr><td>Session <code>parentSession</code></td><td>fork/派生的耐久谱系</td><td>Session header</td><td>不能自动授权当前进程操作</td></tr>
+      <tr><td>Registry <code>owner</code></td><td>哪个 live Agent 的 scoped context 创建了该 live entry</td><td>进程内 AgentEntry</td><td>只支持精确 runtime ownership 查询</td></tr>
+      <tr><td>Current initiator</td><td>哪一个 driver 的 async chain 因果触发当前工作</td><td><code>AsyncLocalStorage</code></td><td>明确不是 liveness proof 或 authorization</td></tr>
+    </tbody>
+  </table></div>
+  <p>因此，一个带 <code>parentSession</code> 的持久化 fork 在独立 resume 后仍可能是 runtime root；反过来，一个当前 owner 创建的 child 也不能仅靠 ambient initiator 穿越 worker、HTTP、进程或 durable queue。</p>
+  <div class="claim fact"><div class="claim-label">Initiator API</div><p><code>withInitiator()</code> / <code>withoutInitiator()</code> 在并发 async chain 中隔离并恢复身份，保留操作返回值或 Promise 的精确 identity。服务 teardown 先拒绝新 boundary，等待已返回 Promise 的 boundary drain，再 disable AsyncLocalStorage；触发自身 unload 的嵌套链从 drain 中释放以避免等待自己。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent/src/index.ts#L300-L358" title="进程内 initiator 归因 API: current/require/with/withoutInitiator 用 AsyncLocalStorage 传递当前 driver 的因果 Agent，但不把 ambient identity 当作授权。" aria-label="证据 AGENT-INITIATOR-API">AGENT-INITIATOR-API</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent/src/index.ts#L619-L703" title="Initiator teardown 的 drain 语义: 服务关闭后拒绝新 boundary，等待已返回的 Promise boundary 结算，排除启动自身卸载的嵌套链以避免自锁，最后 disable storage。" aria-label="证据 AGENT-INITIATOR-DRAIN">AGENT-INITIATOR-DRAIN</a></p></div>
+</section>
+
+<section>
+  <h2>9. Inbox 是 durable event 的增量投影</h2>
+  <div class="claim fact"><div class="claim-label">重建</div><p>新 Agent 构造 Inbox 时，会重放 <code>seedLength</code> 之后的全部 <code>agent/inbox/spliced</code>；无效坐标或重复身份让恢复失败，而不是静默修复。Inbox 有 <code>next-turn</code> 和 <code>next-step</code> 两个列表，但 MessageId 在二者合并范围内必须唯一。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent/src/inbox.ts#L24-L78" title="Inbox 的事件重建与 claim 顺序: Inbox 从 seed boundary 之后的 durable splice 重建；claim 总是先取全部 next-step，再按需取一个 next-turn，并逐消息通知。" aria-label="证据 AGENT-INBOX-REPLAY">AGENT-INBOX-REPLAY</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent/src/inbox.ts#L128-L219" title="Inbox splice 的耐久提交与身份不变量: 先 append agent/inbox/spliced 再改 live projection；删除可标 canceled；MessageId 在两个 pending 列表上全局唯一。" aria-label="证据 AGENT-INBOX-COMMIT">AGENT-INBOX-COMMIT</a></p></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>操作</th><th>耐久事实</th><th>Live notification</th></tr></thead>
+    <tbody>
+      <tr><td>append / prepend</td><td>带 inserted 的 <code>agent/inbox/spliced</code></td><td>逐消息 <code>agent/inbox/inserted</code></td></tr>
+      <tr><td>replace</td><td>同一 splice 删除旧值并插入新值</td><td>先 discarded 旧消息，再 inserted 新消息</td></tr>
+      <tr><td>remove / clear</td><td>删除 splice 带 <code>outcome:'canceled'</code></td><td>逐消息 discarded</td></tr>
+      <tr><td>claim</td><td>纯删除 splice，不标 canceled</td><td>逐消息 claimed，并绑定 owning turn</td></tr>
+    </tbody>
+  </table></div>
+  <p>提交顺序是先 <code>session.append()</code>，再修改内存数组；同步 session observer 因而看到 pre-splice projection，并可用规范化坐标重建被删消息。一步 claim 先取所有 pending next-step，再在 turn 边界需要时取一个 next-turn。</p>
+  <div class="claim fact"><div class="claim-label">行为证明</div><p>单测覆盖非法持久化 splice、跨两个列表 replace、重复 MessageId 拒绝，以及 clear 先 next-step 后 next-turn 生成两条 canceled 事件。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent/tests/agent.spec.ts#L41-L142" title="Inbox replay、替换、唯一身份与取消测试: 测试覆盖非法持久化 splice、跨队列 replace、重复 MessageId 拒绝，以及 clear 生成两条 canceled durable splice。" aria-label="证据 AGENT-INBOX-TEST">AGENT-INBOX-TEST</a></p></div>
+</section>
+
+<section>
+  <h2>10. Follow-up、Steer、Inject 与 Cancel 的差异</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>API</th><th>目标列表</th><th>是否唤醒</th><th>最早消费边界</th></tr></thead>
+    <tbody>
+      <tr><td><code>followup(message)</code></td><td>next-turn</td><td>是</td><td>一个新的普通 turn；每次只消费一条 next-turn</td></tr>
+      <tr><td><code>steer(message)</code></td><td>next-step</td><td>是</td><td>运行中 Agent 的下一 step；idle 时开启 turn</td></tr>
+      <tr><td><code>inject(message)</code></td><td>next-step</td><td>否</td><td>已有 driver 的下一 pre-step；idle 时一直停放</td></tr>
+      <tr><td><code>cancel(cause)</code></td><td>默认清空两者</td><td>否</td><td>abort 当前 activity；无 activity 时不为未来工作“预装取消”</td></tr>
+      <tr><td><code>cancel(cause,{keepInbox:true})</code></td><td>保留两者</td><td>否</td><td>只 abort 当前 activity，pending work 可由以后 wake 消费</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">实现映射</div><p><code>send()</code> 先持久化 Inbox insertion，再按 wake flag 驱动。若当前 activity 已 abort，新的 waking input 被重新分类为 next-turn，防止混入正在收敛的失败 turn；disposal 原因不会 latch 新 wake。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/agent.ts#L63-L140" title="具体 Agent 的 scope、phase 与输入映射: ReactLoopAgent 从日志恢复 turn 与 inbox，创建 agent scope，idle/maintenance 映射为 idle，followup/steer/inject 映射到两级 inbox，cancel 默认清空。" aria-label="证据 AGENT-RUNTIME-SCOPE">AGENT-RUNTIME-SCOPE</a></p></div>
+  <aside class="caveat"><strong>边界：</strong>这些 API 返回的是排队/控制动作，不是某条 message 的结果 Promise。<code>whenIdle()</code> 也只证明整个 Agent 进入 quiescence，不能证明某个 MessageId 产生了哪一个 turn/end；工作结算要从 durable log 推导。</aside>
+</section>
+
+<section>
+  <h2>11. 设计收益、代价与限制</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>选择</th><th>收益</th><th>代价 / 限制</th></tr></thead>
+    <tbody>
+      <tr><td>Agent 接口与 loop 分包</td><td>消费者和 orchestration 不绑定具体 driver</td><td>替换实现必须完整复制复杂生命周期与事件合同</td></tr>
+      <tr><td>Unpublished setup transaction</td><td>首个 observer 永远看到完整 scoped world</td><td>setup 是 trusted same-process code；“只组合不驱动”依靠合同</td></tr>
+      <tr><td>Enter / announce 两阶段</td><td>支持一致双 registry 与重入 teardown</td><td>生命周期实现更复杂，部分通知失败仍需配对 disposal</td></tr>
+      <tr><td>Handle 作为 teardown capability</td><td>只读 registry observer 不能关闭 Agent</td><td>所有权必须在每种 transport/provider 中显式传递</td></tr>
+      <tr><td>Durable Inbox projection</td><td>idle 注入、取消和 resume 有统一事实</td><td>每次 queue mutation 增加事件量；单 MessageId 只能带一个 source</td></tr>
+      <tr><td>Process-local initiator</td><td>同进程 async 因果归因便捷且并发隔离</td><td>不能跨 worker/process/wire，也绝不能代替显式授权</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">本章评价</div><p>DeepSeek Harness 没有把 Agent 设计成一个携带所有状态的“智能对象”，而是把耐久事实、live driver、作用域贡献、排队工作、所有权 capability 和因果归因拆开。这个分解为 resume、per-Agent plugin、HMR 与多种 transport 提供了坚实基础；真正的成本是 lifecycle protocol 本身已经接近一套小型事务系统，任何新 provider 若绕开 prepare/publish/dispose 次序都会破坏一致性。</p></div>
+</section>
+
+<section>
+  <h2>本章复核清单</h2>
+  <ul class="audit-list">
+    <li>已区分 Agent interface package 与具体 AgentLoop factory。</li>
+    <li>已核对 id/session、options、scope、status 与公共输入/取消方法。</li>
+    <li>已追踪 create 与 resume 从 preparation、setup、commit 到三次发布事件。</li>
+    <li>已验证同 ID 并发仲裁、creation-only signal 和失败回滚。</li>
+    <li>已追踪 enter/announce、reentrant detach 与 stale capability 防护。</li>
+    <li>已核对 consumer、caller fiber、factory fiber 的共同 teardown 所有权。</li>
+    <li>已区分 durable lineage、runtime owner 与 process-local initiator。</li>
+    <li>已核对 Inbox replay、提交顺序、claim、取消和 MessageId 唯一性。</li>
+  </ul>
+</section>
+<section class="learning-notes" aria-labelledby="learning-notes-title"><h2 id="learning-notes-title">我的学习体会</h2>
     <p class="privacy">内容仅自动保存到当前浏览器，不上传、不进入仓库。你可以导出 Markdown 自行归档。</p><textarea data-learning-notes aria-label="我的学习体会" placeholder="记录你的理解、疑问、反例和可迁移原则……"></textarea>
     <div class="note-footer"><span data-note-saved>本地草稿</span><button type="button" data-note-export>导出 Markdown</button>
     <button type="button" class="danger" data-note-clear>清空</button><span data-note-count>0 字符</span></div></section><nav class="pagination" aria-label="章节翻页"><a href="../pages/boot-profiles-bundles.html"><small>← 上一章 · 04</small><strong>启动、Profile、Bundle 与配置叠层</strong></a><a class="next" href="../pages/turn-step-loop.html"><small>下一章 · 06 →</small><strong>Turn / Step / Loop 状态机</strong></a></nav></article>
