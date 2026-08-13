@@ -6,7 +6,7 @@
 <body data-page="llm-adapters" data-baseline="47f943859bef60e4160492346772ded9b24f765a" data-lang="zh">
   <header class="topbar"><button class="icon-button nav-toggle" type="button" data-nav-toggle aria-label="打开章节目录" aria-expanded="false">☰</button>
     <a class="brand" href="../index.html"><span class="brand-mark">DS</span><span>Harness 系统拆解</span></a>
-    <span class="topbar-meta">固定基线 47f943859b · 7 已复核 / 1 撰写中 / 36 章</span>
+    <span class="topbar-meta">固定基线 47f943859b · 8 已复核 / 1 撰写中 / 36 章</span>
     <div class="topbar-actions"><a class="language-switch" href="../../pages/llm-adapters.html" lang="en" aria-label="阅读本章英文版">English</a><button class="icon-button" type="button" data-theme-toggle aria-label="切换明暗主题">◐</button></div></header>
   <div class="layout"><aside class="sidebar" data-sidebar aria-label="章节目录"><input class="filter" data-chapter-filter type="search" placeholder="筛选章节……" aria-label="筛选章节"><section class="nav-part" data-part><h2 class="part-title">导论</h2>
     <a class="chapter-link" data-chapter-item href="../pages/reading-guide.html">
@@ -19,7 +19,7 @@
       <span class="chapter-number">05</span><span>Agent 对象、注册表与生命周期</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link" data-chapter-item href="../pages/turn-step-loop.html">
       <span class="chapter-number">06</span><span>Turn / Step / Loop 状态机</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link" data-chapter-item href="../pages/prompt-context.html">
       <span class="chapter-number">07</span><span>提示词组装与上下文注入</span><span class="status-dot verified" title="已复核"></span></a><a class="chapter-link current" data-chapter-item href="../pages/llm-adapters.html">
-      <span class="chapter-number">08</span><span>LLM Adapter 与会话协议转换</span><span class="status-dot queued" title="待研究"></span></a></section><section class="nav-part" data-part><h2 class="part-title">会话与持久化</h2>
+      <span class="chapter-number">08</span><span>LLM Adapter 与会话协议转换</span><span class="status-dot verified" title="已复核"></span></a></section><section class="nav-part" data-part><h2 class="part-title">会话与持久化</h2>
     <a class="chapter-link" data-chapter-item href="../pages/session-event-model.html">
       <span class="chapter-number">09</span><span>内部会话结构与事件模型</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/log-replay.html">
       <span class="chapter-number">10</span><span>日志、派生历史、重放与 Fork</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/persistence-database.html">
@@ -56,10 +56,194 @@
       <span class="chapter-number">34</span><span>缺口、限制与待验证问题</span><span class="status-dot queued" title="待研究"></span></a><a class="chapter-link" data-chapter-item href="../pages/glossary-evidence.html">
       <span class="chapter-number">35</span><span>术语、证据目录与源码索引</span><span class="status-dot queued" title="待研究"></span></a></section></aside>
     <main class="main"><div class="page-shell"><article class="article" data-article><header><div class="page-kicker"><span>核心运行时</span><span>·</span><span>第 08 章</span></div>
-      <h1>LLM Adapter 与会话协议转换</h1><p class="subtitle">内部消息怎样投影到 DeepSeek、Pi AI 与重放适配器</p><div class="page-meta"><span class="status queued">待研究</span><span>上游 47f943859b</span><span>范围: 分析内部消息/流词汇、adapter registry、provider selection、tool call、reasoning、usage 与错误归一化。</span></div></header>
-      <section class="placeholder"><p class="eyebrow">研究队列</p><h2>本章尚未进入结论状态</h2>
-    <p><strong>当前范围:</strong> 分析内部消息/流词汇、adapter registry、provider selection、tool call、reasoning、usage 与错误归一化。</p><p>页面已经纳入全量研究地图，但尚未完成源码控制流复核。以下是升级为“已复核”之前必须覆盖的检查面：</p>
-    <ul class="placeholder-checks"><li>实际 bundle / profile 装配入口</li><li>公开类型、事件与配置 schema</li><li>正常控制流与状态突变时机</li><li>并发、scope、所有权与 cleanup</li><li>错误、取消、重试和降级分支</li><li>持久化、projection 与 replay 语义</li><li>生产路径测试与运行时不变量</li><li>优势、代价、限制与待验证问题</li></ul></section><section class="learning-notes" aria-labelledby="learning-notes-title"><h2 id="learning-notes-title">我的学习体会</h2>
+      <h1>LLM Adapter 与会话协议转换</h1><p class="subtitle">内部消息怎样投影到 DeepSeek、Pi AI 与重放适配器</p><div class="page-meta"><span class="status verified">已复核</span><span>上游 47f943859b</span><span>范围: 分析内部消息/流词汇、adapter registry、provider selection、tool call、reasoning、usage 与错误归一化。</span></div></header>
+      <section>
+  <h2>结论：Adapter 翻译一次调用，而 Session Log 拥有会话</h2>
+  <div class="thesis"><p>DeepSeek Harness 没有让任何 Provider SDK 成为对话状态的 owner。内部先形成不可变、带来源的 Message 和封闭的 StreamChunk 协议；Adapter 只负责把一次完整请求投影到某条 wire protocol，再把响应翻译回来。持久化、重试、重放和工具续跑都发生在 Adapter 外。</p></div>
+  <p>这个边界的价值不只是“支持多个模型”。它把 Provider 差异限制在 capability resolution、wire serialization、stream translation 与 error classification 四个面，同时让 Agent Loop 能用同一套 Turn/Step、request header 和 SessionEvent 语义验证每次派发。</p>
+</section>
+
+<section>
+  <h2>1. 一次模型调用跨越六个提交边界</h2>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>从日志派生历史</h3><p>Loop 读取当前 request header 与 <code>Session.deriveMessages()</code>，不向 SDK 询问对话历史。</p></div>
+    <div><span>2</span><h3>准备 exact call</h3><p><code>prepareCall()</code> 解析唯一 route、精确 model capability、adapter defaults、context window 与 retry policy。</p></div>
+    <div><span>3</span><h3>提交 request facts</h3><p>Canonical header 与 request context 先写 Session；最终 request 被 deep-freeze。</p></div>
+    <div><span>4</span><h3>Durability barrier</h3><p><code>llm/stream</code> middleware 在构造下游 Adapter stream 前 flush 完整 request prefix。</p></div>
+    <div><span>5</span><h3>记录 raw stream</h3><p>每个 chunk 先 append 为 <code>assistant/chunk</code>，再交给规范组装器。</p></div>
+    <div><span>6</span><h3>提交语义消息</h3><p>只有成功 finish 才生成一个 <code>assistant/message</code>；失败由 request-error policy 处理。</p></div>
+  </div>
+  <div class="claim fact"><div class="claim-label">生产控制流</div><p>同一 Step 内的 request、raw chunks 和最终 message 都携带相同 turn/step；Provider 不接触 Session 对象，也不决定何时开始下一 Step。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/agent.ts#L332-L400" title="Step 的模型流与工具续跑: 每次 request 从 deriveMessages 构建，chunk 逐条落日志，成功必写 assistant/message；max-tokens、无工具、工具 concluded 与继续下一步分支明确。" aria-label="证据 LOOP-STEP-STATE">LOOP-STEP-STATE</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/agent.ts#L403-L495" title="可重建冻结请求的构建: request waterfall、exact-adapter prepareCall、adapter default 标记、request/header、request/context 与最终 frozen marked request 的顺序。" aria-label="证据 LOOP-REQUEST-BUILD">LOOP-REQUEST-BUILD</a></p></div>
+  <div class="claim fact"><div class="claim-label">副作用前屏障</div><p>模型 I/O 是明确的语义副作用边界：request facts 未成功持久化时，checkpoint listener 不会调用 Adapter。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-checkpoint-policy/src/index.ts#L20-L82" title="Adapter dispatch 前的 durable checkpoint: llm/stream waterfall 在创建下游 adapter stream 前 flush 完整 request prefix；flush 失败时 fail-closed，不发生 model I/O。" aria-label="证据 LLM-CHECKPOINT-BARRIER">LLM-CHECKPOINT-BARRIER</a></p></div>
+</section>
+
+<section>
+  <h2>2. 内部协议刻意比任何单一 Provider 更窄</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>层</th><th>核心表示</th><th>关键约束</th><th>为什么重要</th></tr></thead>
+    <tbody>
+      <tr><td>Message</td><td><code>{id, role, content, source}</code></td><td>创建时 clone + deep-freeze；stable ID 穿过投递、日志与 request</td><td>没有 SDK-owned history 的第二事实源 <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/llm/llm/src/message.ts#L128-L184" title="单一不可变 Message value: 内部会话、投递和 provider request 共享 stable id、role、content、source 的同一表示；创建时 clone 并 deep-freeze。" aria-label="证据 LLM-MESSAGE-VALUE">LLM-MESSAGE-VALUE</a></td></tr>
+      <tr><td>Content</td><td>text / reasoning / image / tool-call / tool-result</td><td>Tool arguments 保留模型产生的原始 JSON string</td><td>解析错误留给工具边界；Adapter 不重写原始意图 <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/llm/llm/src/types.ts#L53-L141" title="Provider-neutral content 与 usage 词汇: 核心 block 只有 text、reasoning、image、tool-call 和 tool-result；tool 参数保留原始 JSON 字符串，usage bucket 互斥。" aria-label="证据 LLM-CONTENT-PROTOCOL">LLM-CONTENT-PROTOCOL</a></td></tr>
+      <tr><td>Provenance</td><td>user / plugin / model / tool</td><td>Assistant 必须记录 provider、model，可带 replay state</td><td>跨 Provider 历史不会冒充 native response <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/llm/llm/src/message.ts#L7-L18" title="Assistant provider provenance 与 replay state: 模型消息携带 provider、model 与可选 adapter-private lossless replay state；仅同一 adapter ownership 可安全复用。" aria-label="证据 LLM-MESSAGE-IDENTITY">LLM-MESSAGE-IDENTITY</a></td></tr>
+      <tr><td>Stream</td><td>block-start / delta / block-end / usage / finish</td><td>Index 允许交错 block；usage 在 terminal finish 之前；finish 后无 chunk</td><td>UI、日志、Assembler 与 Adapter 共用一份流合同 <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/llm/llm/src/types.ts#L283-L355" title="封闭的流式 chunk 与完整 request 协议: 流以 indexed block start/delta/end、usage 和唯一 terminal finish 表示；GenerateOptions 同时承载 config、system、tools、messages、session 与 auxiliary purpose。" aria-label="证据 LLM-STREAM-PROTOCOL">LLM-STREAM-PROTOCOL</a></td></tr>
+      <tr><td>Request</td><td>config + system + tools + messages</td><td>Provider/model 精确路由；sessionId 与 purpose 是 model-hidden metadata</td><td>会话语义与 wire metadata 分离</td></tr>
+    </tbody>
+  </table></div>
+  <p>该协议是 merge-extensible，但内置 Adapter 对未知 block 的行为并不自动对称。扩展一个新 block type 必须同时补 Adapter、UI、compaction 和 replay 支持；仅扩 TypeScript union 不会获得端到端能力。</p>
+</section>
+
+<section>
+  <h2>3. Provider route 是唯一映射，不是 fallback list</h2>
+  <div class="claim fact"><div class="claim-label">Registry 合同</div><p>一个 provider string 同时只能映射到一个 Adapter registration。空 route、重复 route 或 metadata ID 不一致均同步失败；一项多 route 注册是 all-or-nothing。Effect teardown 精确删除自己仍拥有的 route，<code>replace()</code> 在一个同步区段内完成旧集合到新集合的切换。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/llm/llm/src/index.ts#L330-L413" title="一对一 provider route registry: Adapter 必须拥有非空唯一 route；冲突 all-or-nothing 失败，effect disposal 精确释放，replace 原子交换 route 并发更新事件。" aria-label="证据 LLM-ADAPTER-REGISTRY">LLM-ADAPTER-REGISTRY</a></p></div>
+  <div class="claim fact"><div class="claim-label">Prepared call</div><p><code>prepareCall()</code> 捕获 registration、resolved config、retry policy、model context 和 adapter-default marker，返回只能 dispatch 一次的 frozen handle；调用者若改动 config，派发以 <code>INVALID_PREPARED_CALL</code> 拒绝。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/llm/llm/src/index.ts#L771-L814" title="Registration-bound 的一次性 PreparedLlmCall: prepareCall 固定 resolved config、model context、adapter defaults 与 retry policy；stream 只能一次且拒绝 dispatch 前 config drift。" aria-label="证据 LLM-PREPARED-CALL">LLM-PREPARED-CALL</a></p></div>
+  <div class="claim fact"><div class="claim-label">热替换测试</div><p>Route 在 prepare 后被替换，旧 prepared call 仍由旧 Adapter 和旧 retry policy 服务；新的 registry lookup 才看到新 registration。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/llm/llm/tests/service.spec.ts#L227-L257" title="Prepared call 固定旧 route 与 retry policy 测试: 测试在 route replacement 后 dispatch 已准备调用，确认旧 adapter 与旧 policy 继续服务，而 registry 已暴露新 policy。" aria-label="证据 LLM-PREPARED-PIN-TEST">LLM-PREPARED-PIN-TEST</a></p></div>
+  <aside class="caveat"><strong>边界：</strong>这里没有内建 provider failover、fallback model list、hedged request 或 circuit breaker。<code>agent/request</code> 与 <code>llm/stream</code> waterfall 可以实现显式策略，但 route replacement 本身是配置热更新，不是失败切换。</aside>
+</section>
+
+<section>
+  <h2>4. BlockAssembler 是成功响应的唯一语义折叠器</h2>
+  <div class="claim fact"><div class="claim-label">组装规则</div><p>Assembler 以 block index 维护插入顺序，支持没有 start/end 的 delta-only Adapter，也允许 reasoning、text 与多个 tool call 交错。第一次 <code>block-end</code> 成为权威完整 block；随后同 index 的 delta 或再次 close 被忽略。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/llm/llm/src/assembler.ts#L25-L163" title="Chunk 到 assistant message 的规范组装器: 支持交错 index 与 delta-only 协议，首次 block-end 胜出；max-token 时丢弃不安全 tool call，并把 usage、finish、replay state 汇入最终消息。" aria-label="证据 LLM-BLOCK-ASSEMBLER">LLM-BLOCK-ASSEMBLER</a></p></div>
+  <ul class="audit-list">
+    <li>没有显式 finish 时 accessor 默认 <code>stop</code>；生产 Adapter 应自己保证 terminal protocol。</li>
+    <li>未闭合的 text/reasoning/tool-call 可从 delta 合成；未知未闭合 block type 会失败。</li>
+    <li><code>max-tokens</code> 时所有 tool-call block 被过滤，避免执行截断的 JSON 参数。</li>
+    <li>Usage 采用最后一个 usage chunk；replay state 来自 terminal finish。</li>
+    <li>Raw chunks 已先进入 Session Log，因此语义消息不是唯一可观测层。</li>
+  </ul>
+  <div class="claim assessment"><div class="claim-label">设计评价</div><p>这是一处重要的“单一折叠算法”选择：Provider Adapter 负责发事实，Agent Loop 不各写一套拼接逻辑。代价是协议容忍 malformed stream 的若干分支；它优先保持已关闭 block 与已展示流一致，而不是对每种违规都 fail-fast。</p></div>
+</section>
+
+<section>
+  <h2>5. DeepSeek 直连 Adapter：窄协议、宽 model passthrough</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>面</th><th>真实行为</th><th>边界/后果</th></tr></thead>
+    <tbody>
+      <tr><td>Route</td><td>固定 <code>deepseek-official</code></td><td>默认 catalog 是 V4 Flash/Pro，但未知 model ID 仍原样直通</td></tr>
+      <tr><td>Capability</td><td>默认 1,000,000 context、256,000 output、text-only</td><td>Catalog 是 discovery/advisory，不是 allowlist <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/llm/llm-deepseek/src/adapter.ts#L88-L211" title="DeepSeek model capability 与默认值: 默认 1M context、256K output、text-only；catalog 外 model 仍可直通；deployment thinking policy 决定 off/high/max 能力与默认 effort。" aria-label="证据 LLM-DEEPSEEK-MODELS">LLM-DEEPSEEK-MODELS</a></td></tr>
+      <tr><td>Thinking</td><td>off/high/max；一般默认 high；deployment disabled 时只允许 off</td><td><code>session-title</code> 无条件关闭 thinking</td></tr>
+      <tr><td>Configuration</td><td>每次 request 解析 endpoint、credential 和 last-good snapshot</td><td>坏的 live settings 不替换上一份可服务配置 <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/llm/llm-deepseek/src/index.ts#L149-L275" title="DeepSeek 配置解析、last-good 与 route 注册: 配置显式解析并验证；动态坏快照保留 last-good；凭据每次 request 解析；唯一 deepseek-official route 的 retry policy 变化用原子 replace 刷新。" aria-label="证据 LLM-DEEPSEEK-CONFIG">LLM-DEEPSEEK-CONFIG</a></td></tr>
+      <tr><td>Transport</td><td>原生 <code>fetch</code> POST <code>/chat/completions</code> + SSE</td><td>发送 attribution、匿名 user ID、session ID；compaction 有单独 header <a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/llm/llm-deepseek/src/adapter.ts#L214-L345" title="DeepSeek request snapshot、HTTP 与 SSE 边界: 每次 stream 固定 connection/key，发送 attribution、匿名 user/session/compaction header；状态、Retry-After 与 request id 进入结构化错误，idle timeout 与 transport 分型。" aria-label="证据 LLM-DEEPSEEK-TRANSPORT">LLM-DEEPSEEK-TRANSPORT</a></td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Wire 投影</div><p>System 成为首条 wire message；user text 连接；内部 user-role tool-result 被展开成独立 <code>role: tool</code>。Assistant 的 text 与 tool calls 原序投影，但 <code>reasoning_content</code> 只在 tool-call turn 回传；plain-turn reasoning 仍在 durable internal message 中，却不进入后续 DeepSeek wire history。Image 在任何 text flattening 前显式拒绝。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/llm/llm-deepseek/src/serialize.ts#L25-L186" title="内部消息到 DeepSeek chat-completions 的投影: 拒绝 image，把 tool-result user message 展开成 role=tool；tool-call turn 才回传 reasoning_content，session title 强制关闭 thinking，始终请求 streaming usage。" aria-label="证据 LLM-DEEPSEEK-SERIALIZE">LLM-DEEPSEEK-SERIALIZE</a></p></div>
+  <div class="claim fact"><div class="claim-label">SSE 翻译</div><p>Translator 在收到字面量 <code>[DONE]</code> 时才关闭所有 block、发最后 usage 和 finish。坏 JSON 为 <code>MALFORMED_RESPONSE</code>，无 DONE 为 <code>STREAM_CLOSED</code>，没有任何 content 的正常 stop 为 <code>EMPTY_RESPONSE</code>。DeepSeek 的 prompt total 包含 cache hit，Adapter 会扣除 hit 形成互斥 input bucket。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/llm/llm-deepseek/src/translate.ts#L26-L184" title="DeepSeek SSE 到内部 chunk 的有状态翻译: 按 reasoning/text/tool index 组块，延迟 block-end、usage 与 finish 到 DONE；cache hit 从 prompt total 中扣除，空 stop、坏 JSON 与无 DONE 分别失败。" aria-label="证据 LLM-DEEPSEEK-TRANSLATE">LLM-DEEPSEEK-TRANSLATE</a></p></div>
+</section>
+
+<section>
+  <h2>6. Pi AI Adapter：宽 Provider 面、严格 exact-model 面</h2>
+  <div class="claim fact"><div class="claim-label">两种 provider 构造</div><p>已安装 catalog 的 route 且未覆盖 wire API 时，Harness 复用原 pi-ai Provider，保留其 native API implementation 与 ambient auth。手工 route 或显式 protocol override 只允许 <code>openai-completions</code>、<code>openai-responses</code>、<code>anthropic-messages</code>；Bedrock、Vertex、Azure 与 OAuth-only 路径因当前配置形状无法完整表达而不伪装支持。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/llm/llm-pi-ai/src/provider.ts#L35-L191" title="Pi AI catalog reuse 与手工协议表: Catalog route 保留原 provider 的 API/auth；手工 route 只支持 openai-completions、openai-responses 与 anthropic-messages，并按配置构建。" aria-label="证据 LLM-PI-PROVIDER">LLM-PI-PROVIDER</a></p></div>
+  <div class="claim fact"><div class="claim-label">动态 profile</div><p>Plugin 默认没有任何 route。每个配置 profile 自己拥有 model catalog/override、endpoint、credential reference、reasoning mapping、thinking budget、cache retention、SSE/WebSocket transport、timeout、header 与 retry policy。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/llm/llm-pi-ai/src/config.ts#L34-L178" title="Pi AI 多 provider profile 配置形状: 默认 routes 为空；每个 profile 拥有 credential、endpoint、model catalog/override、reasoning、cache retention、transport、timeout、header 与 retry policy。" aria-label="证据 LLM-PI-CONFIG">LLM-PI-CONFIG</a></p></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>调用行为</th><th>Pi AI 路径</th><th>与直连 DeepSeek 的差异</th></tr></thead>
+    <tbody>
+      <tr><td>Model resolution</td><td>必须在当前 profile 精确存在；未知 model 在 I/O 前失败</td><td>DeepSeek 未列出的 ID 仍 passthrough</td></tr>
+      <tr><td>Stop sequences</td><td>显式不支持</td><td>DeepSeek 直接写 wire <code>stop</code></td></tr>
+      <tr><td>Image</td><td>Model 声明 image 且 durable attachment service 存在才接纳</td><td>DeepSeek 路径总是 text-only</td></tr>
+      <tr><td>Retries</td><td>传给 SDK 的 <code>maxRetries: 0</code></td><td>两条路径都把可见 attempt 交给 Agent recovery</td></tr>
+      <tr><td>Reasoning</td><td>按 exact model 枚举，非法 effort 拒绝，不让 SDK clamp</td><td>DeepSeek 固定 off/high/max</td></tr>
+      <tr><td>Error detail</td><td>上游库丢失 Error/cause 后以 message regex 分类</td><td>直连路径可保留 HTTP status、Retry-After 与 request ID</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">每次 stream snapshot</div><p>Pi Adapter 在第一次 await 前固定 profile、model collection 和 descriptor，再解析 credential；中途配置更新不会改变已开始请求，下次调用看到新 snapshot。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/llm/llm-pi-ai/src/adapter.ts#L217-L357" title="Pi AI exact-model 与 stream snapshot 边界: 未知 model 在 I/O 前失败；stop 不支持；一次调用固定 profile/model/credential，SDK retries 为零；image 需 model capability 与 durable attachment service。" aria-label="证据 LLM-PI-STREAM">LLM-PI-STREAM</a></p></div>
+</section>
+
+<section>
+  <h2>7. “Replay”有两层，不能混为一谈</h2>
+  <div class="claim fact"><div class="claim-label">Provider-native replay metadata</div><p>Pi AI 的 text、reasoning 和 tool-call 内容仍以 Harness Message 为权威；<code>PiAiReplayState v1</code> 只持久化 API、source provider/model、response identity、stop reason 与各 block signature。恢复时先验证 kind/version，再验证 source 和每个 block 的数量、类型及 metadata。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/llm/llm-pi-ai/src/replay.ts#L15-L215" title="Pi AI 的版本化 adapter-private replay state: Durable content 保持权威，versioned state 只保存 API、响应 identity、stop reason 与 provider signature；读回时逐字段和逐 block 验证。" aria-label="证据 LLM-PI-REPLAY">LLM-PI-REPLAY</a></p></div>
+  <p><code>LlmRuntime</code> 只在历史 provider 与目标 provider 当前由同一个 Adapter instance 拥有时保留这份 private state；否则剥离 state，以普通“foreign assistant”重建。这防止一个 Adapter 读取另一个 Adapter 的私有协议数据。</p>
+  <div class="claim fact"><div class="claim-label">Keyless test replay</div><p><code>dsh-llm-replay</code> 是测试/快照 Adapter，不是生产会话恢复机制。它从 <code>assistant/chunk</code> 的每个 finish 派生一次 provider call；同一 Turn/Step 内的 retry 被切成多条 script entry。Thrown stream 与 hang 无法仅凭成功日志还原，必须提供 sidecar override。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/test-support/llm-replay/src/index.ts#L193-L260" title="Keyless 测试 replay script 的日志派生: 以每个 finish 切分 assistant chunks，同一 turn/step 可包含多次 retry call；抛错或挂起无法仅凭日志派生，必须用显式 sidecar。" aria-label="证据 LLM-REPLAY-DERIVATION">LLM-REPLAY-DERIVATION</a></p></div>
+  <div class="claim assessment"><div class="claim-label">边界结论</div><p>会话 replay 重建“下一次请求”；Adapter replay state 恢复“历史响应的 provider-native metadata”；测试 replay 重放“预录的 chunk 流”。三者解决不同问题。</p></div>
+</section>
+
+<section>
+  <h2>8. Retry 是同一 Step 的另一次 Provider attempt</h2>
+  <div class="claim fact"><div class="claim-label">真实 loop</div><p><code>step()</code> 的 <code>while (true)</code> 包住 build request、stream 与 request-error waterfall。失败得到 <code>{kind:'retry'}</code> 后直接 <code>continue</code>，没有关闭 Step 或 Turn；下一 attempt 重新 derive messages 和 build request，但复用该 Step 的 prompt assembly。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/agent.ts#L332-L370" title="同一 step 内 retry 不重新组装 prompt: System 在 retry loop 外从 assembly 渲染；每次 provider retry 重新 build request 与 derive messages，但复用该 step 的 assembly 与 tool schema。" aria-label="证据 PROMPT-RETRY-BOUNDARY">PROMPT-RETRY-BOUNDARY</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/llm/llm-retry/tests/retry.spec.ts#L175-L224" title="Retry 保持同一 Turn/Step 的测试: 测试让第一次 provider attempt 失败、第二次成功，只存在一个 turn/start 与一个 step/start，而 adapter 收到两次请求。" aria-label="证据 LLM-RETRY-SAME-STEP-TEST">LLM-RETRY-SAME-STEP-TEST</a></p></div>
+  <div class="claim fact"><div class="claim-label">Policy executor</div><p>Normal mode 默认最多两次 retry，只覆盖 <code>EMPTY_RESPONSE</code>、<code>RATE_LIMIT</code>、<code>SERVER</code>、<code>TIMEOUT</code>、<code>TRANSPORT</code>；本地延迟从 500ms 指数增长至 10s，带 10% 对称 jitter。Always mode 对所有 request failure 无限尝试，直到成功、取消或 plugin disposal。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/llm/llm/src/retry-policy.ts#L14-L191" title="Provider-owned retry policy 默认值与校验: Normal 默认两次，覆盖 EMPTY_RESPONSE、RATE_LIMIT、SERVER、TIMEOUT、TRANSPORT，500ms 到 10s 指数退避和 10% jitter；always 无次数上限。" aria-label="证据 LLM-RETRY-POLICY">LLM-RETRY-POLICY</a></p></div>
+  <div class="claim fact"><div class="claim-label">耐久调度</div><p>Plugin 先 append 包含 policy key、失败、retry number 和 delay 的 <code>llm/retry</code>，再进行可取消等待；等待结束后 append <code>llm/retry-started</code>，才把 retry action 交回 Loop。Provider Retry-After 只有不超过 cap 才直接采用。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/llm/llm-retry/src/index.ts#L111-L225" title="耐久 retry 调度与可取消 backoff: 先写 llm/retry 再等待，等待结束写 llm/retry-started 才返回 retry；Retry-After 超 cap 时 normal 委派、always 回退本地延迟；disposal abort 并 drain。" aria-label="证据 LLM-RETRY-EXECUTOR">LLM-RETRY-EXECUTOR</a></p></div>
+  <div class="claim fact"><div class="claim-label">Wire 测试合同</div><p>真实 mock HTTP 测试要求失败与成功 attempt 的 body 完全相同；失败 partial chunks 仍在 raw log，但不进入 surface，最终只提交一个 assistant message。干净 EOF 分类为 <code>STREAM_CLOSED</code>，当前默认 policy 不重试它。依赖未安装，本研究只审阅了测试源码。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/llm/llm-retry/tests/transport-recovery.spec.ts#L112-L198" title="真实 wire retry 的相同 body 与 partial chunk 语义: 测试期望失败与成功 attempt 的 request body 相同，失败 chunks 留在非 surface 日志，最终只提交一个 assistant message；STREAM_CLOSED 默认不 retry。" aria-label="证据 LLM-RETRY-WIRE-TEST">LLM-RETRY-WIRE-TEST</a></p></div>
+</section>
+
+<section>
+  <h2>9. 上游 Retry 文档已经与实现漂移</h2>
+  <div class="claim assessment"><div class="claim-label">确认的文档/源码冲突</div><p><code>llm-retry</code> README 写着“每次 retry 打开新编号 Turn”“Loop 关闭 failed Turn 后再开 retry Turn”，并把 Agent Turn 称为唯一 retry boundary；当前生产源码和两套测试都证明 attempt 共享同一 turn/step。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/llm/llm-retry/README.md#L1-L53" title="Retry README 与当前 loop 的边界漂移: README 多处称 retry 会关闭旧 Turn 并开启新编号 Turn；生产源码和测试实际在同一 while loop、同一 turn/step 内 continue。" aria-label="证据 LLM-RETRY-DOC-DRIFT">LLM-RETRY-DOC-DRIFT</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/tests/request-error.spec.ts#L30-L141" title="Request error recovery 边界测试: 中间件失败不进入 recovery；provider failure 可在同一步多次 retry；取消优先于 retry；recovery listener 失败使 turn error。" aria-label="证据 LOOP-REQUEST-ERROR-TEST">LOOP-REQUEST-ERROR-TEST</a></p></div>
+  <p>这不是措辞小错。它影响事件解释、UI grouping、成本归因、replay script 分段和所有以 <code>(turn, step)</code> 当作 request identity 的 projection。分析和下游实现必须以当前 loop 与测试为准，而不是复制 README 的“新 Turn”叙事。</p>
+</section>
+
+<section>
+  <h2>10. Error normalization 只包住 Adapter-owned failure</h2>
+  <div class="claim fact"><div class="claim-label">精确边界</div><p>Provider route 选择、Adapter <code>stream()</code> 调用、iterator 构造和 <code>next()</code> 抛错都会变成一个 terminal <code>finish {error|aborted, failure}</code>。Failure 是可序列化快照，可保留 Harness-owned code、HTTP status、provider delay 和 request ID。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/llm/llm/src/index.ts#L838-L938" title="Adapter failure 的归一化边界: Selection、dispatch、iterator 构造和 iteration failure 变成 terminal failure chunk；middleware、consumer 与 cleanup failure 保持 throw。" aria-label="证据 LLM-FAILURE-BOUNDARY">LLM-FAILURE-BOUNDARY</a></p></div>
+  <ul class="audit-list">
+    <li><code>llm/stream</code> middleware 自己抛错：继续 throw，不伪装成 Provider failure。</li>
+    <li>下游 consumer 在 yield 后抛错：继续 throw。</li>
+    <li>Consumer 提前关闭时 Adapter iterator 的 cleanup failure：继续 throw。</li>
+    <li>Adapter 抛任意非 Error 值：归一为 <code>UNKNOWN</code>，不让 hostile coercion 逃出。</li>
+    <li>AbortSignal 已取消或 failure code 为 ABORTED：terminal reason 为 aborted。</li>
+  </ul>
+  <div class="claim assessment"><div class="claim-label">设计评价</div><p>该区分保留责任归属：Provider/transport failure 可以进入统一 retry policy；插件 bug、consumer bug 与 cleanup bug 不能被自动重试吞掉。Pi AI 因上游 flatten Error 而只能用文本分类，是 capability 退化，不是核心协议的要求。</p></div>
+</section>
+
+<section>
+  <h2>11. Token、cache 与一个高置信度计费缺口</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>来源</th><th>映射</th><th>保真边界</th></tr></thead>
+    <tbody>
+      <tr><td>DeepSeek</td><td><code>input = prompt_tokens - cache_hit</code>；output 原样；可带 reasoning</td><td>没有 cache-write 字段；reasoning 是 output 的子维度，不另加总</td></tr>
+      <tr><td>Pi AI</td><td>input/output/cacheRead/cacheWrite 映射；零 cache bucket 省略</td><td>pi-ai 已把 reasoning 计入 output，不再单独上报</td></tr>
+      <tr><td>Harness projection</td><td>累计 uncached input、output、cache read/write</td><td>以最新同 turn/step sample 替换前 sample</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">原设计意图</div><p>Usage chunk 会早于最终 message；成功时 message 又携带同一 usage。因此 projection 用 <code>(turn, step)</code> 识别“同一次调用”的早期与最终样本，扣掉旧值再加入新值，避免双计。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/llm/token-meter/src/usage-projection.ts#L97-L140" title="按 Turn/Step last-sample-replaces 的 usage 投影: Projection 只保留一个 last sample；同一 turn/step 的后续 usage 会从 totals 扣掉前样本再替换，设计目标是避免 chunk 与 final message 双计。" aria-label="证据 LLM-TOKEN-USAGE-PROJECTION">LLM-TOKEN-USAGE-PROJECTION</a></p></div>
+  <div class="claim assessment"><div class="claim-label">源码推导的缺陷</div><p>Retry 让多个 Provider attempt 共享同一 <code>(turn, step)</code>，而 replay 测试明确把这些 attempt 当作多个 call。若失败 attempt 已发 usage，成功 attempt 的 usage 会替换而非累加它；累计投影因此低估真实 Provider 消耗。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/test-support/llm-replay/tests/llm-replay.spec.ts#L119-L132" title="同一 Turn/Step 多次 provider attempt 的 replay 测试: 测试明确把共享 turn/step 的失败与成功 chunk 流按各自 finish 切成两个 provider call，证明 attempt identity 不能只用 turn/step 表示。" aria-label="证据 LLM-MULTI-ATTEMPT-REPLAY-TEST">LLM-MULTI-ATTEMPT-REPLAY-TEST</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/llm/llm-retry/tests/retry.spec.ts#L175-L224" title="Retry 保持同一 Turn/Step 的测试: 测试让第一次 provider attempt 失败、第二次成功，只存在一个 turn/start 与一个 step/start，而 adapter 收到两次请求。" aria-label="证据 LLM-RETRY-SAME-STEP-TEST">LLM-RETRY-SAME-STEP-TEST</a></p></div>
+  <aside class="caveat"><strong>证据等级：</strong>这是由生产 fold 与 retry identity 直接推出的高置信度设计缺口，但本研究未安装依赖，未执行专门复现。它只在失败 attempt 实际产生 usage 时触发；没有 usage 的网络失败不受此分支影响。正确修复需要显式 attempt identity，或只把同一 attempt 的 chunk/final sample 做 replacement。</aside>
+</section>
+
+<section>
+  <h2>12. Prepared registration 并未固定 Adapter 的动态配置代际</h2>
+  <div class="claim inference"><div class="claim-label">源码推导的竞态窗口</div><p><code>prepareCall()</code> 固定 Adapter registration 与 resolved model config；随后 checkpoint 可能异步 flush；真正开始迭代时，DeepSeek Adapter 再调用 <code>options()</code>，Pi Adapter 再调用 <code>current()</code>。若 settings 恰在两者之间更新，日志中的 model defaults/context 可能来自代际 A，而 endpoint、profile 或 credential 来自代际 B。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/llm/llm/src/index.ts#L771-L814" title="Registration-bound 的一次性 PreparedLlmCall: prepareCall 固定 resolved config、model context、adapter defaults 与 retry policy；stream 只能一次且拒绝 dispatch 前 config drift。" aria-label="证据 LLM-PREPARED-CALL">LLM-PREPARED-CALL</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/session/session-checkpoint-policy/src/index.ts#L20-L82" title="Adapter dispatch 前的 durable checkpoint: llm/stream waterfall 在创建下游 adapter stream 前 flush 完整 request prefix；flush 失败时 fail-closed，不发生 model I/O。" aria-label="证据 LLM-CHECKPOINT-BARRIER">LLM-CHECKPOINT-BARRIER</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/llm/llm-deepseek/src/adapter.ts#L214-L345" title="DeepSeek request snapshot、HTTP 与 SSE 边界: 每次 stream 固定 connection/key，发送 attribution、匿名 user/session/compaction header；状态、Retry-After 与 request id 进入结构化错误，idle timeout 与 transport 分型。" aria-label="证据 LLM-DEEPSEEK-TRANSPORT">LLM-DEEPSEEK-TRANSPORT</a><a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/llm/llm-pi-ai/src/adapter.ts#L217-L357" title="Pi AI exact-model 与 stream snapshot 边界: 未知 model 在 I/O 前失败；stop 不支持；一次调用固定 profile/model/credential，SDK retries 为零；image 需 model capability 与 durable attachment service。" aria-label="证据 LLM-PI-STREAM">LLM-PI-STREAM</a></p></div>
+  <p>现有 Pi snapshot 测试覆盖的是 <em>Adapter stream 已开始</em> 后，credential await 期间发生更新；它证明开始后的 snapshot 稳定，却没有覆盖 prepare 与首次 iterator 之间的窗口。更进一步，Loop reconstruction invariant 比较 model/system/temperature/maxTokens/stop/tools/messages，但没有比较 provider 或 reasoningEffort。<a class="evidence" href="https://github.com/deepseek-ai/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/core/agent-loop/src/invariant.ts#L35-L55" title="Request reconstruction invariant 的字段覆盖: Invariant 比较 messages、model、system、temperature、maxTokens、stop 与 tools，但没有比较 provider 或 reasoningEffort。" aria-label="证据 LLM-REQUEST-INVARIANT-SCOPE">LLM-REQUEST-INVARIANT-SCOPE</a></p>
+  <aside class="caveat"><strong>证据等级：</strong>这是未执行的 source-level race hypothesis，不应写成已观察事故。最直接的封闭方案是让 PreparedLlmCall 同时携带 Adapter 自己的 immutable request snapshot，或让 resolve 与 stream 接受同一个 generation token。</aside>
+</section>
+
+<section>
+  <h2>13. 两条生产 Adapter 的能力矩阵</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>维度</th><th>DeepSeek direct</th><th>Pi AI</th><th>架构含义</th></tr></thead>
+    <tbody>
+      <tr><td>Provider breadth</td><td>一个官方 route</td><td>多 profile、多 catalog provider</td><td>窄而保真 vs 宽而受上游抽象约束</td></tr>
+      <tr><td>Wire control</td><td>完整 fetch/SSE ownership</td><td>委托 pi-ai provider APIs</td><td>直连能保留更多错误与 header 事实</td></tr>
+      <tr><td>Model admission</td><td>Catalog 外 passthrough</td><td>Exact catalog membership</td><td>Forward compatibility vs 配置闭包</td></tr>
+      <tr><td>Images</td><td>拒绝</td><td>按 capability + attachment store</td><td>Durable binary ownership是额外依赖</td></tr>
+      <tr><td>Reasoning</td><td>固定 off/high/max</td><td>每 model 映射</td><td>Provider-neutral ID 仍需要 Adapter 验证</td></tr>
+      <tr><td>History fidelity</td><td>Tool turn passback；plain reasoning 不回传</td><td>版本化 signatures/replay metadata</td><td>同一内部 Message 可有不同 wire 保真度</td></tr>
+      <tr><td>Usage</td><td>含 cache read 与可选 reasoning</td><td>含 cache read/write，reasoning folded</td><td>统一 bucket 不意味着源数据同等丰富</td></tr>
+      <tr><td>Retry</td><td colspan="2">Adapter 每次只尝试一次；Agent recovery 拥有可见 retry</td><td>统一成本、事件和取消边界</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>14. 优势、代价与当前未知</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>选择</th><th>收益</th><th>代价/未知</th></tr></thead>
+    <tbody>
+      <tr><td>Provider-neutral immutable messages</td><td>日志、UI、replay 与 request 共用事实</td><td>每个新 block 必须跨所有消费者落地</td></tr>
+      <tr><td>Raw chunks + semantic message 双层日志</td><td>兼顾流式观察与最终语义</td><td>Projection 必须正确识别 attempt 与 replacement</td></tr>
+      <tr><td>Prepared one-shot call</td><td>防 registration HMR 与 request config drift</td><td>尚未封闭 Adapter-internal config generation</td></tr>
+      <tr><td>Retry 位于 Agent Loop</td><td>失败 attempt、等待、取消和成本可记录</td><td>Always mode可无限消耗；同 Step identity 已暴露计费缺口</td></tr>
+      <tr><td>Direct + library-backed 双 Adapter</td><td>同时拥有一条高保真路径和广覆盖路径</td><td>错误细节、reasoning、usage、stop/image capability 不对称</td></tr>
+      <tr><td>没有隐式 failover</td><td>Provider 切换不会悄悄改变语义或成本</td><td>需要部署显式组合自己的 fallback policy</td></tr>
+    </tbody>
+  </table></div>
+  <ul class="audit-list">
+    <li>尚未验证安装版 pi-ai 0.82.1 的完整内置 provider/model catalog；依赖目录缺失。</li>
+    <li>尚未用真实 API 比较 DeepSeek 与 Pi 路径在同一 model 上的 reasoning/cache/error fidelity。</li>
+    <li>尚未证明 dynamic-config generation window 能在真实 settings HMR 时稳定复现。</li>
+    <li>尚未有自动 provider failover 的标准事件、幂等或成本协议。</li>
+    <li>上游 Retry 文档需要以同 Step attempt 语义修正。</li>
+  </ul>
+  <div class="claim fact"><div class="claim-label">验证状态</div><p>本章逐段审阅了生产源码、类型与测试源码，并把测试结论明确标为“测试定义的合同”。仓库没有安装依赖，本研究没有执行上游测试，也没有把 source inference 冒充运行时观察。</p></div>
+</section>
+<section class="learning-notes" aria-labelledby="learning-notes-title"><h2 id="learning-notes-title">我的学习体会</h2>
     <p class="privacy">内容仅自动保存到当前浏览器，不上传、不进入仓库。你可以导出 Markdown 自行归档。</p><textarea data-learning-notes aria-label="我的学习体会" placeholder="记录你的理解、疑问、反例和可迁移原则……"></textarea>
     <div class="note-footer"><span data-note-saved>本地草稿</span><button type="button" data-note-export>导出 Markdown</button>
     <button type="button" class="danger" data-note-clear>清空</button><span data-note-count>0 字符</span></div></section><nav class="pagination" aria-label="章节翻页"><a href="../pages/prompt-context.html"><small>← 上一章 · 07</small><strong>提示词组装与上下文注入</strong></a><a class="next" href="../pages/session-event-model.html"><small>下一章 · 09 →</small><strong>内部会话结构与事件模型</strong></a></nav></article>
