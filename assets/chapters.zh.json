@@ -113,7 +113,7 @@
     "part": "会话与持久化",
     "title": "Projection、Checkpoint 与冷启动",
     "subtitle": "全量事件之外，系统保存了哪些可丢弃的加速状态",
-    "status": "queued",
+    "status": "verified",
     "text": "研究队列 本章尚未进入结论状态 当前范围: 区分语义 checkpoint、projection cache、watermark、write-behind、tail replay 和恢复门槛。 页面已经纳入全量研究地图，但尚未完成源码控制流复核。以下是升级为“已复核”之前必须覆盖的检查面： 实际 bundle / profile 装配入口 公开类型、事件与配置 schema 正常控制流与状态突变时机 并发、scope、所有权与 cleanup 错误、取消、重试和降级分支 持久化、projection 与 replay 语义 生产路径测试与运行时不变量 优势、代价、限制与待验证问题"
   },
   {
