@@ -1,31 +1,108 @@
 <section>
-  <h2>Correcting the first scale illusion</h2>
-  <p>The root architecture diagram shows only dozens of central services, but the pinned <code>packages/</code> tree contains <strong>49 groups and 219 npm workspace packages</strong>. They are not 219 peer “business modules.” Some declare services, some implement providers, some expose capabilities only as model tools, and many are host/client/UI surfaces, composition bundles, test support, or zero-dependency utilities.</p>
-  <div class="claim fact"><div class="claim-label">Source fact</div><p>The official package map requires extension plugins to depend on Service Definitions instead of concrete providers. A capability splits into packages when definitions, providers, and consumers need to evolve independently, and UI, hooks, and tools depend on the abstract agent service rather than a concrete loop. <evidence id="PKG-HIERARCHY"></evidence></p></div>
-  <div class="claim inference"><div class="claim-label">Mechanism-level deduction</div><p>DeepSeek Harness cannot be understood by reading directories in isolation. The more effective unit is a capability closure: definition → one or more providers → model/host consumer → bundle assembly → session-event/UI projection → invariant and real-composition tests.</p></div>
+  <h2>Conclusion: 219 packages form capability closures, not 219 peer modules</h2>
+  <div class="thesis"><p>The pinned <code>packages/</code> tree contains 49 groups and 219 npm workspaces. The meaningful unit is rarely one directory: a capability normally spans its Service Definition, one or more providers, model/host consumers, bundle rows, durable projections, UI renderers, and invariant or composition tests.</p></div>
+  <p>The atlas below preserves every package instead of selecting only conspicuous runtime code. Its purpose is orientation: show where a capability is declared, who implements and consumes it, what it depends on internally, and which later chapter verifies its control flow.</p>
 </section>
 
 <section>
-  <h2>Six research planes</h2>
+  <h2>1. How the inventory was produced</h2>
+  <div class="claim fact"><div class="claim-label">Reproducible artifact</div><p><code>scripts/capture-package-inventory.mjs</code> first rejects an upstream checkout whose <code>HEAD</code> differs from the pinned commit. It then walks every <code>packages/&lt;group&gt;/&lt;leaf&gt;/package.json</code>, sorts groups and leaves, and records manifest identity, description, distribution flag, internal dsh dependencies, TypeScript/TSX source and test counts, README, invariant, bundle-patch, and <code>dsh</code> metadata.</p></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Captured field</th><th>What it proves</th><th>What it does not prove</th></tr></thead>
+    <tbody>
+      <tr><td>Manifest name / description</td><td>Upstream's declared package identity and intent at the baseline</td><td>That every sentence matches all current runtime branches</td></tr>
+      <tr><td><code>dependencies</code> + <code>peerDependencies</code></td><td>Declared direct edges to other dsh packages</td><td>Dynamic plugin references, event coupling, or reverse consumers</td></tr>
+      <tr><td>Source / test file counts</td><td>A deterministic inventory of files under <code>src</code> and <code>tests</code></td><td>Complexity, quality, coverage, or runtime weight</td></tr>
+      <tr><td><code>private</code> flag</td><td>Whether the package manifest blocks publication</td><td>That a corresponding npm version has actually been released</td></tr>
+      <tr><td>README / invariant / patch flags</td><td>Presence of those repository artifacts</td><td>Their semantic correctness without later source review</td></tr>
+    </tbody>
+  </table></div>
+  <aside class="caveat"><strong>Evidence boundary:</strong> this chapter verifies completeness and declared topology. Later chapters verify behavior by tracing production sources, tests, and runtime invariants. A manifest description is not promoted into a control-flow conclusion on its own.</aside>
+</section>
+
+<section>
+  <h2>2. Exact baseline totals</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Measure</th><th>Count</th><th>Interpretation</th></tr></thead>
+    <tbody>
+      <tr><td>Package groups</td><td>49</td><td>Ownership-oriented directory families, not runtime layers</td></tr>
+      <tr><td>Workspace packages</td><td>219</td><td>Every package manifest under the two-level package tree</td></tr>
+      <tr><td>TS / TSX source files</td><td>1,324</td><td>Files under package <code>src/</code> directories</td></tr>
+      <tr><td>TS / TSX test files</td><td>854</td><td>Files under package <code>tests/</code> directories</td></tr>
+      <tr><td>Packages with <code>src/invariant.ts</code></td><td>219</td><td>Complete structural coverage of the package-owned invariant convention</td></tr>
+      <tr><td>Packages with README</td><td>219</td><td>Every package exposes a local documentation entry point</td></tr>
+      <tr><td>Packages with <code>cordis.patch.yml</code></td><td>3</td><td>The base, headless, and Web product bundles own patch files</td></tr>
+      <tr><td>Manifests marked <code>private: true</code></td><td>0</td><td>All are structurally publishable; actual npm release state is outside this inventory</td></tr>
+      <tr><td>Packages with another internal dsh dependency</td><td>218</td><td>Only the invariant registry stands without a direct dsh-package dependency</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>3. Six research planes</h2>
   <div class="question-grid">
-    <article><h3>Product spine</h3><p><code>core</code>, <code>llm</code>, <code>session</code>, <code>context</code>, and <code>compaction</code> define how one Agent step actually happens.</p></article>
-    <article><h3>Execution world</h3><p><code>subprocess</code>, <code>shell</code>, <code>terminal</code>, <code>fs</code>, <code>sandbox</code>, <code>code-runtime</code>, <code>lsp</code>, <code>web</code>, and <code>e2b</code> ground tools in local or remote execution environments.</p></article>
-    <article><h3>Collaboration and orchestration</h3><p><code>interaction</code>, <code>plan</code>, <code>goal</code>, <code>todo</code>, <code>jobs</code>, <code>subagent</code>, <code>workflow</code>, <code>skill</code>, and <code>mcp</code> manage human-Agent and Agent-Agent coordination state.</p></article>
-    <article><h3>Composition and data</h3><p><code>boot</code>, <code>bundle</code>, <code>preset</code>, <code>settings</code>, <code>credentials</code>, <code>storage</code>, <code>workspace</code>, and <code>attachment</code> determine runtime trees and ownership of non-session data.</p></article>
-    <article><h3>Product surfaces</h3><p><code>api</code>, <code>typert</code>, <code>sdk</code>, <code>acp</code>, <code>host</code>, and <code>client</code> expose one runtime to the Web, stdio JSON-RPC, and automation protocols.</p></article>
-    <article><h3>Proof and support</h3><p><code>runtime-diagnostics</code>, <code>test-support</code>, <code>guard</code>, <code>session-query</code>, <code>feedback</code>, <code>util</code>, and <code>examples</code> supply invariants, test assemblies, diagnostics, and low-level primitives.</p></article>
+    <article><h3>Product spine</h3><p><code>core</code>, <code>llm</code>, <code>session</code>, <code>context</code>, and <code>compaction</code> define how a model request is assembled, executed, recorded, and reduced under pressure.</p></article>
+    <article><h3>Execution world</h3><p><code>subprocess</code>, <code>shell</code>, <code>terminal</code>, <code>fs</code>, <code>sandbox</code>, <code>code-runtime</code>, <code>lsp</code>, <code>web</code>, and <code>e2b</code> ground tools in local or remote environments.</p></article>
+    <article><h3>Collaboration and orchestration</h3><p><code>interaction</code>, <code>plan</code>, <code>goal</code>, <code>todo</code>, <code>jobs</code>, <code>subagent</code>, <code>workflow</code>, <code>skill</code>, and <code>mcp</code> own human-Agent and Agent-Agent coordination.</p></article>
+    <article><h3>Composition and data</h3><p><code>boot</code>, <code>bundle</code>, <code>preset</code>, <code>settings</code>, <code>credentials</code>, <code>storage</code>, <code>workspace</code>, and <code>attachment</code> determine trees and non-session data ownership.</p></article>
+    <article><h3>Product surfaces</h3><p><code>api</code>, <code>typert</code>, <code>sdk</code>, <code>acp</code>, <code>host</code>, and <code>client</code> expose one runtime to the browser, stdio JSON-RPC, SDKs, and automation protocols.</p></article>
+    <article><h3>Proof and support</h3><p><code>runtime-diagnostics</code>, <code>test-support</code>, <code>guard</code>, <code>session-query</code>, <code>feedback</code>, <code>util</code>, and <code>examples</code> supply invariants, real assemblies, diagnostics, and primitives.</p></article>
   </div>
-  <aside class="caveat"><strong>Classification note:</strong> these six planes are cross-sections introduced by this report, not an official upstream hierarchy. One package group may span several planes.</aside>
+  <aside class="caveat"><strong>Classification note:</strong> these planes are analytical cross-sections introduced by this report, not an upstream hierarchy. A group may span several planes; the dependency list in the full atlas is the check against oversimplification.</aside>
 </section>
 
 <section>
-  <h2>Why every package has an invariant</h2>
-  <div class="claim fact"><div class="claim-label">Repository policy</div><p>Every package must own <code>./invariant</code>: packages with runtime relationships register checkable event/data relations, while pure installation packages state a package-specific reason for an empty check. Registry contributions also require disposal tests proving that a contribution disappears when its fiber unmounts. <evidence id="PKG-INVARIANTS"></evidence></p></div>
-  <div class="claim assessment"><div class="claim-label">Design assessment</div><p>This directly addresses a common weakness of plugin architecture. Type checking proves local package interfaces, not that the final composition mounted exactly one provider, consumer, and coherent event relationship. Per-package invariants move part of “still correct after composition” into the runtime. The cost is additional installer and relationship-assertion maintenance across 219 packages.</p></div>
+  <h2>4. Where package count is concentrated</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Group</th><th>Packages</th><th>Source files</th><th>Test files</th><th>What the concentration signals</th></tr></thead>
+    <tbody>
+      <tr><td><code>client</code></td><td>39</td><td>501</td><td>244</td><td>The browser surface is decomposed into host bridges, conversation nodes, renderers, settings, and feature plugins rather than one SPA package</td></tr>
+      <tr><td><code>session</code></td><td>13</td><td>45</td><td>33</td><td>Persistence, queries, projection cache, telemetry, titles, forms, and domain data remain separate consumers of the event model</td></tr>
+      <tr><td><code>subagent</code></td><td>11</td><td>46</td><td>43</td><td>One seam supports several backends and exposes orchestration through distinct tools and host services</td></tr>
+      <tr><td><code>shell</code></td><td>9</td><td>27</td><td>21</td><td>Definition, executors, local/PowerShell providers, policies, prompts, and tool consumers are intentionally split</td></tr>
+      <tr><td><code>core</code></td><td>8</td><td>44</td><td>60</td><td>The central runtime remains a small definition/driver spine compared with its extension and UI surfaces</td></tr>
+      <tr><td><code>host</code></td><td>8</td><td>65</td><td>34</td><td>Server-side product features sit above the Agent service rather than inside the Loop</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">Design assessment</div><p>Package count follows independently evolving roles more than algorithmic complexity. The 39-package client group dominates file count, while the eight-package core group carries the execution spine. This supports the declared goal that product behavior and presentation attach around a relatively stable Loop—but it also makes package discovery and generated maps essential.</p></div>
 </section>
 
 <section>
-  <h2>Complete package inventory at the pinned baseline</h2>
-  <p>The data below is generated by reading every <code>packages/*/*/package.json</code> and file tree at the pinned commit. Counts include only TypeScript/TSX source and test files inside packages; file counts are not treated as complexity metrics. Descriptions come from upstream manifests and will be verified against production control flow in later module chapters.</p>
+  <h2>5. Dependency direction: read capability closures</h2>
+  <div class="claim fact"><div class="claim-label">Official package policy</div><p>Extension plugins depend on Service Definitions rather than concrete providers. UI, hook, and tool packages consume the abstract Agent service instead of importing the default Agent Loop; definitions, providers, and consumers split when they evolve independently. <evidence id="PKG-HIERARCHY"></evidence></p></div>
+  <p>Use the following sequence when tracing any feature:</p>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>Find the definition</h3><p>Locate the service key, public interface, event map, configuration schema, and branded identifiers.</p></div>
+    <div><span>2</span><h3>Enumerate providers</h3><p>Do not stop at the default. Check local, remote, platform-specific, replay, and test providers separately.</p></div>
+    <div><span>3</span><h3>Enumerate consumers</h3><p>Model tools, host RPCs, UI plugins, workflow engines, and other services can exercise different portions of the same definition.</p></div>
+    <div><span>4</span><h3>Find composition</h3><p>Verify which bundle or Agent preset mounts each role and in which scope.</p></div>
+    <div><span>5</span><h3>Find durable/UI projections</h3><p>Trace the events, persistence, replay, and renderer that make an outcome observable.</p></div>
+    <div><span>6</span><h3>Find proof</h3><p>Read the package invariant, HMR-disposal test, production composition test, and any keyless transcript snapshot.</p></div>
+  </div>
+  <div class="claim inference"><div class="claim-label">Mechanism-level deduction</div><p>A direct dependency graph is necessary but insufficient. Event declaration merging, service lookup by key, configuration rows, and dynamic registration add edges that do not appear as ordinary imports. The atlas therefore exposes declared internal dependencies while later chapters reconstruct the semantic graph from producers, consumers, and commit points.</p></div>
+</section>
+
+<section>
+  <h2>6. Why all 219 packages carry an invariant companion</h2>
+  <div class="claim fact"><div class="claim-label">Repository policy</div><p>Every package owns <code>./invariant</code>. Packages with a runtime relationship register an event/data check; packages without one must give a package-specific explanation. Registry contributions also prove disposal when their owning fiber unmounts. <evidence id="PKG-INVARIANTS"></evidence><evidence id="DESIGN-INVARIANT-REGISTRY"></evidence></p></div>
+  <div class="claim assessment"><div class="claim-label">Design assessment</div><p>This convention answers a specific weakness of plugin architectures: local type checking cannot prove that a complete tree mounted coherent providers, identities, event order, and projections. The benefit is package-attributed runtime evidence. The cost is 219 companion entry points whose assertions must continue to represent owned relationships rather than devolve into presence checks.</p></div>
+</section>
+
+<section>
+  <h2>7. Complete package inventory at the pinned baseline</h2>
+  <p>Expand any group below. Every row links to that package at the exact upstream commit, shows its manifest description, direct internal dsh dependencies, source/test file counts, publication flag, and bundle-patch flag. Dependency names link directly to their target packages, making the table a navigable declared graph rather than a flat directory list.</p>
   <package-atlas></package-atlas>
+</section>
+
+<section>
+  <h2>Chapter verification checklist</h2>
+  <ul class="audit-list">
+    <li>Re-ran the inventory only after verifying upstream <code>HEAD</code> equals the pinned baseline.</li>
+    <li>Enumerated every two-level package manifest: 49 groups and 219 packages.</li>
+    <li>Captured all direct internal dependency and peer-dependency edges without inferring dynamic edges.</li>
+    <li>Separated deterministic file counts from any claim about complexity or coverage.</li>
+    <li>Verified every package has a README and invariant companion; exactly three own bundle patches.</li>
+    <li>Corrected “not private” to “structurally publishable,” without claiming actual npm publication.</li>
+    <li>Kept the six research planes explicitly labeled as this study's taxonomy.</li>
+  </ul>
 </section>

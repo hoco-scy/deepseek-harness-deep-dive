@@ -30,6 +30,8 @@ const copy = {
     statuses: { queued: "Queued", drafting: "In progress", verified: "Verified" },
     evidence: "Evidence", packageCount: "packages", sourceCount: "source files", testCount: "tests",
     sourceFiles: "TS / TSX source files", testFiles: "test files", invariantPackages: "packages with invariants",
+    patchBundles: "packages with bundle patches", internalDeps: "Internal dsh dependencies", noInternalDeps: "None",
+    privatePackage: "private manifest", publishablePackage: "manifest is not private", bundlePatch: "bundle patch",
     manifestDescription: "Upstream manifest description", publication: "Distribution", noDescription: "No description in the upstream manifest",
     researchQueue: "Research queue", noConclusion: "This chapter has not reached a conclusion state",
     currentScope: "Current scope", placeholderIntro: "This page is part of the complete research map, but its source-level control-flow audit is not complete. It must cover all of the following before it can be marked Verified:",
@@ -49,6 +51,8 @@ const copy = {
     statuses: { queued: "待研究", drafting: "撰写中", verified: "已复核" },
     evidence: "证据", packageCount: "包", sourceCount: "源文件", testCount: "测试",
     sourceFiles: "TS / TSX 源文件", testFiles: "测试文件", invariantPackages: "带 invariant 的包",
+    patchBundles: "带 bundle patch 的包", internalDeps: "内部 dsh 依赖", noInternalDeps: "无",
+    privatePackage: "private manifest", publishablePackage: "manifest 非 private", bundlePatch: "bundle patch",
     manifestDescription: "上游 manifest 描述", publication: "发布面", noDescription: "上游 manifest 未填写描述",
     researchQueue: "研究队列", noConclusion: "本章尚未进入结论状态",
     currentScope: "当前范围", placeholderIntro: "页面已经纳入全量研究地图，但尚未完成源码控制流复核。以下是升级为“已复核”之前必须覆盖的检查面：",
@@ -110,22 +114,33 @@ function replaceEvidence(html, usage, lang) {
 function renderPackageAtlas(lang) {
   const ui = copy[lang];
   const packagesByGroup = Object.groupBy(packageInventory.packages, (pkg) => pkg.group);
+  const packageByName = new Map(packageInventory.packages.map(pkg => [pkg.name, pkg]));
   const summary = `<div class="atlas-summary">
     <div><strong>${packageInventory.counts.groups}</strong><span>package groups</span></div>
     <div><strong>${packageInventory.counts.packages}</strong><span>workspace packages</span></div>
     <div><strong>${packageInventory.counts.sourceFiles}</strong><span>${ui.sourceFiles}</span></div>
     <div><strong>${packageInventory.counts.testFiles}</strong><span>${ui.testFiles}</span></div>
     <div><strong>${packageInventory.counts.invariantPackages}</strong><span>${ui.invariantPackages}</span></div>
+    <div><strong>${packageInventory.counts.patchBundles}</strong><span>${ui.patchBundles}</span></div>
   </div>`;
   const groups = packageInventory.groups.map((group) => {
     const rows = packagesByGroup[group.name].map((pkg) => {
       const url = `${evidenceCatalog.repository}/tree/${baseline.commit}/${pkg.path}`;
-      const flags = [pkg.hasCordisPatch ? "bundle patch" : "", pkg.private ? "private" : "published"].filter(Boolean).join(" · ");
+      const flags = [pkg.hasCordisPatch ? ui.bundlePatch : "", pkg.private ? ui.privatePackage : ui.publishablePackage].filter(Boolean).join(" · ");
+      const dependencies = pkg.internalDependencies.length === 0
+        ? `<em>${ui.noInternalDeps}</em>`
+        : pkg.internalDependencies.map((name) => {
+            const dependency = packageByName.get(name);
+            const label = name.replace("@deepseek-ai/dsh-", "");
+            if (dependency === undefined) return `<code>${escapeHtml(label)}</code>`;
+            const dependencyUrl = `${evidenceCatalog.repository}/tree/${baseline.commit}/${dependency.path}`;
+            return `<a href="${escapeHtml(dependencyUrl)}"><code>${escapeHtml(label)}</code></a>`;
+          }).join(" ");
       return `<tr><td><a href="${escapeHtml(url)}"><code>${escapeHtml(pkg.leaf)}</code></a><small>${escapeHtml(pkg.name)}</small></td>
-        <td>${escapeHtml(pkg.description || ui.noDescription)}</td><td>${pkg.sourceFiles}</td><td>${pkg.testFiles}</td><td><small>${escapeHtml(flags)}</small></td></tr>`;
+        <td>${escapeHtml(pkg.description || ui.noDescription)}</td><td class="dependency-list">${dependencies}</td><td>${pkg.sourceFiles}</td><td>${pkg.testFiles}</td><td><small>${escapeHtml(flags)}</small></td></tr>`;
     }).join("");
     return `<details class="package-group"><summary><strong>${escapeHtml(group.name)}</strong><span>${group.packageCount} ${ui.packageCount} · ${group.sourceFiles} ${ui.sourceCount} · ${group.testFiles} ${ui.testCount}</span></summary>
-      <div class="table-scroll"><table class="package-table"><thead><tr><th>Package</th><th>${ui.manifestDescription}</th><th>${ui.sourceCount}</th><th>${ui.testCount}</th><th>${ui.publication}</th></tr></thead><tbody>${rows}</tbody></table></div></details>`;
+      <div class="table-scroll"><table class="package-table"><thead><tr><th>Package</th><th>${ui.manifestDescription}</th><th>${ui.internalDeps}</th><th>${ui.sourceCount}</th><th>${ui.testCount}</th><th>${ui.publication}</th></tr></thead><tbody>${rows}</tbody></table></div></details>`;
   }).join("");
   return summary + groups;
 }

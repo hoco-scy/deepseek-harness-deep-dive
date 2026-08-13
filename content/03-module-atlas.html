@@ -1,31 +1,108 @@
 <section>
-  <h2>先纠正一个尺度错觉</h2>
-  <p>仓库根目录的架构图只列出几十个关键 service，但固定基线下的 <code>packages/</code> 实际包含 <strong>49 个 group、219 个 npm workspace package</strong>。它们并非 219 个彼此平级的“业务模块”：有些声明 service，有些实现 provider，有些只把能力暴露为模型工具，还有大量 host/client/UI、组合 bundle、测试支撑和零依赖 utility。</p>
-  <div class="claim fact"><div class="claim-label">源码事实</div><p>官方包地图要求扩展插件依赖 Service Definition 而不是具体 provider；能力在定义、提供者和消费者需要独立演进时拆包，UI、hook 与工具依赖抽象的 agent service，而不依赖具体 agent loop。<evidence id="PKG-HIERARCHY"></evidence></p></div>
-  <div class="claim inference"><div class="claim-label">机制推导</div><p>因此，理解 DeepSeek Harness 不能按目录逐个孤立阅读。更有效的单位是“能力闭环”：定义包 → 一个或多个 provider → 模型/宿主 consumer → bundle 装配 → session event / UI projection → invariant 与真实组合测试。</p></div>
+  <h2>结论：219 个包组成能力闭包，而非 219 个平级模块</h2>
+  <div class="thesis"><p>固定基线的 <code>packages/</code> 树包含 49 个 group、219 个 npm workspace。真正有意义的分析单位通常不是单个目录，而是一项能力的完整闭包：Service Definition、一个或多个 provider、模型/host consumer、bundle row、durable projection、UI renderer，以及 invariant 或 composition test。</p></div>
+  <p>下方地图保留每一个 package，而不是只选显眼的 runtime code。它用于回答：能力在哪里声明，谁实现和消费它，直接依赖哪些内部包，后续哪一章会验证真实控制流。</p>
 </section>
 
 <section>
-  <h2>六个研究平面</h2>
+  <h2>1. 清单如何生成</h2>
+  <div class="claim fact"><div class="claim-label">可复现产物</div><p><code>scripts/capture-package-inventory.mjs</code> 首先拒绝 <code>HEAD</code> 不等于固定 commit 的上游 checkout；随后遍历每个 <code>packages/&lt;group&gt;/&lt;leaf&gt;/package.json</code>，对 group/leaf 排序，并记录 manifest identity、描述、发布标记、内部 dsh dependency、TypeScript/TSX 源码与测试数、README、invariant、bundle patch 和 <code>dsh</code> metadata。</p></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>采集字段</th><th>可以证明什么</th><th>不能证明什么</th></tr></thead>
+    <tbody>
+      <tr><td>Manifest name / description</td><td>基线时上游声明的 package identity 与意图</td><td>每句话都覆盖当前 runtime 的所有分支</td></tr>
+      <tr><td><code>dependencies</code> + <code>peerDependencies</code></td><td>指向其他 dsh package 的直接声明边</td><td>动态 plugin reference、event coupling 或反向 consumer</td></tr>
+      <tr><td>Source / test file count</td><td><code>src</code> 与 <code>tests</code> 下文件的确定性清单</td><td>复杂度、质量、覆盖率或运行时权重</td></tr>
+      <tr><td><code>private</code> flag</td><td>Manifest 是否禁止发布</td><td>对应 npm 版本是否真的已经发布</td></tr>
+      <tr><td>README / invariant / patch flag</td><td>这些仓库产物是否存在</td><td>未经后续源码核查的语义正确性</td></tr>
+    </tbody>
+  </table></div>
+  <aside class="caveat"><strong>证据边界：</strong>本章验证完整性与声明拓扑；后续章节再通过生产源码、测试和 runtime invariant 验证行为。Manifest 描述本身不会被升级成控制流结论。</aside>
+</section>
+
+<section>
+  <h2>2. 固定基线的精确总数</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>指标</th><th>数量</th><th>含义</th></tr></thead>
+    <tbody>
+      <tr><td>Package group</td><td>49</td><td>以 ownership 为主的目录族，不是运行时层</td></tr>
+      <tr><td>Workspace package</td><td>219</td><td>两层 package 树下的全部 manifest</td></tr>
+      <tr><td>TS / TSX source file</td><td>1,324</td><td>Package <code>src/</code> 目录内的文件</td></tr>
+      <tr><td>TS / TSX test file</td><td>854</td><td>Package <code>tests/</code> 目录内的文件</td></tr>
+      <tr><td>带 <code>src/invariant.ts</code> 的 package</td><td>219</td><td>Package-owned invariant 约定在结构上完全覆盖</td></tr>
+      <tr><td>带 README 的 package</td><td>219</td><td>每个 package 都有本地文档入口</td></tr>
+      <tr><td>带 <code>cordis.patch.yml</code> 的 package</td><td>3</td><td>Base、headless、Web 三个产品 bundle 拥有 patch</td></tr>
+      <tr><td>Manifest 标为 <code>private: true</code></td><td>0</td><td>结构上都可发布；实际 npm release 不在本清单证明范围内</td></tr>
+      <tr><td>依赖其他内部 dsh package</td><td>218</td><td>只有 invariant registry 没有直接 dsh-package dependency</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>3. 六个研究平面</h2>
   <div class="question-grid">
-    <article><h3>产品主干</h3><p><code>core</code>、<code>llm</code>、<code>session</code>、<code>context</code>、<code>compaction</code>：定义 Agent 一步真正怎样发生。</p></article>
-    <article><h3>执行世界</h3><p><code>subprocess</code>、<code>shell</code>、<code>terminal</code>、<code>fs</code>、<code>sandbox</code>、<code>code-runtime</code>、<code>lsp</code>、<code>web</code>、<code>e2b</code>：把工具落到本地或远端执行环境。</p></article>
-    <article><h3>协作与编排</h3><p><code>interaction</code>、<code>plan</code>、<code>goal</code>、<code>todo</code>、<code>jobs</code>、<code>subagent</code>、<code>workflow</code>、<code>skill</code>、<code>mcp</code>：管理人与 Agent、Agent 与 Agent 的协作状态。</p></article>
-    <article><h3>组合与数据</h3><p><code>boot</code>、<code>bundle</code>、<code>preset</code>、<code>settings</code>、<code>credentials</code>、<code>storage</code>、<code>workspace</code>、<code>attachment</code>：决定运行树和非会话数据归属。</p></article>
-    <article><h3>产品界面</h3><p><code>api</code>、<code>typert</code>、<code>sdk</code>、<code>acp</code>、<code>host</code>、<code>client</code>：让同一运行时被 Web、stdio JSON-RPC 和自动化协议消费。</p></article>
-    <article><h3>证明与支撑</h3><p><code>runtime-diagnostics</code>、<code>test-support</code>、<code>guard</code>、<code>session-query</code>、<code>feedback</code>、<code>util</code>、<code>examples</code>：提供不变量、测试装配、诊断与低层原语。</p></article>
+    <article><h3>产品骨架</h3><p><code>core</code>、<code>llm</code>、<code>session</code>、<code>context</code> 与 <code>compaction</code> 决定模型请求如何组装、执行、记录，并在压力下缩减。</p></article>
+    <article><h3>执行世界</h3><p><code>subprocess</code>、<code>shell</code>、<code>terminal</code>、<code>fs</code>、<code>sandbox</code>、<code>code-runtime</code>、<code>lsp</code>、<code>web</code> 与 <code>e2b</code> 把工具落到本地或远程环境。</p></article>
+    <article><h3>协作与编排</h3><p><code>interaction</code>、<code>plan</code>、<code>goal</code>、<code>todo</code>、<code>jobs</code>、<code>subagent</code>、<code>workflow</code>、<code>skill</code> 与 <code>mcp</code> 拥有人机和 Agent 间协作状态。</p></article>
+    <article><h3>组合与数据</h3><p><code>boot</code>、<code>bundle</code>、<code>preset</code>、<code>settings</code>、<code>credentials</code>、<code>storage</code>、<code>workspace</code> 与 <code>attachment</code> 决定插件树和非 session 数据归属。</p></article>
+    <article><h3>产品 surface</h3><p><code>api</code>、<code>typert</code>、<code>sdk</code>、<code>acp</code>、<code>host</code> 与 <code>client</code> 把同一 runtime 暴露给浏览器、stdio JSON-RPC、SDK 和自动化协议。</p></article>
+    <article><h3>证明与支撑</h3><p><code>runtime-diagnostics</code>、<code>test-support</code>、<code>guard</code>、<code>session-query</code>、<code>feedback</code>、<code>util</code> 与 <code>examples</code> 提供 invariant、真实装配、诊断和底层原语。</p></article>
   </div>
-  <aside class="caveat"><strong>分类说明：</strong>这六个平面是本报告为了阅读而做的交叉切片，不是上游正式层级；单个 group 可能跨越多个平面。</aside>
+  <aside class="caveat"><strong>分类说明：</strong>六个平面是本报告引入的分析截面，不是上游官方层级。一个 group 可以跨多个平面；完整清单中的 dependency list 用于防止过度简化。</aside>
 </section>
 
 <section>
-  <h2>为何每个 package 都有 invariant</h2>
-  <div class="claim fact"><div class="claim-label">仓库政策</div><p>每个 package 必须拥有 <code>./invariant</code>：有运行时关系时注册可检查的事件/数据关系；纯安装类包则给出 package-specific 的空检查理由。Registry contribution 还必须通过处置测试证明 fiber 卸载后贡献消失。<evidence id="PKG-INVARIANTS"></evidence></p></div>
-  <div class="claim assessment"><div class="claim-label">设计评价</div><p>这是对插件架构常见弱点的直接回应：类型检查只能证明单个包的局部接口，不能证明最终配置真的挂载了唯一 provider、consumer 和事件关系。每包 invariant 把“组合后仍成立”的一部分语义移到运行时；代价是 219 个包都要维护额外安装器和关系断言。</p></div>
+  <h2>4. Package 数量集中在哪里</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Group</th><th>包数</th><th>源码文件</th><th>测试文件</th><th>这种集中意味着什么</th></tr></thead>
+    <tbody>
+      <tr><td><code>client</code></td><td>39</td><td>501</td><td>244</td><td>浏览器 surface 被拆成 host bridge、conversation node、renderer、setting 和 feature plugin，而非一个 SPA 大包</td></tr>
+      <tr><td><code>session</code></td><td>13</td><td>45</td><td>33</td><td>Persistence、query、projection cache、telemetry、title、form 与 domain data 是 event model 的不同 consumer</td></tr>
+      <tr><td><code>subagent</code></td><td>11</td><td>46</td><td>43</td><td>同一 seam 支撑多个 backend，并通过不同 tool 与 host service 暴露 orchestration</td></tr>
+      <tr><td><code>shell</code></td><td>9</td><td>27</td><td>21</td><td>Definition、executor、local/PowerShell provider、policy、prompt 与 tool consumer 被刻意拆开</td></tr>
+      <tr><td><code>core</code></td><td>8</td><td>44</td><td>60</td><td>相较 extension 与 UI surface，中央 runtime 仍是一条较小的 definition/driver spine</td></tr>
+      <tr><td><code>host</code></td><td>8</td><td>65</td><td>34</td><td>服务端产品功能位于 Agent service 上方，而不是进入 Loop</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim assessment"><div class="claim-label">设计评价</div><p>Package 数量更多反映独立演进角色，而非算法复杂度。39 包的 client group 主导文件量，core group 只有 8 包却承载执行骨架；这支持“产品行为和呈现围绕稳定 Loop 挂接”的目标，同时也让 package discovery 与生成式地图成为必需品。</p></div>
 </section>
 
 <section>
-  <h2>固定基线的完整 package 清单</h2>
-  <p>下面的数据由仓库内脚本直接读取固定 commit 下的每个 <code>packages/*/*/package.json</code> 与文件树生成。计数只覆盖 package 内的 TypeScript/TSX 源码和测试文件，不把行数或文件数误当作复杂度指标；包描述是上游 manifest 的自述，后续模块页会再用控制流验证。</p>
+  <h2>5. 依赖方向：按能力闭包阅读</h2>
+  <div class="claim fact"><div class="claim-label">官方 package 策略</div><p>Extension plugin 依赖 Service Definition，而不是具体 provider；UI、hook 与 tool package 消费抽象 Agent service，不导入默认 Agent Loop；definition、provider 与 consumer 只有在独立演进时才拆包。<evidence id="PKG-HIERARCHY"></evidence></p></div>
+  <p>追踪任意功能时，按下列顺序核查：</p>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>找 Definition</h3><p>定位 service key、公共 interface、event map、config schema 和 branded identity。</p></div>
+    <div><span>2</span><h3>枚举 Provider</h3><p>不要停在默认实现；分别检查 local、remote、platform-specific、replay 与 test provider。</p></div>
+    <div><span>3</span><h3>枚举 Consumer</h3><p>Model tool、host RPC、UI plugin、workflow engine 和其他 service 可能消费同一 definition 的不同部分。</p></div>
+    <div><span>4</span><h3>找 Composition</h3><p>确认哪个 bundle 或 Agent preset 在什么 scope 挂载各角色。</p></div>
+    <div><span>5</span><h3>找 Durable/UI Projection</h3><p>追踪让结果可观测的 event、persistence、replay 与 renderer。</p></div>
+    <div><span>6</span><h3>找 Proof</h3><p>阅读 package invariant、HMR disposal test、production composition test 与 keyless transcript snapshot。</p></div>
+  </div>
+  <div class="claim inference"><div class="claim-label">机制推导</div><p>直接 dependency graph 必要但不充分。Event declaration merging、按 key 查 service、配置 row 与动态 registration 会产生普通 import 看不到的边；因此本地图展示声明的内部依赖，后续章节再从 producer、consumer 与 commit point 重建语义图。</p></div>
+</section>
+
+<section>
+  <h2>6. 为什么 219 个包都有 invariant companion</h2>
+  <div class="claim fact"><div class="claim-label">仓库策略</div><p>每个 package 都拥有 <code>./invariant</code>。有 runtime relationship 的包注册 event/data check；没有可检查关系的包必须给出 package-specific 说明；registry contribution 还需证明 owner fiber unmount 后正确撤销。<evidence id="PKG-INVARIANTS"></evidence><evidence id="DESIGN-INVARIANT-REGISTRY"></evidence></p></div>
+  <div class="claim assessment"><div class="claim-label">设计评价</div><p>该约定回应了插件架构的特定弱点：局部 typecheck 不能证明完整插件树拥有一致 provider、identity、event order 和 projection。收益是带 package 归属的运行时证据；代价是 219 个 companion entry point 必须持续表达真正的 owned relationship，不能退化成存在性检查。</p></div>
+</section>
+
+<section>
+  <h2>7. 固定基线的完整 package 清单</h2>
+  <p>展开任意 group。每一行都链接到固定 commit 上的对应 package，并展示 manifest 描述、直接内部 dsh dependency、源码/测试文件数、发布标记和 bundle-patch 标记；dependency name 也直接链接到目标 package，使表格成为可导航的声明依赖图，而不是平面目录。</p>
   <package-atlas></package-atlas>
+</section>
+
+<section>
+  <h2>本章复核清单</h2>
+  <ul class="audit-list">
+    <li>只在确认上游 <code>HEAD</code> 等于固定基线后重新运行 inventory。</li>
+    <li>枚举全部两层 package manifest：49 group、219 package。</li>
+    <li>完整采集直接内部 dependency/peerDependency，未把动态边伪装成 import 边。</li>
+    <li>把确定性文件数与复杂度、覆盖率结论严格分开。</li>
+    <li>确认每包都有 README 与 invariant companion，恰好三个包拥有 bundle patch。</li>
+    <li>将“非 private”准确表述为“结构上可发布”，没有声称 npm 已实际发布。</li>
+    <li>始终把六个研究平面标记为本研究自己的 taxonomy。</li>
+  </ul>
 </section>

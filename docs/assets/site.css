@@ -127,7 +127,7 @@ p { margin: 12px 0; }
 .principle-grid div { display: flex; justify-content: space-between; gap: 12px; padding: 13px 15px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
 .principle-grid span { color: var(--accent); text-align: right; font-family: monospace; }
 .caveat { margin-top: 20px; padding: 15px 17px; background: var(--amber-soft); border-radius: 11px; color: var(--amber); }
-.atlas-summary { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 9px; margin: 20px 0; }
+.atlas-summary { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 9px; margin: 20px 0; }
 .atlas-summary div { padding: 13px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
 .atlas-summary strong { display: block; color: var(--accent); font-size: 25px; line-height: 1.1; }
 .atlas-summary span { color: var(--muted); font-size: 11px; }
@@ -135,10 +135,12 @@ p { margin: 12px 0; }
 .package-group summary { display: flex; justify-content: space-between; gap: 14px; padding: 12px 15px; cursor: pointer; }
 .package-group summary span { color: var(--muted); font-size: 12px; text-align: right; }
 .table-scroll { overflow-x: auto; }
-.package-table { margin: 0; min-width: 760px; font-size: 12px; }
+.package-table { margin: 0; min-width: 1080px; font-size: 12px; }
 .package-table td:first-child { min-width: 180px; }
 .package-table td:nth-child(2) { min-width: 330px; }
+.package-table td:nth-child(3) { min-width: 260px; }
 .package-table small { display: block; color: var(--muted); overflow-wrap: anywhere; }
+.dependency-list code { display: inline-block; margin: 2px 3px 2px 0; }
 
 table { width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 14px; }
 th, td { text-align: left; vertical-align: top; padding: 11px 12px; border: 1px solid var(--line); }
