@@ -125,6 +125,18 @@ p { margin: 12px 0; }
 .principle-grid div { display: flex; justify-content: space-between; gap: 12px; padding: 13px 15px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
 .principle-grid span { color: var(--accent); text-align: right; font-family: monospace; }
 .caveat { margin-top: 20px; padding: 15px 17px; background: var(--amber-soft); border-radius: 11px; color: var(--amber); }
+.atlas-summary { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 9px; margin: 20px 0; }
+.atlas-summary div { padding: 13px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.atlas-summary strong { display: block; color: var(--accent); font-size: 25px; line-height: 1.1; }
+.atlas-summary span { color: var(--muted); font-size: 11px; }
+.package-group { margin: 10px 0; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); overflow: hidden; }
+.package-group summary { display: flex; justify-content: space-between; gap: 14px; padding: 12px 15px; cursor: pointer; }
+.package-group summary span { color: var(--muted); font-size: 12px; text-align: right; }
+.table-scroll { overflow-x: auto; }
+.package-table { margin: 0; min-width: 760px; font-size: 12px; }
+.package-table td:first-child { min-width: 180px; }
+.package-table td:nth-child(2) { min-width: 330px; }
+.package-table small { display: block; color: var(--muted); overflow-wrap: anywhere; }
 
 table { width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 14px; }
 th, td { text-align: left; vertical-align: top; padding: 11px 12px; border: 1px solid var(--line); }
@@ -174,7 +186,7 @@ th { background: var(--surface); }
   .sidebar { position: fixed; z-index: 25; top: 58px; left: 0; width: min(88vw, var(--sidebar-width)); transform: translateX(-102%); transition: transform 180ms ease; box-shadow: var(--shadow); }
   .sidebar.open { transform: translateX(0); }
   .page-shell { padding: 30px 18px 60px; }
-  .question-grid, .principle-grid, .placeholder-checks { grid-template-columns: 1fr; }
+  .question-grid, .principle-grid, .placeholder-checks, .atlas-summary { grid-template-columns: 1fr; }
   .hero-panel { padding: 21px; }
   .pagination { grid-template-columns: 1fr; }
   table { display: block; overflow-x: auto; }

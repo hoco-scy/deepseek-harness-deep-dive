@@ -32,8 +32,8 @@
     "part": "导论",
     "title": "219 个包的模块地图",
     "subtitle": "包组、角色、依赖方向与运行时位置",
-    "status": "queued",
-    "text": "研究队列 本章尚未进入结论状态 当前范围： 枚举全部 workspace 包并按定义、提供者、消费者、界面和支撑设施分类。 页面已经纳入全量研究地图，但尚未完成源码控制流复核。以下是升级为“已复核”之前必须覆盖的检查面： 实际 bundle / profile 装配入口 公开类型、事件与配置 schema 正常控制流与状态突变时机 并发、scope、所有权与 cleanup 错误、取消、重试和降级分支 持久化、projection 与 replay 语义 生产路径测试与运行时不变量 优势、代价、限制与待验证问题"
+    "status": "drafting",
+    "text": "先纠正一个尺度错觉 仓库根目录的架构图只列出几十个关键 service，但固定基线下的 packages/ 实际包含 49 个 group、219 个 npm workspace package 。它们并非 219 个彼此平级的“业务模块”：有些声明 service，有些实现 provider，有些只把能力暴露为模型工具，还有大量 host/client/UI、组合 bundle、测试支撑和零依赖 utility。 源码事实 官方包地图要求扩展插件依赖 Service Definition 而不是具体 provider；能力在定义、提供者和消费者需要独立演进时拆包，UI、hook 与工具依赖抽象的 agent service，而不依赖具体 agent loop。 机制推导 因此，理解 DeepSeek Harness 不能按目录逐个孤立阅读。更有效的单位是“能力闭环”：定义包 → 一个或多个 provider → 模型/宿主 consumer → bundle 装配 → session event / UI projection → invariant 与真实组合测试。 六个研究平面 产品主干 core 、 llm 、 session 、 context 、 compaction ：定义 Agent 一步真正怎样发生。 执行世界 subprocess 、 shell 、 terminal 、 fs 、 sandbox 、 code-runtime 、 lsp 、 web 、 e2b ：把工具落到本地或远端执行环境。 协作与编排 interaction 、 plan 、 goal 、 todo 、 jobs 、 subagent 、 workflow 、 skill 、 mcp ：管理人与 Agent、Agent 与 Agent 的协作状态。 组合与数据 boot 、 bundle 、 preset 、 settings 、 credentials 、 storage 、 workspace 、 attachment ：决定运行树和非会话数据归属。 产品界面 api 、 typert 、 sdk 、 acp 、 host 、 client ：让同一运行时被 Web、stdio JSON-RPC 和自动化协议消费。 证明与支撑 runtime-diagnostics 、 test-support 、 guard 、 session-query 、 feedback 、 util 、 examples ：提供不变量、测试装配、诊断与低层原语。 分类说明： 这六个平面是本报告为了阅读而做的交叉切片，不是上游正式层级；单个 group 可能跨越多个平面。 为何每个 package 都有 invariant 仓库政策 每个 package 必须拥有 ./invariant ：有运行时关系时注册可检查的事件/数据关系；纯安装类包则给出 package-specific 的空检查理由。Registry contribution 还必须通过处置测试证明 fiber 卸载后贡献消失。 设计评价 这是对插件架构常见弱点的直接回应：类型检查只能证明单个包的局部接口，不能证明最终配置真的挂载了唯一 provider、consumer 和事件关系。每包 invariant 把“组合后仍成立”的一部分语义移到运行时；代价是 219 个包都要维护额外安装器和关系断言。 固定基线的完整 package 清单 下面的数据由仓库内脚本直接读取固定 commit 下的每个 packages/*/*/package.json 与文件树生成。计数只覆盖 package 内的 TypeScript/TSX 源码和测试文件，不把行数或文件数误当作复杂度指标；包描述是上游 manifest 的自述，后续模块页会再用控制流验证。"
   },
   {
     "id": "04",
