@@ -1,0 +1,227 @@
+<section>
+  <h2>结论：没有固定的“多级压缩”，只有两种可递归组合的 Surface 变换</h2>
+  <div class="thesis"><p>DeepSeek Harness 的上下文治理不是 L1/L2/L3 固定流水线。生产实现只有两种真正缩短模型 Surface 的机制：先对超大工具结果做确定性中段裁剪；若仍超预算，再让模型把一个平衡的历史前缀写成 checkpoint。Checkpoint 本身是普通的 model-visible user message，未来仍可落入新的压缩区间，因此所谓“多级”来自递归代数，而不是配置里的预设层数。</p></div>
+  <p>Pressure 与 context overflow 是两条触发路径，不是两个压缩层级。默认 <code>compactionRetries: 1</code> 表示首次摘要后最多再做一次摘要，而不是一个会话一生只能压缩两次；后续 Step 还可再次触发并把旧 checkpoint 合并进新 checkpoint。</p>
+  <div class="claim fact"><div class="claim-label">源码结论</div><p>公共 compaction seam 明确区分自动判断、idle maintenance 和显式 region 三个入口；所有成功路径最终都用带 <code>plugin: "compact"</code> 来源标记的 user message 替换一个 Surface span。<evidence id="COMPACT-SEAM"></evidence></p></div>
+</section>
+
+<section>
+  <h2>1. 先分清机制、触发器、尝试次数和递归代数</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>维度</th><th>实际取值</th><th>不是</th></tr></thead>
+    <tbody>
+      <tr><td>缩短机制</td><td>Tool-result prune；LLM summary replacement</td><td>不是三段式固定层级</td></tr>
+      <tr><td>自动触发</td><td>下一 Step 前的 pressure；Provider canonical overflow 后的 recovery</td><td>不是两种不同 checkpoint 格式</td></tr>
+      <tr><td>单次预算</td><td>有界 summary retries；有界 overflow retries</td><td>不是会话生命周期上限</td></tr>
+      <tr><td>递归深度</td><td>旧 checkpoint 可以再次被摘要</td><td>没有显式 generation cap</td></tr>
+      <tr><td>手动入口</td><td><code>/compact</code> 在 idle maintenance 中压缩 useful head</td><td>不是绕过日志的直接内存修改</td></tr>
+    </tbody>
+  </table></div>
+  <pre><code>Surface₀
+  ├─ prune(large tool result)        → Surface₁
+  ├─ summarize(balanced head span)   → checkpoint₁ + retained tail
+  └─ later summarize(checkpoint₁ …)  → checkpoint₂ + newer tail</code></pre>
+  <p>这一区分很重要：重试参数回答“一次压力处理最多再试几次”，recursive checkpoint 回答“长期运行中压缩结果是否还能继续压缩”。两者相乘才形成实际可见的多代历史。</p>
+</section>
+
+<section>
+  <h2>2. 配置按精确 Provider / Model route 解析</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>默认项</th><th>默认值</th><th>语义</th></tr></thead>
+    <tbody>
+      <tr><td><code>thresholdRatio</code></td><td><code>0.8</code></td><td>估算请求压力达到 context capacity 的 80% 后启动 proactive compaction</td></tr>
+      <tr><td><code>retainRatio</code></td><td><code>0.16</code></td><td>摘要时尽量保留最近约 16% capacity 对应的 Surface tail</td></tr>
+      <tr><td><code>maxTokens</code></td><td><code>8192</code></td><td>摘要调用的输出上限</td></tr>
+      <tr><td><code>compactionRetries</code></td><td><code>1</code></td><td>首次摘要后，若压力仍高，允许一次额外摘要</td></tr>
+      <tr><td><code>maxOverflowRetries</code></td><td><code>1</code></td><td>一次 canonical overflow 的有界恢复预算</td></tr>
+      <tr><td><code>auto</code></td><td><code>true</code></td><td>启用自动 pressure/overflow 处理</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">解析规则</div><p>全局配置可被 exact provider/model 项部分覆盖；ratio 只有拿到 adapter 声明的 context capacity 后才会换算成 absolute tokens。<code>retainRatio</code> 与 <code>retainTokens</code> 互斥，并要求 retention 小于 threshold。<evidence id="COMPACT-CONFIG"></evidence></p></div>
+  <p>Proactive pressure 因而必须同时具备两项证据：最近一次耐久 request header 能确定 route，且对应 adapter 暴露 context capacity。Overflow 已经由 Provider 给出事实，因此无需 threshold/capacity 即可进入恢复。</p>
+</section>
+
+<section>
+  <h2>3. Token meter 估的是“下一次请求压力”，不是给每个节点精确分词</h2>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>寻找 anchor</h3><p>若当前 route/header 与最近一次成功请求匹配，使用 Provider usage 作为已知 prompt 样本。</p></div>
+    <div><span>2</span><h3>重建当时 Surface</h3><p>在 final assistant message 处，从其引用的 raw chunks 重组 Provider output，并把 Step-start Surface 作为 anchor。</p></div>
+    <div><span>3</span><h3>累计 signed delta</h3><p>普通 append 增加价格；prune/summary replacement 用 shadow price 把旧 span 价格减掉、加入新节点价格。</p></div>
+    <div><span>4</span><h3>无 anchor 时全量估算</h3><p>对 system、tools 和当前 Surface 统一运行固定密度 heuristic。</p></div>
+  </div>
+  <div class="claim fact"><div class="claim-label">保守 anchor</div><p>如果 Provider 报告的 usage 反而低于完整 heuristic anchor，meter 退回估算值，避免负 delta 把当前压力系统性压低。每次测量仍克隆并返回带位置价格的 Surface nodes，复杂度为 O(surface)。<evidence id="COMPACT-TOKEN-MEASURE"></evidence><evidence id="COMPACT-TOKEN-ANCHOR"></evidence></p></div>
+  <div class="claim assessment"><div class="claim-label">精度边界</div><p>无 anchor 的估算按每四个 JavaScript code units 一个 token，加固定 block/role overhead；tool schema 与 arguments 按 JSON 长度估算。它不是任一模型的真实 tokenizer，对 CJK、密集 JSON 和特殊词表的节点级定价可能偏差。Provider anchor 能改善总压力，却不能反向给每个旧节点提供真实 token 分摊。<evidence id="COMPACT-ESTIMATOR"></evidence></p></div>
+</section>
+
+<section>
+  <h2>4. Proactive pressure 发生在两个 Step 之间，但看不到即将提交的输入批次</h2>
+  <pre><code>claim inbox messages
+→ assemble system/tools
+→ compute runtime-context candidate
+→ dispatch agent/pre-step waterfall
+     └─ pressure listener measures current durable Surface
+→ append step/start
+→ append claimed user/context messages
+→ dispatch Provider request</code></pre>
+  <div class="claim fact"><div class="claim-label">已确认顺序</div><p>真实 loop 测试要求 pressure compaction 位于上一 <code>step/end</code> 与下一 <code>step/start</code> 之间；但 Agent 已经认领本批输入，却要等 waterfall 返回才把它们写入 Session。因此 pressure listener 测到的是“此前 Surface”，不含本 Step 的 entering batch。<evidence id="COMPACT-REAL-LOOP-TEST"></evidence><evidence id="COMPACT-RUNTIME-ORDER"></evidence></p></div>
+  <div class="claim assessment"><div class="claim-label">实际后果</div><p>若一条很大的新输入、动态上下文或单个不可分割节点把请求从阈值下直接推过窗口，proactive pass 无法预防；只有 adapter 把 Provider 错误准确归一成 canonical context overflow 时，same-Step recovery 才能接手。</p></div>
+</section>
+
+<section>
+  <h2>5. 第一种缩短机制：模型无关的工具结果中段裁剪</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>规则</th><th>默认行为</th><th>保真边界</th></tr></thead>
+    <tbody>
+      <tr><td>触发长度</td><td>text blocks 合计超过 8192 Unicode code points</td><td>非文本 rich blocks 不计入此 pruner 的预算</td></tr>
+      <tr><td>保留</td><td>前 4096 + marker + 后 1024 code points</td><td>保留 code point，不会切半 surrogate pair，但可切开 grapheme cluster</td></tr>
+      <tr><td>替换范围</td><td>只替换 tool/result 的 content</td><td>call ID、name、error/metadata 等事件语义保持</td></tr>
+      <tr><td>顺序</td><td>rich blocks 原顺序保留，text slices 在原位置重组</td><td>图片等 rich content 不会被这个机制缩小</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Replay-safe commit</div><p>每个候选先追加 <code>compaction/prune</code> 记录旧节点 token price，再追加引用原 seq 的 content-only replacement。新建 Session 重放同一日志会得到相同 Surface，不需要再次执行 pruner。<evidence id="COMPACT-PRUNER-CONFIG"></evidence><evidence id="COMPACT-PRUNER"></evidence></p></div>
+  <p>Pressure 尚未跨阈值时不会机会式裁剪。跨阈值或 overflow 后先 prune 并重测；若已足够低则完全不调用摘要模型，若仍高才让 summary 看见已裁剪后的 Surface。测试源码覆盖了这三个分支。<evidence id="COMPACT-PRUNE-TEST"></evidence></p>
+  <aside class="caveat"><strong>事务粒度：</strong>一轮扫描多个结果时，每个结果独立同步提交。若后面的候选失败，前面已完成的 prune 不回滚；这是局部进展语义，不是全批 all-or-nothing。</aside>
+</section>
+
+<section>
+  <h2>6. 第二种缩短机制：保留近期 tail，摘要一个 head-anchored span</h2>
+  <p>Pressure path 从 Surface 尾部向前累加节点价格，直到满足 retention budget；然后继续向 head 移动 cut，寻找 tool-call/result 平衡的位置。最终压缩的是 head，而不是随意挑选最“没用”的散点消息。Overflow path 则把 retain budget 设为零，目标是尽可能释放空间。</p>
+  <div class="claim fact"><div class="claim-label">Range selector</div><p>即使 retain 为零，尾部扫描也会保留至少最后一个 Surface node。若只有一个不可分割单位、没有可压缩 head，或找不到合法平衡 cut，selector 返回 null。<evidence id="COMPACT-RANGE"></evidence></p></div>
+  <div class="claim assessment"><div class="claim-label">设计含义</div><p>这是一种 recency-first 策略：近期原文保真，较老上下文被整段合并。它没有语义重要性评分，因此旧而关键的约束能否保留完全依赖摘要质量；相反，它的边界和复杂度可预测，也不需要额外检索系统。</p></div>
+</section>
+
+<section>
+  <h2>7. 合法 cut 只保证 tool pairing，不保证位于 Step 或 Turn 边界</h2>
+  <p>Pairing fold 按当前 Surface 顺序扫描：assistant message 中每个 tool call 令余额加一，对应 tool result 令余额减一，并计算 N 个节点之间的 N+1 个 cut。Replacement generation 变化时全量重建；只有普通 append 时增量扩展。</p>
+  <div class="claim fact"><div class="claim-label">平衡条件</div><p>Selector 不会把 tool call 留在 checkpoint 一侧、result 留在另一侧。这个条件与 durable Step bracket 无关；一个高 seq 的旧 checkpoint 作为普通 user node，在两侧都可能是 balanced，因此未来能再次进入压缩区间。<evidence id="COMPACT-PAIRING"></evidence></p></div>
+  <p>由此可以精确回答“压缩有几层”：日志里可能观察到任意多代 checkpoint，但每次 transaction 仍只做一次 span replacement；层数是历史递归次数，不是运行时拥有多少个专门阶段。</p>
+</section>
+
+<section>
+  <h2>8. Summary call 重用会话形状，但不是隐藏的第二个 Agent loop</h2>
+  <pre><code>summary request
+= current system prompt
++ current ordered tool schemas
++ selected region as model messages
++ one fixed English compaction directive
+→ one provider stream (purpose = "compaction")
+→ collect non-empty text only
+→ frame as &lt;compacted-summary&gt;…&lt;/compacted-summary&gt;</code></pre>
+  <div class="claim fact"><div class="claim-label">路由和输出</div><p>目标优先级为显式 summary provider/model，其次最近一次 routed request，最后 Agent options。调用带 session ID、purpose 与 maxTokens；max-token truncation、abort、image output、空 text 或调用错误都判失败。Reasoning 与 tool-call blocks 可保存在 rawOutput 供审计，但 checkpoint 只取 text；即使输出同时带 tool call 和 text，也不会执行那个 tool。<evidence id="COMPACT-SUMMARIZER"></evidence></p></div>
+  <p>请求保留原 system/tools/region 前缀，只把固定指令放在末尾，为同 route 的 provider cache reuse 创造形状条件；若配置了另一 provider/model，只是保持形状，并不能跨 route 共享缓存。</p>
+  <div class="claim assessment"><div class="claim-label">质量合同</div><p>固定英文指令要求八个结构化标题，并要求遇到旧 checkpoint 时合并而非逐字复制。但实现不解析标题、不做事实一致性校验，也不检查实体、承诺或未完成任务是否齐全；唯一内容门槛是 framed checkpoint 的估算 token 数严格小于旧 span。非英语会话被要求输出英文，也引入一次额外的翻译损失面。</p></div>
+</section>
+
+<section>
+  <h2>9. 一次 summary 是有锁、可重验、分段提交的日志 transaction</h2>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>验证并加锁</h3><p>检查 range、owner 和现有活跃 compaction，同步追加 <code>compaction/start</code>。</p></div>
+    <div><span>2</span><h3>Snapshot 与调用</h3><p>冻结选中消息和 positional prices，在锁外 await Provider summary。</p></div>
+    <div><span>3</span><h3>重验稳定性</h3><p>自动模式要求整个 Surface 未变；手动模式只要求选中 span 未变。</p></div>
+    <div><span>4</span><h3>同步 commit body</h3><p>依次 append summary audit event，再 append replacement user message。</p></div>
+    <div><span>5</span><h3>关闭 bracket</h3><p>append success end；任意 start 后失败只尝试一次 error end。</p></div>
+  </div>
+  <div class="claim fact"><div class="claim-label">锁的本质</div><p><code>compaction/start</code> 是 durable log lock。自动任务记录所属 Turn number；manual 使用 <code>turn:null</code>。摘要期间自动模式拒绝任何 Surface 变化，manual 则允许 span 外 append。<evidence id="COMPACT-TRANSACTION"></evidence><evidence id="COMPACT-COMMIT"></evidence></p></div>
+  <aside class="caveat"><strong>不是数据库原子事务：</strong>summary event append 成功而 replacement 失败时，Surface 不变，但 audit summary 和 error end 可以留下；replacement 成功而 end 失败时，Surface 已改变，unmatched start 会让本 lifecycle 的后续压缩保持锁定。新的 Session lifecycle/end-seed 可把继承的 orphan 视为 stale，但当前实例不会假装 transaction 已正常闭合。</aside>
+</section>
+
+<section>
+  <h2>10. Checkpoint 同时保存模型文本、来源跨度和实际调用证据</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>记录</th><th>保存内容</th><th>是否进入模型 Surface</th></tr></thead>
+    <tbody>
+      <tr><td><code>compaction/start</code></td><td>transaction ID、owner turn、可选 command ID</td><td>否</td></tr>
+      <tr><td><code>compaction/summary</code></td><td>summary、shadowed seq/range/token price、route、maxTokens、usage、rawOutput</td><td>否</td></tr>
+      <tr><td>replacement <code>user/message</code></td><td>framed checkpoint 与 plugin source marker，引用 start/summary/shadowed seqs</td><td>是，替换旧 span</td></tr>
+      <tr><td><code>compaction/end</code></td><td>transaction closure 或 error</td><td>否</td></tr>
+      <tr><td><code>compaction/prune</code></td><td>单节点 shadow price</td><td>否，紧随 replacement 才改 Surface</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">可审计性</div><p>摘要文本、原始模型输出、provider/model、usage、被遮蔽范围和最终 model-visible checkpoint 分开保存。查询者可以审计“模型实际说了什么”“系统采用了哪段 text”“替换了哪些节点”，而无需把 raw summary tool/reasoning blocks重新暴露给主会话。<evidence id="COMPACT-EVENTS"></evidence></p></div>
+</section>
+
+<section>
+  <h2>11. 递归 checkpoint 怎样形成实际的“多代压缩”</h2>
+  <pre><code>Generation 0:  [old raw history .............][recent tail]
+Generation 1:  [checkpoint A][recent tail .................]
+Generation 2:  [checkpoint B merges A + later history][tail]
+Generation n:  [checkpoint N][newest retained tail]</code></pre>
+  <p>每代 replacement 都推进 <code>surface.replaceGeneration</code>，pairing cache 和 token pressure projection 随之更新。下一次压力到来时，checkpoint A 没有特殊“永不压缩”身份；它只是带 provenance 的 user message。固定指令要求模型合并旧 checkpoint，防止简单嵌套整段 XML，但这仍是 prompt-level 要求。</p>
+  <div class="claim assessment"><div class="claim-label">长期误差模型</div><p>每代都严格要求“估算后更短”，却没有可执行的语义保真 invariant。长度单调下降不等于事实误差单调受控；反复摘要可能累积遗漏、翻译和归纳偏差。日志保留原始被遮蔽事件，可供人或离线工具追溯，但主模型只看当前 checkpoint。</p></div>
+</section>
+
+<section>
+  <h2>12. Overflow recovery 在同一 Step 内重试，并以 generation 前进作为进展证明</h2>
+  <div class="claim fact"><div class="claim-label">控制流</div><p>Adapter 把错误归一为 canonical context overflow 后，handler 在独立 overflow budget 内先 prune、重测，再以 retain=0 尝试 summary。只有 <code>surface.replaceGeneration</code> 前进才返回 retry；因此已经提交 prune、随后 summary 失败也算有进展。成功 assistant message 或 Agent 回到 idle 会重置 retry counter，取消信号最终优先。<evidence id="COMPACT-AUTO-TRIGGERS"></evidence><evidence id="COMPACT-POLICY-LOOP"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">真实 loop 测试</div><p>测试源码要求 recovery 不开启新 Step：第二次 Provider request 发生在原 Step 内，旧 sentinel 已从 messages 消失，checkpoint 已进入同一 Session log。Upstream 依赖未安装，本研究核对了测试合同但未执行。<evidence id="COMPACT-REAL-LOOP-TEST"></evidence></p></div>
+  <p>同 Step retry 会复用此前组装的 system/tools/request config；变化来自 Session Surface replacement，而不是重新执行完整 pre-step assembly。若 overflow 来自过大的 system prompt、tool schema 或一个不可分割节点，Surface compaction 可能仍无合法空间可释放。</p>
+</section>
+
+<section>
+  <h2>13. 手动 <code>/compact</code> 是 idle maintenance，不是并发强制改写</h2>
+  <div class="claim fact"><div class="claim-label">进入条件</div><p><code>compactNow()</code> 通过 <code>runMaintenance</code> 只在 Agent idle 且没有 waking queued work 时进入，retain 为零，owner turn 为 null。Summary 等待期间 span 外 append 可以存在；提交前只重验被选 span。Closed attempt 在返回前通过 Session flush barrier。<evidence id="COMPACT-MANUAL"></evidence></p></div>
+  <p>人类命令不接参数，并把 busy、cancelled、surface changed、summary、commit 和 persistence failure 分类成不同结果；成功时报告被遮蔽 items/tokens，并用 source command ID 与 summary seq 关联日志/UI。插件 teardown 会等待活跃 handlers drain。<evidence id="COMPACT-COMMAND"></evidence></p>
+  <aside class="caveat"><strong>取消竞态：</strong>提交和 flush 已成功后，返回路径再次检查 abort，命令仍可能向调用者报告 cancelled。日志是真实提交状态；命令返回值不是回滚信号。</aside>
+</section>
+
+<section>
+  <h2>14. Runtime context 依靠 replacement provenance 再注入，但存在一个条件性窗口</h2>
+  <p>动态 runtime-context projection 记住最近仍存于 Surface 的 owned snapshot；当 replacement 的 source seqs 遮蔽该 snapshot 时，projection 把 retained 置空。下一次 <code>project(currentText)</code> 因而会再次生成 context candidate，避免摘要后永久丢失当前运行时状态。<evidence id="COMPACT-RUNTIME-PROJECTION"></evidence></p>
+  <div class="claim inference"><div class="claim-label">高置信控制流推断，未运行复现</div><p>Agent 在 pre-step waterfall 之前已经计算 candidate。如果当时 current text 与 retained 相同，candidate 为 undefined；随后 waterfall 内 compaction 遮蔽 retained，事件 listener 把它清空，但本 Step 不重新计算 candidate。于是紧随其后的请求可能暂时缺少当前 runtime context，下一 Step 才会重新注入。现有测试覆盖“先手动 compact、再 preStep”，没有覆盖这一精确 interleaving。<evidence id="COMPACT-RUNTIME-ORDER"></evidence><evidence id="COMPACT-RUNTIME-PROJECTION"></evidence></p></div>
+  <p>这是一个窄的一请求窗口，不是“压缩会永久删除 runtime context”。要消除它，需在 waterfall 后重算 candidate，或把 pressure pass 提前到 candidate projection 之前。</p>
+</section>
+
+<section>
+  <h2>15. Usage、pressure 和 shadow price 是三个不同的观测面</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Projection / event</th><th>回答什么</th><th>不包含什么</th></tr></thead>
+    <tbody>
+      <tr><td><code>tokenUsage</code></td><td>主对话 assistant requests 的 usage，按 Turn/Step last-wins 累计</td><td><code>compaction/summary.data.usage</code> 不进入累计</td></tr>
+      <tr><td><code>contextPressure</code></td><td>基于最近 Provider prompt sample + Surface delta 的下一请求压力</td><td>不是全部调用的账单成本</td></tr>
+      <tr><td>Summary event usage</td><td>某次辅助摘要调用的 route 与 usage audit</td><td>不会自动汇总到主 usage projection</td></tr>
+      <tr><td>Shadow price</td><td>O(1) projection 更新时旧 span 的估算价格</td><td>不是语义重要性或真实 tokenizer 分摊</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">确认语义</div><p>Usage fold 只处理 assistant usage chunk/message；summary 调用的 usage 虽已持久记录，却不计入累计 tokenUsage。因此该 projection 描述主对话请求，而不是进程为此会话发出的所有 Provider 调用。是否属于有意的辅助成本排除，源码注释并未完全说清。<evidence id="COMPACT-USAGE-PROJECTION"></evidence></p></div>
+</section>
+
+<section>
+  <h2>16. O(1) pressure projection 依赖“shadow-price 紧邻 replacement”的局部协议</h2>
+  <p>Surface token projection 只保留 running total 和一个 pending claim。看到 <code>compaction/summary</code> 或 <code>compaction/prune</code> 时暂存旧价格；下一条 replacement 消耗它并计算 signed delta。任何夹在中间的其它 event 都使 claim 过期；没有 claim 的历史 replacement 为兼容旧日志按 zero delta 降级，而不是 fail closed。</p>
+  <div class="claim assessment"><div class="claim-label">已确认 invariant coverage gap</div><p>正常 summary/pruner producer 都同步相邻 append，因而满足协议；compaction runtime invariant 会检查 bracket、ID、owner、shadow endpoints/token count、checkpoint source 和 success end，却没有检查 summary/prune 与对应 replacement 必须紧邻。一个有缺陷的插件或外部日志 writer 可生成“结构上通过 invariant、pressure projection 却漂移”的序列。<evidence id="COMPACT-SHADOW-PRICE"></evidence><evidence id="COMPACT-INVARIANT"></evidence></p></div>
+</section>
+
+<section>
+  <h2>17. 已确认的限制、缺口与有意取舍</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>发现</th><th>分类</th><th>影响</th></tr></thead>
+    <tbody>
+      <tr><td>Pre-step pressure 看不到 entering batch</td><td>时序限制</td><td>大输入只能依赖 overflow recovery</td></tr>
+      <tr><td>Runtime context 可能有一请求遗漏窗口</td><td>高置信静态推断</td><td>下一 Step 会恢复；尚未运行复现</td></tr>
+      <tr><td>摘要只验证非空和更短</td><td>质量边界</td><td>八标题、事实保真和任务完整性不受代码保证</td></tr>
+      <tr><td>固定英文 summary directive</td><td>国际化取舍</td><td>非英语上下文可能发生翻译损失</td></tr>
+      <tr><td>辅助 summary usage 不进 tokenUsage</td><td>观测口径</td><td>累计值不是全部 Provider 成本</td></tr>
+      <tr><td>Invariant 不检查 shadow-price adjacency</td><td>覆盖缺口</td><td>非标准 writer 可使 bounded projection 静默漂移</td></tr>
+      <tr><td>固定密度 heuristic</td><td>精度取舍</td><td>CJK/JSON 的节点 retention 定价可能偏差</td></tr>
+      <tr><td>System/tools 与单个不可分割节点不可压缩</td><td>能力边界</td><td>即使总压力高，也可能没有合法 span</td></tr>
+      <tr><td>Rich tool blocks 不被 text pruner 缩小</td><td>机制边界</td><td>图片等压力需要其它治理</td></tr>
+      <tr><td>多结果 prune 部分提交</td><td>有意局部进展</td><td>后项失败不会回滚前项</td></tr>
+    </tbody>
+  </table></div>
+  <p>这些发现不应统一叫作漏洞。不可压缩的 system/tools 是 Surface seam 的自然边界；partial prune 是可重放的局部进展策略；摘要保真则是当前实现没有机器可验证合同的真实风险面。</p>
+</section>
+
+<section>
+  <h2>18. 设计评价与验证状态</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>选择</th><th>收益</th><th>成本</th></tr></thead>
+    <tbody>
+      <tr><td>先确定性 prune，再模型摘要</td><td>能不付模型调用和语义损失时就不付</td><td>只覆盖 text-heavy tool results</td></tr>
+      <tr><td>Checkpoint 也是可重放事件</td><td>恢复、Fork、UI 与下一请求得到同一 Surface</td><td>日志和当前模型视图必须区分</td></tr>
+      <tr><td>递归而非固定层级</td><td>适合无限长会话，不需要迁移层级格式</td><td>重复摘要误差缺少硬上界</td></tr>
+      <tr><td>Provider usage anchor + signed delta</td><td>总压力比纯 heuristic 更贴近真实请求</td><td>节点级 cut 仍依赖估算与 adjacency 协议</td></tr>
+      <tr><td>Durable bracket 与 provenance</td><td>每次压缩可审计、可重放、可关联命令</td><td>多次 append 不是后端原子事务，失败状态更复杂</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">本章验证范围</div><p>本章交叉核对了 compaction seam/events/invariant、basic policy/region/summarizer、tool-result pruner、token meter/projections、Agent pre-step 顺序、runtime-context projection、manual command 以及真实 loop 和组合测试源码。Upstream 没有安装依赖，因此没有声称测试在本机通过；涉及精确竞态和 crash path 的项目已明确标为静态推断。</p></div>
+</section>

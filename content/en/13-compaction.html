@@ -1,0 +1,227 @@
+<section>
+  <h2>Conclusion: There Is No Fixed “Multi-Level Compaction,” Only Two Recursively Composable Surface Transformations</h2>
+  <div class="thesis"><p>DeepSeek Harness does not implement an L1/L2/L3 compaction pipeline. Production code has only two mechanisms that actually shorten the model Surface: deterministically prune the middle of oversized tool results, then—if pressure remains—ask a model to turn a balanced historical prefix into a checkpoint. A checkpoint is itself a normal model-visible user message, so a future compaction can include it in another region. The apparent “levels” come from recursive algebra, not a configured number of stages.</p></div>
+  <p>Pressure and context overflow are two trigger paths, not two compaction levels. The default <code>compactionRetries: 1</code> permits one additional summary after the first summary; it does not limit a Session to two lifetime compactions. Later Steps can trigger the policy again and merge an older checkpoint into a newer checkpoint.</p>
+  <div class="claim fact"><div class="claim-label">Source conclusion</div><p>The public compaction seam separates automatic evaluation, idle maintenance, and explicit-region entry points. Every successful path ultimately replaces a Surface span with a user message carrying the common <code>plugin: "compact"</code> source marker. <evidence id="COMPACT-SEAM"></evidence></p></div>
+</section>
+
+<section>
+  <h2>1. Separate Mechanisms, Triggers, Attempt Budgets, and Recursive Algebra</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Dimension</th><th>Actual values</th><th>What it is not</th></tr></thead>
+    <tbody>
+      <tr><td>Shrinking mechanism</td><td>Tool-result pruning; LLM summary replacement</td><td>Not a fixed three-stage hierarchy</td></tr>
+      <tr><td>Automatic trigger</td><td>Pressure before the next Step; recovery after canonical Provider overflow</td><td>Not two checkpoint formats</td></tr>
+      <tr><td>Per-invocation budget</td><td>Bounded summary retries; bounded overflow retries</td><td>Not a Session lifetime limit</td></tr>
+      <tr><td>Recursive depth</td><td>An old checkpoint may be summarized again</td><td>No explicit generation cap</td></tr>
+      <tr><td>Manual entry</td><td><code>/compact</code> compacts a useful head during idle maintenance</td><td>Not an unlogged in-memory mutation</td></tr>
+    </tbody>
+  </table></div>
+  <pre><code>Surface₀
+  ├─ prune(large tool result)        → Surface₁
+  ├─ summarize(balanced head span)   → checkpoint₁ + retained tail
+  └─ later summarize(checkpoint₁ …)  → checkpoint₂ + newer tail</code></pre>
+  <p>This distinction matters. Retry settings answer “how many more attempts may one pressure invocation make?” Recursive checkpoints answer “may a prior result be compacted later?” Their interaction creates the generations visible in a long-running Session.</p>
+</section>
+
+<section>
+  <h2>2. Configuration Resolves Against an Exact Provider / Model Route</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Default</th><th>Value</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td><code>thresholdRatio</code></td><td><code>0.8</code></td><td>Start proactive compaction when estimated request pressure reaches 80% of context capacity</td></tr>
+      <tr><td><code>retainRatio</code></td><td><code>0.16</code></td><td>Try to preserve a recent Surface tail priced at roughly 16% of capacity</td></tr>
+      <tr><td><code>maxTokens</code></td><td><code>8192</code></td><td>Output ceiling for the summary call</td></tr>
+      <tr><td><code>compactionRetries</code></td><td><code>1</code></td><td>Allow one additional summary if pressure remains after the first</td></tr>
+      <tr><td><code>maxOverflowRetries</code></td><td><code>1</code></td><td>Bound recovery attempts for one canonical overflow</td></tr>
+      <tr><td><code>auto</code></td><td><code>true</code></td><td>Enable automatic pressure and overflow handling</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Resolution rules</div><p>Exact provider/model entries may partially override global settings. Ratios become absolute token budgets only after the adapter supplies context capacity. <code>retainRatio</code> and <code>retainTokens</code> are mutually exclusive, and retention must be below the threshold. <evidence id="COMPACT-CONFIG"></evidence></p></div>
+  <p>Proactive pressure therefore needs two facts: the latest durable request header must identify a route, and that route's adapter must expose context capacity. Overflow is already a Provider fact, so recovery can proceed without the threshold or capacity premise.</p>
+</section>
+
+<section>
+  <h2>3. The Token Meter Estimates the Next Request’s Pressure; It Does Not Tokenize Every Node Exactly</h2>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>Find an anchor</h3><p>When the current route and header match the latest successful request, use Provider usage as the known prompt sample.</p></div>
+    <div><span>2</span><h3>Rebuild the prior Surface</h3><p>At the final assistant message, reassemble Provider output from its cited raw chunks and treat the Step-start Surface as the anchor.</p></div>
+    <div><span>3</span><h3>Accumulate signed deltas</h3><p>Ordinary appends add price; prune and summary replacements subtract the shadow-priced old span and add the new node.</p></div>
+    <div><span>4</span><h3>Estimate everything without an anchor</h3><p>Run one fixed-density heuristic over system, tools, and the current Surface.</p></div>
+  </div>
+  <div class="claim fact"><div class="claim-label">Conservative anchor</div><p>If Provider-reported usage is lower than the complete heuristic anchor, the meter falls back to the estimate so a negative delta cannot systematically understate current pressure. Every measurement still clones and returns positional Surface nodes in O(surface). <evidence id="COMPACT-TOKEN-MEASURE"></evidence><evidence id="COMPACT-TOKEN-ANCHOR"></evidence></p></div>
+  <div class="claim assessment"><div class="claim-label">Precision boundary</div><p>Without an anchor, text is priced at one token per four JavaScript code units plus fixed block and role overhead; tool schemas and arguments use JSON length. This is not any model’s tokenizer. Node-level pricing can be wrong for CJK, dense JSON, and model-specific vocabularies. A Provider anchor improves total pressure but cannot retrospectively assign exact tokens to every historical node. <evidence id="COMPACT-ESTIMATOR"></evidence></p></div>
+</section>
+
+<section>
+  <h2>4. Proactive Pressure Runs Between Steps but Cannot See the Entering Batch</h2>
+  <pre><code>claim inbox messages
+→ assemble system/tools
+→ compute runtime-context candidate
+→ dispatch agent/pre-step waterfall
+     └─ pressure listener measures current durable Surface
+→ append step/start
+→ append claimed user/context messages
+→ dispatch Provider request</code></pre>
+  <div class="claim fact"><div class="claim-label">Confirmed ordering</div><p>The real-loop test requires pressure compaction between the previous <code>step/end</code> and the next <code>step/start</code>. The Agent has already claimed the batch, however, and does not append it to the Session until the waterfall returns. The pressure listener therefore measures the prior Surface without this Step's entering batch. <evidence id="COMPACT-REAL-LOOP-TEST"></evidence><evidence id="COMPACT-RUNTIME-ORDER"></evidence></p></div>
+  <div class="claim assessment"><div class="claim-label">Practical consequence</div><p>If one large input, dynamic-context snapshot, or indivisible node moves the request from below threshold to beyond the window, the proactive pass cannot prevent it. Same-Step recovery can take over only if the adapter accurately normalizes the Provider failure into canonical context overflow.</p></div>
+</section>
+
+<section>
+  <h2>5. Shrinking Mechanism One: Model-Free Middle Pruning of Tool Results</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Rule</th><th>Default behavior</th><th>Fidelity boundary</th></tr></thead>
+    <tbody>
+      <tr><td>Trigger length</td><td>Text blocks total more than 8,192 Unicode code points</td><td>Non-text rich blocks cost zero to this pruner</td></tr>
+      <tr><td>Retention</td><td>First 4,096 + marker + last 1,024 code points</td><td>Does not split a surrogate pair, but may split a grapheme cluster</td></tr>
+      <tr><td>Replacement scope</td><td>Only the tool/result content</td><td>Call ID, name, error, metadata, and event semantics remain</td></tr>
+      <tr><td>Ordering</td><td>Rich blocks retain order; text slices are rebuilt in place</td><td>Images and other rich content are not reduced</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Replay-safe commit</div><p>For each candidate, the pruner first appends <code>compaction/prune</code> with the old node's token price, then appends a content-only replacement citing the original seq. Replaying the log into a fresh Session yields the same Surface without executing the pruner again. <evidence id="COMPACT-PRUNER-CONFIG"></evidence><evidence id="COMPACT-PRUNER"></evidence></p></div>
+  <p>The pressure path does not opportunistically prune below threshold. Once pressure qualifies—or overflow has occurred—it prunes first and remeasures. If that is sufficient, no summary model is called; otherwise, the summary sees the already-pruned Surface. Test source covers all three branches. <evidence id="COMPACT-PRUNE-TEST"></evidence></p>
+  <aside class="caveat"><strong>Transaction granularity:</strong> candidates commit independently during a multi-result pass. If a later candidate fails, earlier successful prunes remain. This is local-progress semantics, not batch-level all-or-nothing behavior.</aside>
+</section>
+
+<section>
+  <h2>6. Shrinking Mechanism Two: Retain a Recent Tail and Summarize a Head-Anchored Span</h2>
+  <p>The pressure path walks backward from the Surface tail until it has accumulated the retention budget, then moves the cut toward the head until it finds a tool-call/result-balanced boundary. It compacts the head rather than selecting scattered messages deemed “unimportant.” The overflow path uses a zero retention budget to release as much space as possible.</p>
+  <div class="claim fact"><div class="claim-label">Range selector</div><p>Even with zero retention, the tail scan keeps at least the final Surface node. The selector returns null when only one indivisible unit remains, no compactable head exists, or no legal balanced cut can be found. <evidence id="COMPACT-RANGE"></evidence></p></div>
+  <div class="claim assessment"><div class="claim-label">Design meaning</div><p>This is a recency-first policy: recent text stays verbatim while older context is merged as one region. There is no semantic-importance scorer, so retention of an old but critical constraint depends entirely on summary quality. In return, boundaries and computational cost remain predictable and require no retrieval subsystem.</p></div>
+</section>
+
+<section>
+  <h2>7. A Legal Cut Guarantees Tool Pairing, Not a Step or Turn Boundary</h2>
+  <p>The pairing fold scans current Surface order. Every assistant tool call increments a balance, each tool result decrements it, and the fold computes N+1 cuts around N nodes. It rebuilds after a replacement generation change and extends incrementally for ordinary appends.</p>
+  <div class="claim fact"><div class="claim-label">Balance condition</div><p>The selector will not leave a tool call on one side of a checkpoint and its result on the other. This condition is independent of durable Step brackets. An older checkpoint at a high log seq is a normal user node and may be balanced on either side, so a future region can compact it again. <evidence id="COMPACT-PAIRING"></evidence></p></div>
+  <p>This gives the precise answer to “how many levels exist?” A log may contain arbitrarily many checkpoint generations, while every transaction still performs one span replacement. The level count is historical recursion depth, not a set of specialized runtime phases.</p>
+</section>
+
+<section>
+  <h2>8. The Summary Call Reuses Conversation Shape but Is Not a Hidden Second Agent Loop</h2>
+  <pre><code>summary request
+= current system prompt
++ current ordered tool schemas
++ selected region as model messages
++ one fixed English compaction directive
+→ one Provider stream (purpose = "compaction")
+→ collect non-empty text only
+→ frame as &lt;compacted-summary&gt;…&lt;/compacted-summary&gt;</code></pre>
+  <div class="claim fact"><div class="claim-label">Routing and output</div><p>The target preference is an explicit summary provider/model, then the latest routed request, then Agent options. The call carries Session ID, purpose, and maxTokens. Max-token truncation, abort, image output, empty text, or call failure all reject the summary. Reasoning and tool-call blocks may remain in rawOutput for audit, but only text enters the checkpoint; a mixed tool-call-plus-text output does not execute the tool. <evidence id="COMPACT-SUMMARIZER"></evidence></p></div>
+  <p>The request retains the original system/tools/region prefix and places one fixed directive at the end, creating a cache-reuse shape when the route is the same. Choosing another provider/model preserves the shape but cannot share a provider cache across routes.</p>
+  <div class="claim assessment"><div class="claim-label">Quality contract</div><p>The fixed English instruction asks for eight structured headings and asks the model to merge a prior checkpoint rather than copy it verbatim. Code does not parse those headings or validate factual fidelity, entities, commitments, or unfinished tasks. The only content gate is that the framed checkpoint's estimated token count must be strictly smaller than the shadowed span. Requiring English for a non-English Session also introduces an extra translation-loss surface.</p></div>
+</section>
+
+<section>
+  <h2>9. A Summary Is a Locked, Revalidated, Multi-Append Log Transaction</h2>
+  <div class="evidence-ladder">
+    <div><span>1</span><h3>Validate and lock</h3><p>Check range, owner, and any active compaction; synchronously append <code>compaction/start</code>.</p></div>
+    <div><span>2</span><h3>Snapshot and call</h3><p>Freeze selected messages and positional prices, then await the Provider summary outside synchronous commit code.</p></div>
+    <div><span>3</span><h3>Revalidate stability</h3><p>Automatic mode requires the entire Surface to be unchanged; manual mode requires only the selected span to remain stable.</p></div>
+    <div><span>4</span><h3>Commit the body synchronously</h3><p>Append the summary audit event, then the replacement user message.</p></div>
+    <div><span>5</span><h3>Close the bracket</h3><p>Append a successful end; any failure after start makes exactly one attempt to append an error end.</p></div>
+  </div>
+  <div class="claim fact"><div class="claim-label">Nature of the lock</div><p><code>compaction/start</code> is a durable log lock. Automatic work records its owning Turn number; manual work uses <code>turn:null</code>. Automatic mode rejects any Surface change while awaiting the summary, whereas manual mode permits appends outside the selected span. <evidence id="COMPACT-TRANSACTION"></evidence><evidence id="COMPACT-COMMIT"></evidence></p></div>
+  <aside class="caveat"><strong>Not a database-atomic transaction:</strong> if the summary event appends but the replacement fails, the Surface stays unchanged while an audit summary and error end may remain. If replacement succeeds but end fails, the Surface has changed and the unmatched start keeps compaction locked for this lifecycle. A new Session lifecycle/end-seed can classify an inherited orphan as stale, but the current instance does not pretend the transaction closed normally.</aside>
+</section>
+
+<section>
+  <h2>10. A Checkpoint Stores Model Text, Source Span, and Actual Call Evidence Separately</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Record</th><th>Stored content</th><th>Enters model Surface?</th></tr></thead>
+    <tbody>
+      <tr><td><code>compaction/start</code></td><td>Transaction ID, owner Turn, optional command ID</td><td>No</td></tr>
+      <tr><td><code>compaction/summary</code></td><td>Summary, shadowed seqs/range/token price, route, maxTokens, usage, rawOutput</td><td>No</td></tr>
+      <tr><td>Replacement <code>user/message</code></td><td>Framed checkpoint and plugin source marker, citing start, summary, and shadowed seqs</td><td>Yes; replaces the old span</td></tr>
+      <tr><td><code>compaction/end</code></td><td>Transaction closure or error</td><td>No</td></tr>
+      <tr><td><code>compaction/prune</code></td><td>Single-node shadow price</td><td>No; the following replacement changes Surface</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Auditability</div><p>The summary text, raw model output, provider/model, usage, shadowed range, and final model-visible checkpoint are stored separately. A reader can audit what the model emitted, which text the system adopted, and which nodes were replaced without exposing raw summary reasoning or tool blocks to the main conversation. <evidence id="COMPACT-EVENTS"></evidence></p></div>
+</section>
+
+<section>
+  <h2>11. How Recursive Checkpoints Produce Real Multi-Generation Compaction</h2>
+  <pre><code>Generation 0:  [old raw history .............][recent tail]
+Generation 1:  [checkpoint A][recent tail .................]
+Generation 2:  [checkpoint B merges A + later history][tail]
+Generation n:  [checkpoint N][newest retained tail]</code></pre>
+  <p>Every replacement advances <code>surface.replaceGeneration</code>, causing pairing and token-pressure projections to update. At the next pressure cycle, checkpoint A has no “never compact” identity; it is simply a user message with provenance. The fixed instruction asks the model to merge an older checkpoint instead of nesting its complete XML framing, but that remains a prompt-level requirement.</p>
+  <div class="claim assessment"><div class="claim-label">Long-term error model</div><p>Every generation must be strictly shorter under the estimator, but there is no executable semantic-fidelity invariant. Monotonic size reduction does not bound factual error: repeated summaries may accumulate omission, translation, and abstraction loss. The log retains the original shadowed events for people and offline tools, while the main model sees only the current checkpoint.</p></div>
+</section>
+
+<section>
+  <h2>12. Overflow Recovery Retries Within the Same Step and Uses Generation Advance as Proof of Progress</h2>
+  <div class="claim fact"><div class="claim-label">Control flow</div><p>After an adapter normalizes a failure as canonical context overflow, the handler uses a separate overflow budget: prune, remeasure, then attempt a zero-retention summary. It returns retry only if <code>surface.replaceGeneration</code> advanced. A committed prune followed by summary failure therefore still counts as progress. A successful assistant message or return to idle resets the counter, and cancellation remains final. <evidence id="COMPACT-AUTO-TRIGGERS"></evidence><evidence id="COMPACT-POLICY-LOOP"></evidence></p></div>
+  <div class="claim fact"><div class="claim-label">Real-loop test</div><p>Test source requires recovery to stay in the original Step. The second Provider request sees the old sentinel removed and the checkpoint already present in the same Session log. Upstream dependencies are not installed, so this study inspected the test contract but did not execute it. <evidence id="COMPACT-REAL-LOOP-TEST"></evidence></p></div>
+  <p>A same-Step retry reuses the previously assembled system, tools, and request configuration; the change comes from Session Surface replacement, not a fresh pre-Step assembly. If overflow is dominated by a large system prompt, tool schema, or one indivisible node, Surface compaction may have no legal space to release.</p>
+</section>
+
+<section>
+  <h2>13. Manual <code>/compact</code> Is Idle Maintenance, Not a Concurrent Forced Rewrite</h2>
+  <div class="claim fact"><div class="claim-label">Admission</div><p><code>compactNow()</code> enters through <code>runMaintenance</code> only while the Agent is idle with no waking queued work. It uses zero retention and a null Turn owner. Appends outside the span may occur while summary is pending; only the selected span is revalidated. A closed attempt passes the Session flush barrier before returning. <evidence id="COMPACT-MANUAL"></evidence></p></div>
+  <p>The human command accepts no arguments and maps busy, cancelled, Surface-changed, summary, commit, and persistence failures to distinct results. Success reports shadowed items and tokens and correlates the source command ID with the summary seq. Plugin teardown waits for active handlers to drain. <evidence id="COMPACT-COMMAND"></evidence></p>
+  <aside class="caveat"><strong>Cancellation race:</strong> after commit and flush succeed, the return path checks abort again and may still report cancellation to the caller. The log is the authoritative commit state; the command result is not a rollback signal.</aside>
+</section>
+
+<section>
+  <h2>14. Runtime Context Uses Replacement Provenance for Reinjection, with One Conditional Window</h2>
+  <p>The dynamic runtime-context projection remembers the latest owned snapshot still present on Surface. When replacement source seqs shadow that snapshot, the projection clears its retained value. The next <code>project(currentText)</code> therefore emits the current context again, preventing permanent loss after compaction. <evidence id="COMPACT-RUNTIME-PROJECTION"></evidence></p>
+  <div class="claim inference"><div class="claim-label">High-confidence control-flow inference; not reproduced at runtime</div><p>The Agent computes the candidate before the pre-Step waterfall. If current text then equals retained text, the candidate is undefined. Compaction inside the waterfall may subsequently shadow the retained snapshot and clear it, but this Step does not recompute the candidate. The immediately following request can therefore omit current runtime context once; the next Step emits it again. Existing tests cover “manually compact, then call preStep,” not this exact interleaving. <evidence id="COMPACT-RUNTIME-ORDER"></evidence><evidence id="COMPACT-RUNTIME-PROJECTION"></evidence></p></div>
+  <p>This is a narrow one-request window, not permanent context deletion. Eliminating it would require recomputing the candidate after the waterfall or moving pressure handling before candidate projection.</p>
+</section>
+
+<section>
+  <h2>15. Usage, Pressure, and Shadow Price Are Three Different Observability Surfaces</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Projection / event</th><th>Question answered</th><th>What it excludes</th></tr></thead>
+    <tbody>
+      <tr><td><code>tokenUsage</code></td><td>Usage for primary assistant requests, accumulated last-wins by Turn and Step</td><td><code>compaction/summary.data.usage</code> is not accumulated</td></tr>
+      <tr><td><code>contextPressure</code></td><td>Next-request pressure from the latest Provider prompt sample plus Surface delta</td><td>Not a complete billing-cost ledger</td></tr>
+      <tr><td>Summary-event usage</td><td>Route and usage audit for one auxiliary summary call</td><td>Not automatically rolled into the primary usage projection</td></tr>
+      <tr><td>Shadow price</td><td>Estimated old-span price used by the O(1) projection</td><td>Neither semantic importance nor exact tokenizer allocation</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Confirmed semantics</div><p>The usage fold reads only assistant usage chunks and messages. Summary usage is durably recorded but excluded from cumulative tokenUsage. The projection therefore describes primary conversation requests, not every Provider call issued on behalf of the Session. Source comments do not fully resolve whether this is intentional auxiliary-cost exclusion or a documentation ambiguity. <evidence id="COMPACT-USAGE-PROJECTION"></evidence></p></div>
+</section>
+
+<section>
+  <h2>16. The O(1) Pressure Projection Relies on a Local “Shadow Price Immediately Before Replacement” Protocol</h2>
+  <p>The Surface token projection stores only a running total and one pending claim. A <code>compaction/summary</code> or <code>compaction/prune</code> stages the old price; the next replacement consumes it and applies the signed delta. Any intervening event expires the claim. For historical compatibility, a replacement without a claim degrades to zero delta instead of failing closed.</p>
+  <div class="claim assessment"><div class="claim-label">Confirmed invariant-coverage gap</div><p>Normal summary and pruner producers append synchronously adjacent records, so they honor the protocol. The compaction runtime invariant validates brackets, IDs, owners, shadow endpoints and token counts, checkpoint sources, and successful ends, but does not require summary/prune adjacency to the corresponding replacement. A faulty plugin or external log writer could therefore produce a sequence that passes the compaction invariant while silently drifting the bounded pressure projection. <evidence id="COMPACT-SHADOW-PRICE"></evidence><evidence id="COMPACT-INVARIANT"></evidence></p></div>
+</section>
+
+<section>
+  <h2>17. Confirmed Constraints, Gaps, and Deliberate Tradeoffs</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Finding</th><th>Classification</th><th>Consequence</th></tr></thead>
+    <tbody>
+      <tr><td>Pre-Step pressure cannot see the entering batch</td><td>Ordering constraint</td><td>Large new input depends on overflow recovery</td></tr>
+      <tr><td>Runtime context may be absent for one request</td><td>High-confidence static inference</td><td>The next Step repairs it; no runtime reproduction yet</td></tr>
+      <tr><td>Summary validation checks only nonempty and shorter</td><td>Quality boundary</td><td>Eight headings, factual fidelity, and task completeness are not code-enforced</td></tr>
+      <tr><td>Fixed English summary directive</td><td>Internationalization tradeoff</td><td>Non-English context may incur translation loss</td></tr>
+      <tr><td>Auxiliary summary usage is absent from tokenUsage</td><td>Observability scope</td><td>The cumulative value is not total Provider cost</td></tr>
+      <tr><td>Invariant does not check shadow-price adjacency</td><td>Coverage gap</td><td>A nonstandard writer can silently drift the bounded projection</td></tr>
+      <tr><td>Fixed-density heuristic</td><td>Precision tradeoff</td><td>CJK/JSON retention pricing can be wrong</td></tr>
+      <tr><td>System/tools and one indivisible node cannot be compacted</td><td>Capability boundary</td><td>High total pressure may still have no legal span</td></tr>
+      <tr><td>Rich tool blocks are not reduced by the text pruner</td><td>Mechanism boundary</td><td>Image pressure requires another policy</td></tr>
+      <tr><td>A multi-result prune pass may partially commit</td><td>Deliberate local progress</td><td>A later failure does not roll back earlier replacements</td></tr>
+    </tbody>
+  </table></div>
+  <p>These findings should not all be called vulnerabilities. Uncompactable system and tool envelopes are a natural boundary of the Surface seam; partial pruning is a replayable local-progress policy; summary fidelity is the genuine risk surface without a machine-checkable contract.</p>
+</section>
+
+<section>
+  <h2>18. Design Assessment and Verification Status</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Choice</th><th>Benefit</th><th>Cost</th></tr></thead>
+    <tbody>
+      <tr><td>Deterministic pruning before model summary</td><td>Avoid model cost and semantic loss when simple reduction is enough</td><td>Covers only text-heavy tool results</td></tr>
+      <tr><td>Checkpoint as replayable event replacement</td><td>Recovery, forks, UI, and the next request share one Surface</td><td>Readers must distinguish the log from the current model view</td></tr>
+      <tr><td>Recursion instead of fixed levels</td><td>Supports unbounded Sessions without level-format migrations</td><td>Repeated-summary error has no hard bound</td></tr>
+      <tr><td>Provider usage anchor plus signed delta</td><td>Total pressure is closer to a real request than a pure heuristic</td><td>Node-level cuts still depend on estimates and adjacency</td></tr>
+      <tr><td>Durable bracket and provenance</td><td>Every compaction is auditable, replayable, and command-correlated</td><td>Multiple appends are not one backend-atomic transaction</td></tr>
+    </tbody>
+  </table></div>
+  <div class="claim fact"><div class="claim-label">Verification scope</div><p>This chapter cross-checked the compaction seam, events, and invariant; the basic policy, region, and summarizer; the tool-result pruner; token meter and projections; Agent pre-Step ordering; runtime-context projection; the manual command; and real-loop and composition test source. Upstream dependencies are not installed, so no upstream test execution is claimed. Exact race and crash paths are explicitly labeled as static inferences.</p></div>
+</section>

@@ -16,7 +16,7 @@
     {"id":"10","slug":"log-replay","part":"会话与持久化","title":"日志、派生历史、重放与 Fork","subtitle":"从原始 chunk 到可重建模型输入和 UI","status":"verified","scope":"追踪 append、deriveMessages、raw chunk、fork boundary、resume、transcript 与 replay fidelity。"},
     {"id":"11","slug":"persistence-database","part":"会话与持久化","title":"持久化与数据库设计","subtitle":"JSONL、SQLite、通用 Storage 与数据所有权","status":"queued","scope":"分析 session persistence、SQLite schema/migrations、JSONL、KV storage、domain form、附件与工作区。"},
     {"id":"12","slug":"projections-checkpoints","part":"会话与持久化","title":"Projection、Checkpoint 与冷启动","subtitle":"全量事件之外，系统保存了哪些可丢弃的加速状态","status":"queued","scope":"区分语义 checkpoint、projection cache、watermark、write-behind、tail replay 和恢复门槛。"},
-    {"id":"13","slug":"compaction","part":"上下文治理","title":"压缩体系与上下文压力","subtitle":"工具结果裁剪、摘要替换、溢出恢复分别是什么语义","status":"queued","scope":"确认压缩层级、触发器、token 计量、pruner、summary、surface generation、手动 compact 与失败恢复。"},
+    {"id":"13","slug":"compaction","part":"上下文治理","title":"压缩体系与上下文压力","subtitle":"工具结果裁剪、摘要替换、溢出恢复分别是什么语义","status":"verified","scope":"确认压缩层级、触发器、token 计量、pruner、summary、surface generation、手动 compact 与失败恢复。"},
     {"id":"14","slug":"memory-knowledge","part":"上下文治理","title":"记忆与知识：有何能力、又刻意没有什么","subtitle":"会话日志、摘要、Skill、Session Query 与长期语义记忆的边界","status":"queued","scope":"辨析 working context、durable log、session reference、query、skill 和真正跨会话记忆之间的区别。"},
     {"id":"15","slug":"plan-goal-todo","part":"协作状态","title":"Plan、Goal 与 Todo","subtitle":"三种看似相近但生命周期不同的协作原语","status":"queued","scope":"分析 logged plan mode、goal revision/continuation、todo projection、权限与 UI 呈现。"},
 
