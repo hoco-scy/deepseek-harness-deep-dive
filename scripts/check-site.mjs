@@ -31,6 +31,9 @@ function assertLocalReferences(path, html, label) {
 
 const markdownFiles = ["DEEPSEEK-HARNESS-ANALYSIS.md", "DEEPSEEK-HARNESS-ANALYSIS.zh-CN.md"];
 for (const filename of markdownFiles) assert(existsSync(join(root, filename)), `missing generated Markdown report ${filename}`);
+for (const filename of ["LICENSE", "LICENSE-CODE", "LICENSING.md"]) {
+  assert(existsSync(join(root, filename)), `missing license file ${filename}`);
+}
 
 assert(existsSync(join(docs, "index.html")), "missing default English docs/index.html");
 assert(existsSync(join(docs, "zh", "index.html")), "missing Chinese docs/zh/index.html");
@@ -114,6 +117,11 @@ assert(readme.includes(`${siteUrl}/`), "README: missing current Pages URL");
 assert(readme.includes("./assets/social-preview-en.jpg"), "README: missing English social preview");
 assert(readme.includes("./assets/social-preview-zh.jpg"), "README: missing Chinese social preview");
 assert(readme.includes("**36/36**") && readme.includes("**1,094**") && readme.includes("**533**") && readme.includes("**219**"), "README: missing verified research proof points");
+assert(readme.includes("[CC BY 4.0](./LICENSE)"), "README: missing content license");
+assert(readme.includes("[MIT License](./LICENSE-CODE)"), "README: missing code license");
+const licensing = readFileSync(join(root, "LICENSING.md"), "utf8");
+assert(licensing.indexOf("<a id=\"english\"") >= 0, "LICENSING: missing English anchor");
+assert(licensing.indexOf("<a id=\"中文\"") > licensing.indexOf("<a id=\"english\""), "LICENSING: English must be the default first section");
 const englishGuide = readFileSync(join(content, "en", "00-reading-guide.html"), "utf8");
 assert(englishGuide.includes(`${repositoryUrl}/blob/main/DEEPSEEK-HARNESS-ANALYSIS.md`), "English reading guide: missing current repository URL");
 

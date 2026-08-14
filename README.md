@@ -67,6 +67,10 @@ All 36 chapters are marked `Verified` at the pinned baseline. Future upstream ch
 
 This repository contains only an independent analysis of publicly available DeepSeek Harness source. It contains no private implementation details or private architectural conclusions from any other project.
 
+### Licensing
+
+Research content and visual assets are licensed under [CC BY 4.0](./LICENSE). Software and build tooling are licensed under the [MIT License](./LICENSE-CODE). See the bilingual [licensing scope](./LICENSING.md) for the exact file boundaries and third-party exclusions.
+
 ---
 
 <a id="中文"></a>
@@ -133,3 +137,7 @@ python3 -m http.server 8080 --directory docs
 固定基线下的 36 章全部标记为`已复核`。后续上游变化需要建立新的固定快照，不会静默改写本报告中的事实基线。
 
 本仓库只包含基于公开源码的 DeepSeek Harness 独立拆解，不包含任何其他项目的非公开实现或内部架构结论。
+
+### 许可证
+
+研究内容与视觉资产采用 [CC BY 4.0](./LICENSE)，软件与构建工具采用 [MIT License](./LICENSE-CODE)。准确的文件适用范围与第三方材料排除项请见双语[许可说明](./LICENSING.md)。
