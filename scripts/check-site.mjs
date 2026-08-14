@@ -85,6 +85,7 @@ for (const chapter of manifests.en.chapters) {
     assert(html.includes('<meta property="og:type" content="article">'), `${lang}/${chapter.slug}: missing article Open Graph type`);
     assert(html.includes(`<meta property="og:image" content="${siteUrl}/assets/social-preview-${lang}.jpg">`), `${lang}/${chapter.slug}: wrong localized social preview`);
     assert(html.includes('<meta name="twitter:card" content="summary_large_image">'), `${lang}/${chapter.slug}: missing Twitter card metadata`);
+    assert(html.includes(`${repositoryUrl}/blob/main/LICENSING.md`), `${lang}/${chapter.slug}: missing licensing link`);
     assert(html.includes('class="language-switch"'), `${lang}/${chapter.slug}: missing language switch`);
     assert(html.includes("data-learning-notes"), `${lang}/${chapter.slug}: missing learning notes`);
     assert(html.includes("data-chapter-jump"), `${lang}/${chapter.slug}: missing chapter jump`);

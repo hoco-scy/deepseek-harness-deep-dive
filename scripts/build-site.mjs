@@ -1,7 +1,7 @@
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { repositorySlug, siteUrl } from "./site-config.mjs";
+import { repositorySlug, repositoryUrl, siteUrl } from "./site-config.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const outDir = join(root, "docs");
@@ -30,7 +30,7 @@ const copy = {
     notesTitle: "My Learning Notes", notesPrivacy: "Autosaved only in this browser. Nothing is uploaded or committed. Export Markdown whenever you want to keep a copy.",
     notesPlaceholder: "Record your understanding, questions, counterexamples, and transferable principles…",
     localDraft: "Local draft", export: "Export Markdown", clear: "Clear", chars: "characters",
-    footer: "Independent research", localOnly: "learning notes stay local by default", theme: "Toggle light or dark theme",
+    footer: "Independent research", localOnly: "learning notes stay local by default", licensing: "Licensing", theme: "Toggle light or dark theme",
     statuses: { queued: "Queued", drafting: "In progress", verified: "Verified" },
     evidence: "Evidence", packageCount: "packages", sourceCount: "source files", testCount: "tests",
     sourceFiles: "TS / TSX source files", testFiles: "test files", invariantPackages: "packages with invariants",
@@ -54,7 +54,7 @@ const copy = {
     notesTitle: "我的学习体会", notesPrivacy: "内容仅自动保存到当前浏览器，不上传、不进入仓库。你可以导出 Markdown 自行归档。",
     notesPlaceholder: "记录你的理解、疑问、反例和可迁移原则……",
     localDraft: "本地草稿", export: "导出 Markdown", clear: "清空", chars: "字符",
-    footer: "独立研究", localOnly: "学习笔记默认仅保存在浏览器本地", theme: "切换明暗主题",
+    footer: "独立研究", localOnly: "学习笔记默认仅保存在浏览器本地", licensing: "许可说明", theme: "切换明暗主题",
     statuses: { queued: "待研究", drafting: "撰写中", verified: "已复核" },
     evidence: "证据", packageCount: "包", sourceCount: "源文件", testCount: "测试",
     sourceFiles: "TS / TSX 源文件", testFiles: "测试文件", invariantPackages: "带 invariant 的包",
@@ -227,7 +227,7 @@ function renderPage({ lang, manifest, chapter, index, content, assetRoot, langua
       <h1>${escapeHtml(chapter.title)}</h1><p class="subtitle">${escapeHtml(chapter.subtitle)}</p><div class="page-meta"><span class="status ${chapter.status}">${ui.statuses[chapter.status]}</span><span>${ui.upstream} ${baseline.shortCommit}</span><span>${ui.scope}: ${escapeHtml(chapter.scope)}</span></div></header>
       ${content}${renderNotes(ui)}${renderPagination(manifest, index, languageRoot, ui)}</article>
       <aside class="right-rail" aria-label="${ui.onThisPage}"><h2 class="rail-title">${ui.onThisPage}</h2><nav class="toc" data-toc></nav><label class="jump-label" for="chapter-jump">${ui.jump}</label><select class="jump-select" id="chapter-jump" data-chapter-jump>${renderJump(manifest, chapter)}</select></aside></div>
-      <footer class="footer">${ui.footer} · ${ui.fixedBaseline} ${baseline.commit} · ${ui.localOnly}</footer></main></div>
+      <footer class="footer">${ui.footer} · ${ui.fixedBaseline} ${baseline.commit} · ${ui.localOnly} · <a href="${repositoryUrl}/blob/main/LICENSING.md">${ui.licensing}</a></footer></main></div>
   <script src="${assetRoot}assets/site.js" defer></script></body></html>`;
 }
 
