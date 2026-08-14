@@ -92,7 +92,7 @@ DeepSeek Harness looks like a coding-agent product. The more interesting subject
 >
 > All 36 chapters are verified at the pinned baseline. Chapter 35 indexes 1,094 evidence records across 533 distinct catalog paths and 48 curated terms. Chapters 00–34 contain 1,350 evidence occurrences spanning 1,092 unique catalog IDs: 99.8% catalog reach and 100.0% catalog-path reach. These are navigation metrics, not claims of architectural completeness or proof quality.
 
-The website remains the navigable edition with an English default and a same-chapter Chinese switch. The repository also ships complete single-file Markdown editions: [English](https://github.com/hoco-scy/dpsk-harness-analysis/blob/main/DEEPSEEK-HARNESS-ANALYSIS.md) and [简体中文](https://github.com/hoco-scy/dpsk-harness-analysis/blob/main/DEEPSEEK-HARNESS-ANALYSIS.zh-CN.md).
+The website remains the navigable edition with an English default and a same-chapter Chinese switch. The repository also ships complete single-file Markdown editions: [English](https://github.com/hoco-scy/deepseek-harness-deep-dive/blob/main/DEEPSEEK-HARNESS-ANALYSIS.md) and [简体中文](https://github.com/hoco-scy/deepseek-harness-deep-dive/blob/main/DEEPSEEK-HARNESS-ANALYSIS.zh-CN.md).
 
 #### What this dissection must answer
 

@@ -8,7 +8,7 @@
 
 This repository is an independent, evidence-driven, module-by-module source study of [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness).
 
-**Read the live report:** [English (default)](https://hoco-scy.github.io/dpsk-harness-analysis/) · [中文](https://hoco-scy.github.io/dpsk-harness-analysis/zh/)
+**Read the live report:** [English (default)](https://hoco-scy.github.io/deepseek-harness-deep-dive/) · [中文](https://hoco-scy.github.io/deepseek-harness-deep-dive/zh/)
 
 **Read as one Markdown document:** [English (default)](./DEEPSEEK-HARNESS-ANALYSIS.md) · [简体中文](./DEEPSEEK-HARNESS-ANALYSIS.zh-CN.md)
 
@@ -54,7 +54,7 @@ This public repository contains only an independent analysis of publicly availab
 
 本仓库是对 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的独立、证据驱动、逐模块源码研究。
 
-**在线阅读：**[English（默认）](https://hoco-scy.github.io/dpsk-harness-analysis/) · [中文](https://hoco-scy.github.io/dpsk-harness-analysis/zh/)
+**在线阅读：**[English（默认）](https://hoco-scy.github.io/deepseek-harness-deep-dive/) · [中文](https://hoco-scy.github.io/deepseek-harness-deep-dive/zh/)
 
 **单篇 Markdown：**[English（默认）](./DEEPSEEK-HARNESS-ANALYSIS.md) · [简体中文](./DEEPSEEK-HARNESS-ANALYSIS.zh-CN.md)
 

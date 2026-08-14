@@ -1,6 +1,7 @@
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { repositorySlug, siteUrl } from "./site-config.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const outDir = join(root, "docs");
@@ -195,13 +196,13 @@ function renderPage({ lang, manifest, chapter, index, content, assetRoot, langua
   const ui = copy[lang];
   const verifiedCount = manifest.chapters.filter((item) => item.status === "verified").length;
   const draftingCount = manifest.chapters.filter((item) => item.status === "drafting").length;
-  const canonical = `https://hoco-scy.github.io/dpsk-harness-analysis/${canonicalPath}`;
-  const alternate = `https://hoco-scy.github.io/dpsk-harness-analysis/${alternatePath}`;
+  const canonical = `${siteUrl}/${canonicalPath}`;
+  const alternate = `${siteUrl}/${alternatePath}`;
   const chapterLabel = lang === "en" ? `${ui.chapter} ${chapter.id}` : ui.chapter.replace("%s", chapter.id);
   return `<!doctype html>
 <html lang="${ui.htmlLang}" data-root="${languageRoot}">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="description" content="${escapeHtml(chapter.subtitle)}">
-  <link rel="canonical" href="${canonical}"><link rel="alternate" hreflang="${lang === "en" ? "zh-CN" : "en"}" href="${alternate}"><link rel="alternate" hreflang="x-default" href="https://hoco-scy.github.io/dpsk-harness-analysis/${lang === "en" ? canonicalPath : alternatePath}">
+  <link rel="canonical" href="${canonical}"><link rel="alternate" hreflang="${lang === "en" ? "zh-CN" : "en"}" href="${alternate}"><link rel="alternate" hreflang="x-default" href="${siteUrl}/${lang === "en" ? canonicalPath : alternatePath}">
   <link rel="stylesheet" href="${assetRoot}assets/site.css"><title>${escapeHtml(chapter.title)} · ${escapeHtml(manifest.title)}</title></head>
 <body data-page="${escapeHtml(chapter.slug)}" data-baseline="${baseline.commit}" data-lang="${lang}">
   <header class="topbar"><button class="icon-button nav-toggle" type="button" data-nav-toggle aria-label="${ui.openDirectory}" aria-expanded="false">☰</button>
@@ -270,5 +271,5 @@ for (const lang of ["en", "zh"]) {
 }
 
 writeFileSync(join(outDir, "assets", "evidence.json"), JSON.stringify({ ...evidenceCatalog, usage: Object.fromEntries([...evidenceUsage].sort()) }, null, 2) + "\n");
-writeFileSync(join(outDir, "404.html"), `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Page not found / 页面不存在</title><p>Page not found. <a href="/dpsk-harness-analysis/">Return to the English research site</a>.</p><p lang="zh-CN">页面不存在。<a href="/dpsk-harness-analysis/zh/">返回中文研究首页</a>。</p></html>\n`);
+writeFileSync(join(outDir, "404.html"), `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Page not found / 页面不存在</title><p>Page not found. <a href="/${repositorySlug}/">Return to the English research site</a>.</p><p lang="zh-CN">页面不存在。<a href="/${repositorySlug}/zh/">返回中文研究首页</a>。</p></html>\n`);
 console.log(`built ${manifests.en.chapters.length * 2} localized chapter pages, ${evidenceUsage.size} evidence items cited`);

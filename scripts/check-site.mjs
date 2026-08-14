@@ -1,7 +1,8 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
-import { dirname, extname, join, resolve } from "node:path";
+import { dirname, extname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { repositorySlug, repositoryUrl, siteUrl } from "./site-config.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const docs = join(root, "docs");
@@ -15,6 +16,19 @@ const evidence = JSON.parse(readFileSync(join(root, "evidence", "catalog.json"),
 const errors = [];
 function assert(condition, message) { if (!condition) errors.push(message); }
 
+function assertLocalReferences(path, html, label) {
+  for (const match of html.matchAll(/(?:href|src)="([^"]+)"/g)) {
+    const target = match[1];
+    if (/^(?:https?:|mailto:|#)/.test(target)) continue;
+    if (target.startsWith("/")) {
+      assert(target === `/${repositorySlug}/` || target === `/${repositorySlug}/zh/`, `${label}: stale or unexpected root-relative URL ${target}`);
+      continue;
+    }
+    const localTarget = resolve(dirname(path), decodeURIComponent(target.split("#")[0]));
+    assert(existsSync(localTarget), `${label}: local reference does not resolve: ${target} -> ${relative(root, localTarget)}`);
+  }
+}
+
 const markdownFiles = ["DEEPSEEK-HARNESS-ANALYSIS.md", "DEEPSEEK-HARNESS-ANALYSIS.zh-CN.md"];
 for (const filename of markdownFiles) assert(existsSync(join(root, filename)), `missing generated Markdown report ${filename}`);
 
@@ -22,6 +36,16 @@ assert(existsSync(join(docs, "index.html")), "missing default English docs/index
 assert(existsSync(join(docs, "zh", "index.html")), "missing Chinese docs/zh/index.html");
 assert(baseline.commit === evidence.baseline, "baseline mismatch");
 assert(!Object.hasOwn(baseline, "sourcePath"), "research baseline must not contain a machine-local sourcePath");
+
+for (const [label, path, canonical] of [
+  ["en/index", join(docs, "index.html"), `${siteUrl}/`],
+  ["zh/index", join(docs, "zh", "index.html"), `${siteUrl}/zh/`],
+]) {
+  const html = readFileSync(path, "utf8");
+  assert(html.includes(`<link rel="canonical" href="${canonical}">`), `${label}: stale canonical URL`);
+  assertLocalReferences(path, html, label);
+}
+assertLocalReferences(join(docs, "404.html"), readFileSync(join(docs, "404.html"), "utf8"), "404");
 
 const enShape = manifests.en.chapters.map(({ id, slug, status }) => ({ id, slug, status }));
 const zhShape = manifests.zh.chapters.map(({ id, slug, status }) => ({ id, slug, status }));
@@ -51,6 +75,9 @@ for (const chapter of manifests.en.chapters) {
     assert(html.includes("data-learning-notes"), `${lang}/${chapter.slug}: missing learning notes`);
     assert(html.includes("data-chapter-jump"), `${lang}/${chapter.slug}: missing chapter jump`);
     assert(html.includes('class="pagination"'), `${lang}/${chapter.slug}: missing pagination`);
+    const publishedPath = `${lang === "en" ? "" : "zh/"}pages/${chapter.slug}.html`;
+    assert(html.includes(`<link rel="canonical" href="${siteUrl}/${publishedPath}">`), `${lang}/${chapter.slug}: stale canonical URL`);
+    assertLocalReferences(path, html, `${lang}/${chapter.slug}`);
     assert(!html.includes("<evidence"), `${lang}/${chapter.slug}: unresolved evidence tag`);
     if (chapter.status === "queued") {
       assert(html.includes('<section class="placeholder">'), `${lang}/${chapter.slug}: queued draft leaked into the public build`);
@@ -72,6 +99,12 @@ for (const item of evidence.items) {
 const readme = readFileSync(join(root, "README.md"), "utf8");
 assert(readme.indexOf("<a id=\"english\"") >= 0, "README: missing English anchor");
 assert(readme.indexOf("<a id=\"中文\"") > readme.indexOf("<a id=\"english\""), "README: English must be the default first section");
+assert(readme.includes(`${siteUrl}/`), "README: missing current Pages URL");
+const englishGuide = readFileSync(join(content, "en", "00-reading-guide.html"), "utf8");
+assert(englishGuide.includes(`${repositoryUrl}/blob/main/DEEPSEEK-HARNESS-ANALYSIS.md`), "English reading guide: missing current repository URL");
+
+const packageManifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+assert(packageManifest.name === repositorySlug, `package.json: expected name ${repositorySlug}`);
 
 for (const filename of markdownFiles) {
   if (!existsSync(join(root, filename))) continue;
@@ -92,12 +125,17 @@ const forbidden = [
   new RegExp(["cy", "shen@"].join("_"), "i"),
   new RegExp(["next", "level", "builder"].join(""), "i"),
 ];
+const stalePublishedUrls = [
+  ["https://hoco-scy.github.io", ["dpsk", "harness", "analysis"].join("-")].join("/"),
+  ["https://github.com/hoco-scy", ["dpsk", "harness", "analysis"].join("-")].join("/"),
+];
 for (const relative of publicFiles) {
   if (!textExtensions.has(extname(relative))) continue;
   const path = join(root, relative);
   if (!existsSync(path)) continue;
   const text = readFileSync(path, "utf8");
   for (const pattern of forbidden) assert(!pattern.test(text), `${relative}: contains private-comparison identifier`);
+  for (const staleUrl of stalePublishedUrls) assert(!text.includes(staleUrl), `${relative}: contains stale published URL ${staleUrl}`);
 }
 
 if (errors.length > 0) {

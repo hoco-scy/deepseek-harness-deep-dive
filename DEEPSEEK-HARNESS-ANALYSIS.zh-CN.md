@@ -92,7 +92,7 @@ DeepSeek Harness 的表面是一套 coding agent；更值得研究的是，它�
 >
 > 固定基线下的 36 章现已全部复核。第 35 章索引 1,094 条证据记录、533 条不同目录路径和 48 个策展术语。第 00–34 章共出现 1,350 次证据引用，覆盖 1,092 个不同目录 ID：目录触达率 99.8%，目录路径触达率 100.0%。这些是导航指标，不代表架构完整性或证明质量已经穷尽。
 
-网站仍是可导航版本，默认英文，并可逐章切换中文。仓库同时提供完整的单文件 Markdown：[English](https://github.com/hoco-scy/dpsk-harness-analysis/blob/main/DEEPSEEK-HARNESS-ANALYSIS.md) 与 [简体中文](https://github.com/hoco-scy/dpsk-harness-analysis/blob/main/DEEPSEEK-HARNESS-ANALYSIS.zh-CN.md)。
+网站仍是可导航版本，默认英文，并可逐章切换中文。仓库同时提供完整的单文件 Markdown：[English](https://github.com/hoco-scy/deepseek-harness-deep-dive/blob/main/DEEPSEEK-HARNESS-ANALYSIS.md) 与 [简体中文](https://github.com/hoco-scy/deepseek-harness-deep-dive/blob/main/DEEPSEEK-HARNESS-ANALYSIS.zh-CN.md)。
 
 #### 这份拆解要回答什么
 
