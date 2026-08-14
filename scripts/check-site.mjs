@@ -34,6 +34,10 @@ for (const filename of markdownFiles) assert(existsSync(join(root, filename)), `
 
 assert(existsSync(join(docs, "index.html")), "missing default English docs/index.html");
 assert(existsSync(join(docs, "zh", "index.html")), "missing Chinese docs/zh/index.html");
+for (const filename of ["social-preview-en.jpg", "social-preview-zh.jpg"]) {
+  assert(existsSync(join(root, "assets", filename)), `missing source social preview assets/${filename}`);
+  assert(existsSync(join(docs, "assets", filename)), `missing published social preview docs/assets/${filename}`);
+}
 assert(baseline.commit === evidence.baseline, "baseline mismatch");
 assert(!Object.hasOwn(baseline, "sourcePath"), "research baseline must not contain a machine-local sourcePath");
 
@@ -43,6 +47,10 @@ for (const [label, path, canonical] of [
 ]) {
   const html = readFileSync(path, "utf8");
   assert(html.includes(`<link rel="canonical" href="${canonical}">`), `${label}: stale canonical URL`);
+  const lang = label.startsWith("en/") ? "en" : "zh";
+  assert(html.includes('<meta property="og:type" content="website">'), `${label}: missing landing-page Open Graph type`);
+  assert(html.includes(`<meta property="og:image" content="${siteUrl}/assets/social-preview-${lang}.jpg">`), `${label}: wrong localized social preview`);
+  assert(html.includes('<meta name="twitter:card" content="summary_large_image">'), `${label}: missing Twitter card metadata`);
   assertLocalReferences(path, html, label);
 }
 assertLocalReferences(join(docs, "404.html"), readFileSync(join(docs, "404.html"), "utf8"), "404");
@@ -71,6 +79,9 @@ for (const chapter of manifests.en.chapters) {
     assert(html.includes(`data-baseline="${baseline.commit}"`), `${lang}/${chapter.slug}: missing baseline`);
     assert(html.includes(`data-lang="${lang}"`), `${lang}/${chapter.slug}: wrong language identity`);
     assert(html.includes("hreflang="), `${lang}/${chapter.slug}: missing alternate language metadata`);
+    assert(html.includes('<meta property="og:type" content="article">'), `${lang}/${chapter.slug}: missing article Open Graph type`);
+    assert(html.includes(`<meta property="og:image" content="${siteUrl}/assets/social-preview-${lang}.jpg">`), `${lang}/${chapter.slug}: wrong localized social preview`);
+    assert(html.includes('<meta name="twitter:card" content="summary_large_image">'), `${lang}/${chapter.slug}: missing Twitter card metadata`);
     assert(html.includes('class="language-switch"'), `${lang}/${chapter.slug}: missing language switch`);
     assert(html.includes("data-learning-notes"), `${lang}/${chapter.slug}: missing learning notes`);
     assert(html.includes("data-chapter-jump"), `${lang}/${chapter.slug}: missing chapter jump`);
@@ -100,6 +111,9 @@ const readme = readFileSync(join(root, "README.md"), "utf8");
 assert(readme.indexOf("<a id=\"english\"") >= 0, "README: missing English anchor");
 assert(readme.indexOf("<a id=\"中文\"") > readme.indexOf("<a id=\"english\""), "README: English must be the default first section");
 assert(readme.includes(`${siteUrl}/`), "README: missing current Pages URL");
+assert(readme.includes("./assets/social-preview-en.jpg"), "README: missing English social preview");
+assert(readme.includes("./assets/social-preview-zh.jpg"), "README: missing Chinese social preview");
+assert(readme.includes("**36/36**") && readme.includes("**1,094**") && readme.includes("**533**") && readme.includes("**219**"), "README: missing verified research proof points");
 const englishGuide = readFileSync(join(content, "en", "00-reading-guide.html"), "utf8");
 assert(englishGuide.includes(`${repositoryUrl}/blob/main/DEEPSEEK-HARNESS-ANALYSIS.md`), "English reading guide: missing current repository URL");
 

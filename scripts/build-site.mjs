@@ -19,6 +19,9 @@ const allowedStatuses = new Set(["queued", "drafting", "verified"]);
 const copy = {
   en: {
     htmlLang: "en", languageName: "中文", languageLabel: "Read this chapter in Chinese",
+    projectTitle: "Inside DeepSeek Harness — A Source-Pinned Systems Dissection",
+    projectDescription: "A bilingual, evidence-driven dissection of DeepSeek Harness: 36 verified chapters, 1,094 evidence records, and 219 mapped packages covering sessions, tools, replay, security, and multi-Agent orchestration.",
+    socialImageAlt: "Inside DeepSeek Harness — 36 chapters and 1,094 evidence records",
     brand: "Harness Systems Dissection", chapterDirectory: "Chapter directory", openDirectory: "Open chapter directory",
     filter: "Filter chapters…", filterLabel: "Filter chapters", fixedBaseline: "Pinned baseline",
     verified: "verified", drafting: "in progress", chapters: "chapters", chapter: "Chapter", upstream: "Upstream",
@@ -40,6 +43,9 @@ const copy = {
   },
   zh: {
     htmlLang: "zh-CN", languageName: "English", languageLabel: "阅读本章英文版",
+    projectTitle: "深入 DeepSeek Harness——固定源码基线的系统解剖",
+    projectDescription: "一份双语、证据驱动的 DeepSeek Harness 源码拆解：36 章、1,094 条证据记录、219 个上游包，覆盖会话、工具、重放、安全与多 Agent 编排。",
+    socialImageAlt: "深入 DeepSeek Harness——36 章与 1,094 条证据记录",
     brand: "Harness 系统拆解", chapterDirectory: "章节目录", openDirectory: "打开章节目录",
     filter: "筛选章节……", filterLabel: "筛选章节", fixedBaseline: "固定基线",
     verified: "已复核", drafting: "撰写中", chapters: "章", chapter: "第 %s 章", upstream: "上游",
@@ -199,11 +205,18 @@ function renderPage({ lang, manifest, chapter, index, content, assetRoot, langua
   const canonical = `${siteUrl}/${canonicalPath}`;
   const alternate = `${siteUrl}/${alternatePath}`;
   const chapterLabel = lang === "en" ? `${ui.chapter} ${chapter.id}` : ui.chapter.replace("%s", chapter.id);
+  const isLanding = canonicalPath === "" || canonicalPath === "zh/";
+  const title = isLanding ? ui.projectTitle : `${chapter.title} · ${manifest.title}`;
+  const description = isLanding ? ui.projectDescription : chapter.subtitle;
+  const socialImage = `${siteUrl}/assets/social-preview-${lang}.jpg`;
   return `<!doctype html>
 <html lang="${ui.htmlLang}" data-root="${languageRoot}">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="description" content="${escapeHtml(chapter.subtitle)}">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="description" content="${escapeHtml(description)}">
+  <meta property="og:type" content="${isLanding ? "website" : "article"}"><meta property="og:site_name" content="Inside DeepSeek Harness"><meta property="og:locale" content="${lang === "en" ? "en_US" : "zh_CN"}">
+  <meta property="og:title" content="${escapeHtml(title)}"><meta property="og:description" content="${escapeHtml(description)}"><meta property="og:url" content="${canonical}"><meta property="og:image" content="${socialImage}"><meta property="og:image:alt" content="${escapeHtml(ui.socialImageAlt)}">
+  <meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${escapeHtml(title)}"><meta name="twitter:description" content="${escapeHtml(description)}"><meta name="twitter:image" content="${socialImage}">
   <link rel="canonical" href="${canonical}"><link rel="alternate" hreflang="${lang === "en" ? "zh-CN" : "en"}" href="${alternate}"><link rel="alternate" hreflang="x-default" href="${siteUrl}/${lang === "en" ? canonicalPath : alternatePath}">
-  <link rel="stylesheet" href="${assetRoot}assets/site.css"><title>${escapeHtml(chapter.title)} · ${escapeHtml(manifest.title)}</title></head>
+  <link rel="stylesheet" href="${assetRoot}assets/site.css"><title>${escapeHtml(title)}</title></head>
 <body data-page="${escapeHtml(chapter.slug)}" data-baseline="${baseline.commit}" data-lang="${lang}">
   <header class="topbar"><button class="icon-button nav-toggle" type="button" data-nav-toggle aria-label="${ui.openDirectory}" aria-expanded="false">☰</button>
     <a class="brand" href="${languageRoot}index.html"><span class="brand-mark">DS</span><span>${ui.brand}</span></a>
@@ -224,6 +237,11 @@ mkdirSync(join(outDir, "pages"), { recursive: true });
 mkdirSync(join(outDir, "zh", "pages"), { recursive: true });
 cpSync(join(sourceDir, "site.css"), join(outDir, "assets", "site.css"));
 cpSync(join(sourceDir, "site.js"), join(outDir, "assets", "site.js"));
+for (const filename of ["social-preview-en.jpg", "social-preview-zh.jpg"]) {
+  const source = join(root, "assets", filename);
+  if (!existsSync(source)) fail(`missing social preview asset: assets/${filename}`);
+  cpSync(source, join(outDir, "assets", filename));
+}
 const chapter35 = manifests.en.chapters.find(chapter => chapter.id === "35");
 const chapter35Published = chapter35 !== undefined && chapter35.status !== "queued";
 for (const asset of ["glossary", "evidence-coverage", "source-index"]) {
